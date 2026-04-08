@@ -1,23 +1,26 @@
 {
   "routes": [
     {
+      "route": "/.auth/login/aad",
+      "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/.auth/*",
+      "allowedRoles": ["anonymous"]
+    },
+    {
       "route": "/*",
-      "serve": "/index.html",
-      "statusCode": 200
+      "allowedRoles": ["authenticated"]
     }
   ],
-  "navigationFallback": {
-    "rewrite": "/index.html"
+  "responseOverrides": {
+    "401": {
+      "redirect": "/.auth/login/aad",
+      "statusCode": 302
+    }
   },
   "globalHeaders": {
     "Cache-Control": "no-cache",
-    "X-Content-Type-Options": "nosniff",
-    "X-Frame-Options": "DENY",
-    "X-XSS-Protection": "1; mode=block"
-  },
-  "mimeTypes": {
-    ".json": "application/json",
-    ".html": "text/html",
-    ".png": "image/png"
+    "X-Content-Type-Options": "nosniff"
   }
 }
