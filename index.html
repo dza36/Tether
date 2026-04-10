@@ -314,15 +314,19 @@ async function initAuth() {
   } else {
     showAuth();
   }
-  // Listen for auth changes (magic link callback, OAuth redirect)
+
   sb.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_OUT') {
+      showAuth();
+      return;
+    }
     if (session?.user) {
       await onSignedIn(session.user);
-    } else {
-      showAuth();
     }
   });
 }
+async function initAuth() {
+
 
 async function onSignedIn(user) {
   currentUser = user;
