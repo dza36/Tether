@@ -399,6 +399,7 @@ let items = [];
 function dbRowToItem(row) {
   return {
     id: row.id,
+    _dbId: row.id,  
     name: row.name,
     type: row.type,
     days: row.days,
