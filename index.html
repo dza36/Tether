@@ -258,6 +258,42 @@
     .assign-member-name{font-size:11px;color:#26215C;font-weight:600;text-align:center;max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .assign-unassign{width:100%;padding:12px;font-size:14px;font-weight:600;border-radius:12px;border:0.5px solid #CECBF6;background:#F7F6FF;color:#AFA9EC;cursor:pointer;margin-top:.5rem}
     .assign-cancel{width:100%;padding:12px;font-size:14px;border-radius:12px;border:none;background:transparent;color:#AFA9EC;cursor:pointer;margin-top:.25rem}
+
+    /* Event panel */
+    .event-panel{background:#F0EFFE;border:0.5px solid #AFA9EC;border-top:none;border-radius:0 0 14px 14px;padding:.65rem .9rem .75rem}
+    .event-section-title{font-size:11px;font-weight:700;color:#534AB7;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem;display:flex;align-items:center;justify-content:space-between}
+    .event-section-toggle{font-size:11px;font-weight:600;color:#534AB7;cursor:pointer;text-decoration:none}
+    .event-rsvp-row{display:flex;gap:8px;margin-bottom:.75rem}
+    .rsvp-btn{flex:1;padding:10px;font-size:13px;font-weight:700;border-radius:10px;border:0.5px solid #CECBF6;cursor:pointer;text-align:center;transition:all .15s}
+    .rsvp-btn.accept{background:#EAF3DE;color:#3B6D11;border-color:#B8D98A}
+    .rsvp-btn.decline{background:#FCEBEB;color:#A32D2D;border-color:#F5C6C6}
+    .rsvp-btn.active-accept{background:#1D9E75;color:#fff;border-color:#1D9E75}
+    .rsvp-btn.active-decline{background:#E24B4A;color:#fff;border-color:#E24B4A}
+    .attendee-list{display:flex;flex-direction:column;gap:4px;margin-bottom:.75rem}
+    .attendee-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid #CECBF6}
+    .attendee-row:last-child{border-bottom:none}
+    .attendee-avatar{width:24px;height:24px;border-radius:50%;background:#EEEDFE;border:1.5px solid #CECBF6;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#534AB7;overflow:hidden;flex-shrink:0}
+    .attendee-avatar img{width:100%;height:100%;object-fit:cover}
+    .attendee-name{font-size:13px;color:#26215C;flex:1;font-weight:500}
+    .attendee-status{font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px}
+    .attendee-status.going{background:#EAF3DE;color:#3B6D11}
+    .attendee-status.declined{background:#FCEBEB;color:#A32D2D}
+    .attendee-status.pending{background:#EEEDFE;color:#AFA9EC}
+    .bring-list{display:flex;flex-direction:column;gap:4px;margin-bottom:.5rem}
+    .bring-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid #CECBF6}
+    .bring-item:last-child{border-bottom:none}
+    .bring-item-name{font-size:13px;color:#26215C;flex:1}
+    .bring-item-claimer{font-size:11px;color:#534AB7;font-weight:600}
+    .bring-claim-btn{font-size:11px;font-weight:700;padding:3px 9px;border-radius:8px;border:0.5px solid #534AB7;background:transparent;color:#534AB7;cursor:pointer}
+    .bring-claim-btn.claimed{background:#534AB7;color:#fff;border-color:#534AB7}
+    .bring-add-row{display:flex;gap:6px;margin-top:.5rem}
+    .bring-add-row input{flex:1;padding:7px 10px;font-size:13px;border-radius:10px;border:0.5px solid #AFA9EC;background:#fff;color:#26215C;font-family:inherit}
+    .bring-add-row input:focus{outline:none;border-color:#534AB7}
+    .bring-add-row button{padding:7px 14px;font-size:12px;font-weight:600;border-radius:10px;border:none;background:#534AB7;color:#fff;cursor:pointer}
+    .event-actions{display:flex;gap:8px;margin-top:.75rem;padding-top:.75rem;border-top:0.5px solid #CECBF6}
+    .event-action-btn{flex:1;padding:10px;font-size:13px;font-weight:600;border-radius:10px;border:0.5px solid #CECBF6;cursor:pointer;text-align:center}
+    .event-action-edit{background:#F7F6FF;color:#534AB7}
+    .event-action-delete{background:#FDF0F0;color:#A32D2D;border-color:#F5C6C6}
   </style>
 </head>
 <body>
@@ -638,19 +674,18 @@ function itemVisibleInTab(item, tabName) {
   if (item.dismissed) return false;
 
   const d = daysUntil(item);
+  const due = getDueDate(item);
 
   if (tabName === 'today') {
-    // Show overdue and due today
+    // Show overdue and due today (events included)
     return d <= 0;
   }
   if (tabName === 'week') {
-    // Rolling 7 days from today
-    const due = getDueDate(item);
+    // Rolling 7 days from today — events always show if within window or overdue
     return due <= rollingWeekEnd();
   }
   if (tabName === 'month') {
-    // Rolling 30 days from today
-    const due = getDueDate(item);
+    // Rolling 30 days from today — events always show if within window or overdue
     return due <= rollingMonthEnd();
   }
   return true;
@@ -792,7 +827,14 @@ async function confirmDismiss() {
   render();
 }
 
-function toggleExpand(id) { expandedId=expandedId===id?null:id; render(); }
+function toggleExpand(id) {
+  expandedId = expandedId===id ? null : id;
+  render();
+  if (expandedId === id) {
+    const item = items.find(i=>i.id===id);
+    if (item?.type === 'event') loadEventPanel(id);
+  }
+}
 
 async function toggleCheck(id,idx) {
   const item=items.find(i=>i.id===id); if (!item) return;
@@ -908,17 +950,20 @@ function clHTML(item) {
 
 function rowHTML(item, isOverdue) {
   const exp=expandedId===item.id;
-  const avatarHTML = currentHousehold ? itemAvatarHTML(item.assignedTo || item.createdBy, item.id) : '';
+  const isEvent = item.type === 'event';
+  // Events don't show avatar or swipe — they expand on tap
+  const avatarHTML = (currentHousehold && !isEvent) ? itemAvatarHTML(item.assignedTo || item.createdBy, item.id) : '';
   return `<div class="row-outer" id="outer-${item.id}">
     <div class="row-wrap${exp?' expanded':''}" id="wrap-${item.id}">
-      ${!exp?`<div class="row-bg">
+      ${(!exp && !isEvent)?`<div class="row-bg">
         <div class="bg-complete"><span class="bg-label" id="lc-${item.id}">✓ Complete</span></div>
         <div class="bg-snooze"><span class="bg-label" id="ls-${item.id}">⏱ Snooze</span></div>
       </div>`:''}
-      <div class="item${isOverdue?' overdue':''}${exp?' held':''} ${exp?'':'swipeable'}"
+      <div class="item${isOverdue?' overdue':''}${exp?' held':''} ${(exp||isEvent)?'':'swipeable'}"
            id="item-${item.id}" data-id="${item.id}"
-           style="${exp?'position:relative;border-bottom-left-radius:0;border-bottom-right-radius:0;':'position:absolute;inset:0;cursor:grab;'}"
-           ${exp?`onclick="toggleExpand('${item.id}')"`:''}>
+           style="${(exp||isEvent)?'position:relative;border-bottom-left-radius:0;border-bottom-right-radius:0;':'position:absolute;inset:0;cursor:grab;'}"
+           onclick="${isEvent?`toggleExpand('${item.id}')`:exp?`toggleExpand('${item.id}')`:''}"
+           ${isEvent?'style="position:relative;cursor:pointer;"':''}>
         <div class="type-dot ${dotClass(item.type)}"></div>
         <div class="item-body">
           <div class="item-name">${item.name}</div>
@@ -927,7 +972,7 @@ function rowHTML(item, isOverdue) {
         ${avatarHTML}
         ${badgeFor(item)}
       </div>
-      ${exp?`<div class="checklist-panel" id="clpanel-${item.id}">${clHTML(item)}</div>`:''}
+      ${exp?(isEvent?`<div class="event-panel" id="evpanel-${item.id}">Loading...</div>`:`<div class="checklist-panel" id="clpanel-${item.id}">${clHTML(item)}</div>`):''}
     </div>
   </div>`;
 }
@@ -1385,6 +1430,179 @@ function handleSendInvite() {
   const email = document.getElementById('inviteEmailInput')?.value.trim();
   if (!email) return;
   sendHouseholdInvite(email);
+}
+
+// ─── EVENT PANEL ─────────────────────────────────────────────────────────────
+let eventBringCollapsed = {};
+
+async function loadEventPanel(itemId) {
+  const panel = document.getElementById('evpanel-' + itemId);
+  if (!panel) return;
+
+  const item = items.find(i => i.id === itemId);
+  if (!item) return;
+
+  // Load guests, bring items and claims in parallel
+  const [guestsRes, bringRes, claimsRes] = await Promise.all([
+    sb.from('event_guests').select('*').eq('item_id', itemId),
+    sb.from('potluck_items').select('*').eq('item_id', itemId).order('created_at'),
+    sb.from('potluck_claims').select('*'),
+  ]);
+
+  const guests = guestsRes.data || [];
+  const bringItems = bringRes.data || [];
+  const claims = claimsRes.data || [];
+
+  // Get user profiles for guests
+  const guestUserIds = guests.map(g => g.user_id);
+  let guestProfiles = [];
+  if (guestUserIds.length > 0) {
+    const { data } = await sb.from('users').select('id, display_name, avatar_url, email').in('id', guestUserIds);
+    guestProfiles = data || [];
+  }
+
+  const myRsvp = guests.find(g => g.user_id === currentUser.id);
+  const isOwner = item.createdBy === currentUser.id;
+  const collapsed = eventBringCollapsed[itemId] !== false; // default collapsed if items exist
+
+  // RSVP section
+  const rsvpHTML = `
+    <div class="event-rsvp-row">
+      <button class="rsvp-btn accept${myRsvp?.rsvp_status==='accepted'?' active-accept':''}" onclick="rsvpEvent('${itemId}','accepted')">✓ Going</button>
+      <button class="rsvp-btn decline${myRsvp?.rsvp_status==='declined'?' active-decline':''}" onclick="rsvpEvent('${itemId}','declined')">✕ Can't make it</button>
+    </div>`;
+
+  // Attendees section
+  const attendeesHTML = guests.length > 0 ? `
+    <div class="event-section-title">Attendees (${guests.filter(g=>g.rsvp_status==='accepted').length} going)</div>
+    <div class="attendee-list">
+      ${guests.map(g => {
+        const profile = guestProfiles.find(p => p.id === g.user_id) || {};
+        const initials = getInitials(profile.display_name || profile.email || '?');
+        const img = profile.avatar_url ? `<img src="${profile.avatar_url}" alt="${initials}"/>` : initials;
+        const name = profile.display_name || profile.email?.split('@')[0] || 'Guest';
+        const statusClass = g.rsvp_status === 'accepted' ? 'going' : g.rsvp_status === 'declined' ? 'declined' : 'pending';
+        const statusLabel = g.rsvp_status === 'accepted' ? 'Going' : g.rsvp_status === 'declined' ? 'Declined' : 'Invited';
+        return `<div class="attendee-row">
+          <div class="attendee-avatar">${img}</div>
+          <div class="attendee-name">${name}</div>
+          <div class="attendee-status ${statusClass}">${statusLabel}</div>
+        </div>`;
+      }).join('')}
+    </div>` : '';
+
+  // Bring list section
+  let bringHTML = '';
+  if (bringItems.length > 0 || isOwner) {
+    const toggleLabel = collapsed ? '▼ Show' : '▲ Hide';
+    bringHTML = `<div class="event-section-title">What to bring <span class="event-section-toggle" onclick="toggleBringList('${itemId}')">${bringItems.length > 0 ? toggleLabel : ''}</span></div>`;
+
+    if (!collapsed || bringItems.length === 0) {
+      const bringRowsHTML = bringItems.map(bi => {
+        const claim = claims.find(c => c.potluck_item_id === bi.id);
+        const isMine = claim?.user_id === currentUser.id;
+        const claimer = claim ? (householdMembers.find(m => m.user_id === claim.user_id)?.display_name?.split(' ')[0] || 'Someone') : null;
+        return `<div class="bring-item">
+          <div class="bring-item-name">${bi.name}</div>
+          ${claimer ? `<div class="bring-item-claimer">${isMine ? '✓ You' : claimer}</div>` : ''}
+          <button class="bring-claim-btn${isMine?' claimed':''}" onclick="claimBringItem('${itemId}','${bi.id}',${isMine})">
+            ${isMine ? 'Unclaim' : claim ? 'Taken' : 'I\'ll bring it'}
+          </button>
+        </div>`;
+      }).join('');
+
+      bringHTML += `<div class="bring-list">${bringRowsHTML}</div>`;
+      bringHTML += `<div class="bring-add-row">
+        <input id="bringinput-${itemId}" type="text" placeholder="${isOwner ? 'Request an item...' : 'Add what you\'re bringing...'}"/>
+        <button onclick="addBringItem('${itemId}')">Add</button>
+      </div>`;
+    }
+  } else {
+    // No bring items yet — anyone can add what they're bringing
+    bringHTML = `<div class="event-section-title">What to bring</div>
+      <div class="bring-add-row">
+        <input id="bringinput-${itemId}" type="text" placeholder="Add what you're bringing..."/>
+        <button onclick="addBringItem('${itemId}')">Add</button>
+      </div>`;
+  }
+
+  // Actions
+  const actionsHTML = `<div class="event-actions">
+    ${isOwner ? `<button class="event-action-btn event-action-edit" onclick="editItem('${itemId}')">✏️ Edit</button>` : ''}
+    ${isOwner ? `<button class="event-action-btn event-action-delete" onclick="deleteItem('${itemId}')">🗑 Delete</button>` : ''}
+  </div>`;
+
+  panel.innerHTML = rsvpHTML + (attendeesHTML || '') + bringHTML + actionsHTML;
+}
+
+function toggleBringList(itemId) {
+  eventBringCollapsed[itemId] = !eventBringCollapsed[itemId];
+  loadEventPanel(itemId);
+}
+
+async function rsvpEvent(itemId, status) {
+  // Check if already RSVPd
+  const { data: existing } = await sb.from('event_guests')
+    .select('id, rsvp_status')
+    .eq('item_id', itemId)
+    .eq('user_id', currentUser.id)
+    .limit(1);
+
+  if (existing && existing.length > 0) {
+    // Update existing
+    await sb.from('event_guests')
+      .update({ rsvp_status: status, responded_at: new Date().toISOString() })
+      .eq('id', existing[0].id);
+  } else {
+    // Insert new
+    await sb.from('event_guests')
+      .insert({ item_id: itemId, user_id: currentUser.id, rsvp_status: status, responded_at: new Date().toISOString() });
+  }
+  showToast(status === 'accepted' ? '✓ You\'re going!' : 'Noted — you can\'t make it');
+  loadEventPanel(itemId);
+}
+
+async function addBringItem(itemId) {
+  const inp = document.getElementById('bringinput-' + itemId);
+  const name = inp?.value.trim();
+  if (!name) return;
+  const item = items.find(i => i.id === itemId);
+  const isOwner = item?.createdBy === currentUser.id;
+
+  const { data: bi, error } = await sb.from('potluck_items')
+    .insert({ item_id: itemId, name, added_by: currentUser.id, is_request: isOwner })
+    .select()
+    .single();
+
+  if (error) { showToast('Error: ' + error.message); return; }
+
+  // If not a request (i.e. attendee adding their own item) — auto-claim it
+  if (!isOwner) {
+    await sb.from('potluck_claims')
+      .insert({ potluck_item_id: bi.id, user_id: currentUser.id });
+  }
+
+  inp.value = '';
+  showToast(`Added "${name}"`);
+  loadEventPanel(itemId);
+}
+
+async function claimBringItem(itemId, bringItemId, isMine) {
+  if (isMine) {
+    // Unclaim
+    await sb.from('potluck_claims')
+      .delete()
+      .eq('potluck_item_id', bringItemId)
+      .eq('user_id', currentUser.id);
+    showToast('Unclaimed');
+  } else {
+    // Claim
+    const { error } = await sb.from('potluck_claims')
+      .insert({ potluck_item_id: bringItemId, user_id: currentUser.id });
+    if (error) { showToast('Already claimed!'); return; }
+    showToast('✓ You\'ll bring it!');
+  }
+  loadEventPanel(itemId);
 }
 
 // ─── ASSIGN PICKER ───────────────────────────────────────────────────────────
