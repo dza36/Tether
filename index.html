@@ -1203,17 +1203,26 @@ async function createHousehold(name) {
     .select()
     .single();
   if (error) { showToast('Error: ' + error.message); return; }
+
   // Add creator as admin member
-  await sb.from('household_members')
+  const { error: memberError } = await sb.from('household_members')
     .insert({ household_id: hh.id, user_id: currentUser.id, role: 'admin' });
+  if (memberError) {
+    showToast('Member error: ' + memberError.message);
+    // Clean up the orphaned household
+    await sb.from('households').delete().eq('id', hh.id);
+    return;
+  }
+
   // Assign all existing personal items to this household
   await sb.from('tether_items')
     .update({ household_id: hh.id, created_by: currentUser.id })
     .eq('user_id', currentUser.id);
+
   await loadHousehold();
   await loadItems();
   showToast('🏠 Household created!');
-  openHouseholdSheet(); // refresh sheet
+  openHouseholdSheet();
   render();
 }
 
