@@ -239,7 +239,16 @@
     .create-form input:focus{outline:none;border-color:#534AB7}
     .household-sub{font-size:13px;color:#AFA9EC;margin-bottom:1.5rem;line-height:1.5}
 
-    /* Item member avatar */
+    /* Type icon in row */
+    .type-icon-wrap{width:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .type-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+    .dot-urgent{background:#E24B4A}
+    .dot-task{background:#1D9E75}
+    .type-icon{font-size:14px;line-height:1}
+
+    /* Event icon picker */
+    .event-icon-pill{width:42px;height:42px;border-radius:10px;border:0.5px solid #CECBF6;background:#F7F6FF;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;transition:all .15s}
+    .event-icon-pill.active{border-color:#534AB7;background:#EEEDFE;box-shadow:0 0 0 2px #534AB7}
     .item-avatar{width:26px;height:26px;border-radius:50%;background:#EEEDFE;border:1.5px solid #CECBF6;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#534AB7;overflow:hidden;flex-shrink:0}
     .item-avatar img{width:100%;height:100%;object-fit:cover}
 
@@ -393,24 +402,44 @@
   </div>
 </div>
 
-<!-- Add item modal -->
-<div class="modal-bg" id="modalBg" onclick="bgClick(event)">
+<!-- Type chooser bottom sheet -->
+<div class="modal-bg" id="chooserBg" onclick="bgClickChooser(event)">
+  <div class="modal" style="padding-bottom:2rem">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h2>What are you adding?</h2>
+      <div class="modal-close" onclick="closeChooser()">✕</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button onclick="openTaskModal()" style="display:flex;align-items:center;gap:14px;padding:16px;border-radius:14px;border:0.5px solid #CECBF6;background:#F7F6FF;cursor:pointer;font-size:15px;font-weight:600;color:#26215C;text-align:left">
+        <span style="font-size:24px">✅</span>
+        <div><div style="font-weight:700">Task</div><div style="font-size:12px;color:#AFA9EC;font-weight:400;margin-top:2px">Something to do — recurring or one-time</div></div>
+      </button>
+      <button onclick="openEventModal()" style="display:flex;align-items:center;gap:14px;padding:16px;border-radius:14px;border:0.5px solid #CECBF6;background:#F7F6FF;cursor:pointer;font-size:15px;font-weight:600;color:#26215C;text-align:left">
+        <span style="font-size:24px">📅</span>
+        <div><div style="font-weight:700">Event</div><div style="font-size:12px;color:#AFA9EC;font-weight:400;margin-top:2px">Something to attend — has a date and time</div></div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Task modal -->
+<div class="modal-bg" id="taskModalBg" onclick="bgClickTask(event)">
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-header">
-      <h2>New item</h2>
-      <div class="modal-close" onclick="closeModal()">✕</div>
+      <h2>New Task</h2>
+      <div class="modal-close" onclick="closeTaskModal()">✕</div>
     </div>
     <div class="field">
       <label>Name</label>
       <input type="text" id="fName" placeholder="e.g. Grocery shopping" oninput="validateForm()"/>
     </div>
     <div class="field">
-      <label>Type</label>
+      <label>Recurrence</label>
       <div class="type-pills">
-        <div class="type-pill active" data-type="interval" onclick="setType('interval',this)">Interval</div>
+        <div class="type-pill active" data-type="interval" onclick="setType('interval',this)">Every X days</div>
         <div class="type-pill" data-type="weekday" onclick="setType('weekday',this)">Fixed day</div>
-        <div class="type-pill" data-type="event" onclick="setType('event',this)">Event</div>
       </div>
     </div>
     <div id="intervalSection">
@@ -436,10 +465,59 @@
         <div class="day-pill" data-day="6" onclick="toggleDay(6,this)">Sa</div>
       </div>
     </div>
-    <div id="eventSection" style="display:none">
-      <div class="field"><label>Date</label><input type="date" id="fEventDate"/></div>
+    <div class="field">
+      <label>Time (optional)</label>
+      <input type="time" id="fTaskTime"/>
     </div>
-    <button class="btn-save" id="btnSave" onclick="saveItem()">Add to Tether</button>
+    <div class="field" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+      <label style="margin-bottom:0">🔴 Mark as urgent</label>
+      <input type="checkbox" id="fUrgent" style="width:20px;height:20px;cursor:pointer"/>
+    </div>
+    <button class="btn-save" id="btnSave" onclick="saveItem()">Add Task</button>
+  </div>
+</div>
+
+<!-- Event modal -->
+<div class="modal-bg" id="eventModalBg" onclick="bgClickEventModal(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h2>New Event</h2>
+      <div class="modal-close" onclick="closeEventModal()">✕</div>
+    </div>
+    <div class="field">
+      <label>Name</label>
+      <input type="text" id="fEventName" placeholder="e.g. Jimmy's Hockey Tournament" oninput="validateEventForm()"/>
+    </div>
+    <div class="field">
+      <label>Event Icon</label>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        <div class="event-icon-pill active" data-icon="📅" onclick="selectEventIcon('📅',this)">📅</div>
+        <div class="event-icon-pill" data-icon="⭐" onclick="selectEventIcon('⭐',this)">⭐</div>
+        <div class="event-icon-pill" data-icon="🎉" onclick="selectEventIcon('🎉',this)">🎉</div>
+        <div class="event-icon-pill" data-icon="🚗" onclick="selectEventIcon('🚗',this)">🚗</div>
+        <div class="event-icon-pill" data-icon="🏥" onclick="selectEventIcon('🏥',this)">🏥</div>
+        <div class="event-icon-pill" data-icon="⚽" onclick="selectEventIcon('⚽',this)">⚽</div>
+        <div class="event-icon-pill" data-icon="🍽️" onclick="selectEventIcon('🍽️',this)">🍽️</div>
+        <div class="event-icon-pill" data-icon="✈️" onclick="selectEventIcon('✈️',this)">✈️</div>
+        <div class="event-icon-pill" data-icon="🎓" onclick="selectEventIcon('🎓',this)">🎓</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Start date & time</label>
+      <div style="display:flex;gap:8px">
+        <input type="date" id="fEventStartDate" style="flex:1" oninput="validateEventForm()"/>
+        <input type="time" id="fEventStartTime" style="flex:1" oninput="validateEventForm()"/>
+      </div>
+    </div>
+    <div class="field">
+      <label>End date & time (optional)</label>
+      <div style="display:flex;gap:8px">
+        <input type="date" id="fEventEndDate" style="flex:1"/>
+        <input type="time" id="fEventEndTime" style="flex:1"/>
+      </div>
+    </div>
+    <button class="btn-save" id="btnEventSave" onclick="saveEvent()" disabled>Add Event</button>
   </div>
 </div>
 
@@ -583,6 +661,10 @@ function dbRowToItem(row) {
     householdId: row.household_id || null,
     assignedTo: row.assigned_to || null,
     createdBy: row.created_by || null,
+    startTime: row.start_time || null,
+    endTime: row.end_time || null,
+    isUrgent: row.is_urgent || false,
+    eventIcon: row.event_icon || null,
   };
 }
 
@@ -601,6 +683,10 @@ function itemToDbRow(item) {
     household_id: item.householdId || currentHousehold?.id || null,
     assigned_to: item.assignedTo || null,
     created_by: item.createdBy || currentUser.id,
+    start_time: item.startTime || null,
+    end_time: item.endTime || null,
+    is_urgent: item.isUrgent || false,
+    event_icon: item.eventIcon || null,
   };
 }
 
@@ -720,17 +806,32 @@ function badgeFor(item) {
 }
 
 function fmtDate(d) { return d.toLocaleDateString("en-US",{month:"short",day:"numeric"}); }
+function fmtTime(t) {
+  if (!t) return '';
+  const [h,m] = t.split(':');
+  const hr = parseInt(h);
+  return `${hr>12?hr-12:hr||12}:${m} ${hr>=12?'PM':'AM'}`;
+}
 function subFor(item) {
   const wd=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const timeStr = item.startTime ? ` · ${fmtTime(item.startTime)}${item.endTime?' – '+fmtTime(item.endTime):''}` : '';
   if (item.type==="interval") {
     const lastDone = new Date(item.lastDone+"T00:00:00");
     const nextDue = getDueDate(item);
-    return `Completed ${fmtDate(lastDone)} · Next due ${fmtDate(nextDue)}`;
+    return `Completed ${fmtDate(lastDone)} · Next due ${fmtDate(nextDue)}${timeStr}`;
   }
-  if (item.type==="weekday") return `Every ${(item.weekdays||[]).map(d=>wd[d]).join(", ")} · Next due ${fmtDate(getDueDate(item))}`;
-  return getDueDate(item).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",year:"numeric"});
+  if (item.type==="weekday") return `Every ${(item.weekdays||[]).map(d=>wd[d]).join(", ")} · Next due ${fmtDate(getDueDate(item))}${timeStr}`;
+  // event
+  const due = getDueDate(item);
+  return due.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",year:"numeric"})+timeStr;
 }
-function dotClass(t) { return t==='interval'?'dot-interval':t==='weekday'?'dot-weekday':'dot-event'; }
+function iconFor(item) {
+  if (item.type === 'event') return item.eventIcon || '📅';
+  if (item.isUrgent) return '<span class="type-dot dot-urgent"></span>';
+  if (item.startTime) return '<span class="type-icon">🕐</span>';
+  return '<span class="type-dot dot-task"></span>';
+}
+function dotClass(t) { return t==='interval'?'dot-interval':t==='weekday'?'dot-weekday':'dot-event'; } // kept for compat
 
 // ─── TOAST ────────────────────────────────────────────────────────────────────
 let toastTimer;
@@ -742,7 +843,7 @@ function showToast(msg) {
 }
 
 // ─── ITEM ACTIONS ─────────────────────────────────────────────────────────────
-let tab='today', itemType='interval', selectedWeekdays=[1], expandedId=null;
+let tab="today", expandedId=null;
 
 async function completeItem(id) {
   const item = items.find(i=>i.id===id); if (!item) return;
@@ -964,7 +1065,7 @@ function rowHTML(item, isOverdue) {
            style="${(exp||isEvent)?'position:relative;border-bottom-left-radius:0;border-bottom-right-radius:0;':'position:absolute;inset:0;cursor:grab;'}"
            onclick="${isEvent?`toggleExpand('${item.id}')`:exp?`toggleExpand('${item.id}')`:''}"
            ${isEvent?'style="position:relative;cursor:pointer;"':''}>
-        <div class="type-dot ${dotClass(item.type)}"></div>
+        <div class="type-icon-wrap">${iconFor(item)}</div>
         <div class="item-body">
           <div class="item-name">${item.name}</div>
           <div class="item-sub">${subFor(item)}</div>
@@ -993,7 +1094,18 @@ function render() {
   });
 
   const filtered = items.filter(i => itemVisibleInTab(i, tab));
-  const sorted = [...filtered].sort((a,b) => daysUntil(a) - daysUntil(b));
+
+  // Sort: urgent first, then timed (by time), then untimed (by due date)
+  const sorted = [...filtered].sort((a, b) => {
+    if (a.isUrgent && !b.isUrgent) return -1;
+    if (!a.isUrgent && b.isUrgent) return 1;
+    const aHasTime = !!(a.startTime);
+    const bHasTime = !!(b.startTime);
+    if (aHasTime && bHasTime) return a.startTime.localeCompare(b.startTime);
+    if (aHasTime && !bHasTime) return -1;
+    if (!aHasTime && bHasTime) return 1;
+    return daysUntil(a) - daysUntil(b);
+  });
   const overdue = sorted.filter(i => daysUntil(i) < 0 && i.type !== 'event');
   const rest = sorted.filter(i => !(daysUntil(i) < 0 && i.type !== 'event'));
 
@@ -1064,86 +1176,140 @@ function setTab(t,el){
 }
 
 // ─── ADD ITEM MODAL ───────────────────────────────────────────────────────────
+
 function updatePreview(){
-  const d=parseInt(document.getElementById('fDays').value)||0;
-  const w=parseInt(document.getElementById('fWeeks').value)||0;
-  const m=parseInt(document.getElementById('fMonths').value)||0;
-  const y=parseInt(document.getElementById('fYears').value)||0;
+  const d=parseInt(document.getElementById("fDays").value)||0;
+  const w=parseInt(document.getElementById("fWeeks").value)||0;
+  const m=parseInt(document.getElementById("fMonths").value)||0;
+  const y=parseInt(document.getElementById("fYears").value)||0;
   const total=d+(w*7)+(m*30)+(y*365);
   const parts=[];
-  if(y)parts.push(`${y} year${y>1?'s':''}`);
-  if(m)parts.push(`${m} month${m>1?'s':''}`);
-  if(w)parts.push(`${w} week${w>1?'s':''}`);
-  if(d)parts.push(`${d} day${d>1?'s':''}`);
-  document.getElementById('intervalPreview').textContent=total>0?`Every ${parts.join(', ')} �· ${total} days total`:'Set at least one value above';
+  if(y)parts.push(`${y} year${y>1?"s":""}`);
+  if(m)parts.push(`${m} month${m>1?"s":""}`);
+  if(w)parts.push(`${w} week${w>1?"s":""}`);
+  if(d)parts.push(`${d} day${d>1?"s":""}`);
+  document.getElementById("intervalPreview").textContent=total>0?`Every ${parts.join(", ")} · ${total} days total`:"Set at least one value above";
   validateForm();
 }
-function openModal(){
-  document.getElementById('fName').value='';
-  ['fDays','fMonths','fYears'].forEach(id=>document.getElementById(id).value='0');
-  document.getElementById('fWeeks').value='1';
-  document.getElementById('fLastDone').value=isoToday();
-  document.getElementById('fEventDate').value=isoToday();
-  itemType='interval'; selectedWeekdays=[1];
-  document.querySelectorAll('.type-pill').forEach(p=>p.classList.toggle('active',p.dataset.type==='interval'));
-  document.querySelectorAll('.day-pill').forEach(p=>p.classList.toggle('active',p.dataset.day==='1'));
-  setType('interval',null); updatePreview(); validateForm();
-  document.getElementById('modalBg').classList.add('open');
-  setTimeout(()=>document.getElementById('fName').focus(),300);
+
+function openModal(){ openChooser(); }
+function openChooser(){ document.getElementById("chooserBg").classList.add("open"); }
+function closeChooser(){ document.getElementById("chooserBg").classList.remove("open"); }
+function bgClickChooser(e){ if(e.target===document.getElementById("chooserBg")) closeChooser(); }
+
+
+function openTaskModal(){
+  closeChooser();
+  document.getElementById("fName").value="";
+  ["fDays","fMonths","fYears"].forEach(id=>document.getElementById(id).value="0");
+  document.getElementById("fWeeks").value="1";
+  document.getElementById("fLastDone").value=isoToday();
+  document.getElementById("fTaskTime").value="";
+  document.getElementById("fUrgent").checked=false;
+  itemType="interval"; selectedWeekdays=[1];
+  document.querySelectorAll(".type-pill").forEach(p=>p.classList.toggle("active",p.dataset.type==="interval"));
+  document.querySelectorAll(".day-pill").forEach(p=>p.classList.toggle("active",p.dataset.day==="1"));
+  setType("interval",null); updatePreview(); validateForm();
+  document.getElementById("taskModalBg").classList.add("open");
+  setTimeout(()=>document.getElementById("fName").focus(),300);
 }
-function closeModal(){document.getElementById('modalBg').classList.remove('open');}
-function bgClick(e){if(e.target===document.getElementById('modalBg'))closeModal();}
+function closeTaskModal(){ document.getElementById("taskModalBg").classList.remove("open"); }
+function bgClickTask(e){ if(e.target===document.getElementById("taskModalBg")) closeTaskModal(); }
+function closeModal(){ closeTaskModal(); }
+function bgClick(e){ bgClickTask(e); }
+
 function setType(t,el){
   itemType=t;
-  if(el){document.querySelectorAll('.type-pill').forEach(p=>p.classList.remove('active'));el.classList.add('active');}
-  document.getElementById('intervalSection').style.display=t==='interval'?'':'none';
-  document.getElementById('weekdaySection').style.display=t==='weekday'?'':'none';
-  document.getElementById('eventSection').style.display=t==='event'?'':'none';
+  if(el){document.querySelectorAll(".type-pill").forEach(p=>p.classList.remove("active"));el.classList.add("active");}
+  document.getElementById("intervalSection").style.display=t==="interval"?"":"none";
+  document.getElementById("weekdaySection").style.display=t==="weekday"?"":"none";
   validateForm();
 }
 function toggleDay(day,el){
-  if(selectedWeekdays.includes(day)){if(selectedWeekdays.length===1)return;selectedWeekdays=selectedWeekdays.filter(d=>d!==day);el.classList.remove('active');}
-  else{selectedWeekdays.push(day);el.classList.add('active');}
+  if(selectedWeekdays.includes(day)){if(selectedWeekdays.length===1)return;selectedWeekdays=selectedWeekdays.filter(d=>d!==day);el.classList.remove("active");}
+  else{selectedWeekdays.push(day);el.classList.add("active");}
 }
 function validateForm(){
-  const name=document.getElementById('fName').value.trim();
+  const name=document.getElementById("fName").value.trim();
   let valid=name.length>0;
-  if(itemType==='interval'){
-    const d=parseInt(document.getElementById('fDays').value)||0;
-    const w=parseInt(document.getElementById('fWeeks').value)||0;
-    const m=parseInt(document.getElementById('fMonths').value)||0;
-    const y=parseInt(document.getElementById('fYears').value)||0;
+  if(itemType==="interval"){
+    const d=parseInt(document.getElementById("fDays").value)||0;
+    const w=parseInt(document.getElementById("fWeeks").value)||0;
+    const m=parseInt(document.getElementById("fMonths").value)||0;
+    const y=parseInt(document.getElementById("fYears").value)||0;
     valid=valid&&(d+w+m+y>0);
   }
-  document.getElementById('btnSave').disabled=!valid;
+  const btn=document.getElementById("btnSave");
+  if(btn) btn.disabled=!valid;
 }
 async function saveItem(){
-  const name=document.getElementById('fName').value.trim(); if(!name) return;
-  const btnSave = document.getElementById('btnSave');
-  btnSave.disabled = true;
-  btnSave.textContent = 'Saving...';
-  const item={name,type:itemType,checklist:[],snoozedUntil:null,dismissed:false};
-  if(itemType==='interval'){
-    const d=parseInt(document.getElementById('fDays').value)||0;
-    const w=parseInt(document.getElementById('fWeeks').value)||0;
-    const m=parseInt(document.getElementById('fMonths').value)||0;
-    const y=parseInt(document.getElementById('fYears').value)||0;
+  const name=document.getElementById("fName").value.trim(); if(!name) return;
+  const btnSave=document.getElementById("btnSave");
+  btnSave.disabled=true; btnSave.textContent="Saving...";
+  const item={name,type:itemType,checklist:[],snoozedUntil:null,dismissed:false,
+    startTime:document.getElementById("fTaskTime")?.value||null,
+    isUrgent:document.getElementById("fUrgent")?.checked||false,
+  };
+  if(itemType==="interval"){
+    const d=parseInt(document.getElementById("fDays").value)||0;
+    const w=parseInt(document.getElementById("fWeeks").value)||0;
+    const m=parseInt(document.getElementById("fMonths").value)||0;
+    const y=parseInt(document.getElementById("fYears").value)||0;
     item.days=d+(w*7)+(m*30)+(y*365);
-    item.lastDone=document.getElementById('fLastDone').value||isoToday();
-  } else if(itemType==='weekday'){
+    item.lastDone=document.getElementById("fLastDone").value||isoToday();
+  } else if(itemType==="weekday"){
     item.weekdays=[...selectedWeekdays];
-  } else {
-    item.date=document.getElementById('fEventDate').value;
-    if (!item.date) { showToast('Please set a date'); btnSave.disabled=false; btnSave.textContent='Add to Tether'; return; }
   }
-  closeModal();
+  closeTaskModal();
   await persistItem(item);
-  if (item._dbId) {
-    items.push(item);
-    showToast(`⚓ "${name}" added`);
-  }
-  btnSave.disabled=false;
-  btnSave.textContent='Add to Tether';
+  if(item._dbId){items.push(item);showToast(`⚓ "${name}" added`);}
+  btnSave.disabled=false; btnSave.textContent="Add Task";
+  render();
+}
+
+let selectedEventIcon="📅";
+function openEventModal(){
+  closeChooser();
+  selectedEventIcon="📅";
+  document.getElementById("fEventName").value="";
+  document.getElementById("fEventStartDate").value=isoToday();
+  document.getElementById("fEventStartTime").value="";
+  document.getElementById("fEventEndDate").value="";
+  document.getElementById("fEventEndTime").value="";
+  document.querySelectorAll(".event-icon-pill").forEach(p=>p.classList.toggle("active",p.dataset.icon==="📅"));
+  validateEventForm();
+  document.getElementById("eventModalBg").classList.add("open");
+  setTimeout(()=>document.getElementById("fEventName").focus(),300);
+}
+function closeEventModal(){ document.getElementById("eventModalBg").classList.remove("open"); }
+function bgClickEventModal(e){ if(e.target===document.getElementById("eventModalBg")) closeEventModal(); }
+function selectEventIcon(icon,el){
+  selectedEventIcon=icon;
+  document.querySelectorAll(".event-icon-pill").forEach(p=>p.classList.remove("active"));
+  el.classList.add("active");
+}
+function validateEventForm(){
+  const name=document.getElementById("fEventName").value.trim();
+  const date=document.getElementById("fEventStartDate").value;
+  const time=document.getElementById("fEventStartTime").value;
+  document.getElementById("btnEventSave").disabled=!(name&&date&&time);
+}
+async function saveEvent(){
+  const name=document.getElementById("fEventName").value.trim(); if(!name) return;
+  const btn=document.getElementById("btnEventSave");
+  btn.disabled=true; btn.textContent="Saving...";
+  const item={
+    name,type:"event",checklist:[],snoozedUntil:null,dismissed:false,
+    date:document.getElementById("fEventStartDate").value,
+    startTime:document.getElementById("fEventStartTime").value||null,
+    endTime:document.getElementById("fEventEndTime").value||null,
+    eventIcon:selectedEventIcon,
+    isUrgent:false,
+  };
+  closeEventModal();
+  await persistItem(item);
+  if(item._dbId){items.push(item);showToast(`${selectedEventIcon} "${name}" added`);}
+  btn.disabled=false; btn.textContent="Add Event";
   render();
 }
 
