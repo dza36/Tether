@@ -194,6 +194,54 @@
 
     .feedback-bar{background:#EEEDFE;border-top:0.5px solid #CECBF6;padding:.75rem 1rem;text-align:center;font-size:12px;color:#534AB7;font-weight:500}
     .feedback-bar a{color:#26215C;font-weight:700;text-decoration:none}
+
+    /* Notification badge on avatar */
+    .avatar-wrap{position:relative;display:inline-flex}
+    .notif-badge{position:absolute;top:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:#E24B4A;border:2px solid #F7F6FF;display:none}
+    .notif-badge.show{display:block}
+
+    /* Pending invite banner */
+    .invite-banner{background:#534AB7;color:#fff;padding:.75rem 1rem;display:none;align-items:center;justify-content:space-between;gap:8px;margin:0 1rem .75rem;border-radius:12px}
+    .invite-banner.show{display:flex}
+    .invite-banner-text{font-size:13px;font-weight:600;flex:1}
+    .invite-banner-sub{font-size:11px;opacity:.8;margin-top:2px;font-weight:400}
+    .invite-banner-btns{display:flex;gap:6px;flex-shrink:0}
+    .invite-banner-accept{padding:6px 12px;font-size:12px;font-weight:700;border-radius:8px;border:none;background:#fff;color:#534AB7;cursor:pointer}
+    .invite-banner-decline{padding:6px 12px;font-size:12px;font-weight:700;border-radius:8px;border:none;background:rgba(255,255,255,.2);color:#fff;cursor:pointer}
+
+    /* Household bottom sheet */
+    .household-bg{display:none;position:fixed;inset:0;background:rgba(38,33,92,.5);z-index:200;align-items:flex-end;justify-content:center}
+    .household-bg.open{display:flex}
+    .household-sheet{background:#fff;border-radius:20px 20px 0 0;border:0.5px solid #CECBF6;padding:1.25rem 1.25rem 2.5rem;width:100%;max-width:430px;max-height:85vh;overflow-y:auto}
+    .household-handle{width:40px;height:4px;border-radius:2px;background:#CECBF6;margin:0 auto 1.25rem}
+    .household-title{font-size:18px;font-weight:700;color:#26215C;margin-bottom:1.25rem}
+    .member-list{display:flex;flex-direction:column;gap:0;margin-bottom:1rem}
+    .member-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:0.5px solid #EEEDFE}
+    .member-row:last-child{border-bottom:none}
+    .member-avatar{width:36px;height:36px;border-radius:50%;background:#EEEDFE;border:1.5px solid #CECBF6;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#534AB7;overflow:hidden;flex-shrink:0}
+    .member-avatar img{width:100%;height:100%;object-fit:cover}
+    .member-info{flex:1}
+    .member-name{font-size:14px;font-weight:600;color:#26215C}
+    .member-role{font-size:11px;color:#AFA9EC}
+    .member-you-tag{font-size:10px;font-weight:700;color:#534AB7;background:#EEEDFE;padding:2px 7px;border-radius:10px;margin-left:6px}
+    .household-section-title{font-size:11px;font-weight:700;color:#534AB7;text-transform:uppercase;letter-spacing:.05em;margin:1rem 0 .6rem}
+    .invite-input-row{display:flex;gap:8px;margin-bottom:.75rem}
+    .invite-input-row input{flex:1;padding:11px 14px;font-size:14px;border-radius:12px;border:0.5px solid #CECBF6;background:#F7F6FF;color:#26215C;font-family:inherit}
+    .invite-input-row input:focus{outline:none;border-color:#534AB7}
+    .invite-input-row button{padding:11px 16px;font-size:13px;font-weight:700;border-radius:12px;border:none;background:#534AB7;color:#fff;cursor:pointer;white-space:nowrap}
+    .pending-invite-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid #EEEDFE;gap:8px}
+    .pending-invite-row:last-child{border-bottom:none}
+    .pending-invite-email{font-size:13px;color:#26215C;flex:1}
+    .pending-invite-tag{font-size:10px;color:#AFA9EC;background:#F7F6FF;padding:2px 7px;border-radius:8px;border:0.5px solid #CECBF6}
+    .btn-create-household{width:100%;padding:14px;font-size:15px;font-weight:700;border-radius:14px;border:none;background:#534AB7;color:#fff;cursor:pointer}
+    .btn-create-household:active{transform:scale(.98)}
+    .create-form input{width:100%;padding:13px 14px;font-size:15px;border-radius:12px;border:0.5px solid #CECBF6;background:#F7F6FF;color:#26215C;font-family:inherit;margin-bottom:10px}
+    .create-form input:focus{outline:none;border-color:#534AB7}
+    .household-sub{font-size:13px;color:#AFA9EC;margin-bottom:1.5rem;line-height:1.5}
+
+    /* Item member avatar */
+    .item-avatar{width:26px;height:26px;border-radius:50%;background:#EEEDFE;border:1.5px solid #CECBF6;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#534AB7;overflow:hidden;flex-shrink:0}
+    .item-avatar img{width:100%;height:100%;object-fit:cover}
   </style>
 </head>
 <body>
@@ -241,7 +289,10 @@
   <div class="topbar">
     <div class="app-title">Tether</div>
     <div class="topbar-right">
-      <div class="avatar-btn" id="avatarBtn" onclick="openUserMenu()">?</div>
+      <div class="avatar-wrap">
+        <div class="avatar-btn" id="avatarBtn" onclick="openUserMenu()">?</div>
+        <div class="notif-badge" id="notifBadge"></div>
+      </div>
       <div class="add-btn" onclick="openModal()">+</div>
     </div>
   </div>
@@ -250,7 +301,14 @@
     <div class="tab" onclick="setTab('week',this)">This Week</div>
     <div class="tab" onclick="setTab('month',this)">This Month</div>
   </div>
-  <div class="hint">Swipe <b>right to complete</b> �· <b class="sn">left to snooze</b> �· <b class="hold">hold for checklist</b></div>
+  <div class="hint">Swipe <b>right to complete</b> �· <b class="sn">left to snooze</b> �· <b class="hold">hold for checklist</b></div>
+  <div class="invite-banner" id="inviteBanner">
+    <div class="invite-banner-text">Household invite<div class="invite-banner-sub" id="inviteBannerSub"></div></div>
+    <div class="invite-banner-btns">
+      <button class="invite-banner-accept" onclick="acceptPendingInvite()">Join</button>
+      <button class="invite-banner-decline" onclick="declinePendingInvite()">Decline</button>
+    </div>
+  </div>
   <div class="list" id="list"></div>
   <div class="feedback-bar">Beta feedback? Text Dan → <a href="sms:+16515551234">leave a note</a></div>
 </div>
@@ -266,12 +324,20 @@
         <div class="user-email" id="menuEmail">—</div>
       </div>
     </div>
-    <div class="menu-item" onclick="closeUserMenu()">
-      <span class="menu-icon">🏠</span> Household (coming soon)
+    <div class="menu-item" onclick="openHouseholdSheet();closeUserMenu();">
+      <span class="menu-icon">🏠</span> Household
     </div>
     <div class="menu-item danger" onclick="signOut()">
       <span class="menu-icon">🚪</span> Sign out
     </div>
+  </div>
+</div>
+
+<!-- Household bottom sheet -->
+<div class="household-bg" id="householdBg" onclick="bgClickHousehold(event)">
+  <div class="household-sheet">
+    <div class="household-handle"></div>
+    <div id="householdContent"></div>
   </div>
 </div>
 
@@ -373,7 +439,8 @@ async function initAuth() {
 async function onSignedIn(user) {
   currentUser = user;
   updateAvatar(user);
-  await loadItems();
+  await Promise.all([loadItems(), loadHousehold()]);
+  await checkPendingInvites();
   document.getElementById('loadingScreen').classList.remove('open');
   document.getElementById('authScreen').classList.remove('open');
   document.getElementById('mainApp').style.display = '';
@@ -450,6 +517,9 @@ function dbRowToItem(row) {
     checklist: row.checklist || [],
     snoozedUntil: row.snoozed_until || null,
     dismissed: row.dismissed || false,
+    householdId: row.household_id || null,
+    assignedTo: row.assigned_to || null,
+    createdBy: row.created_by || null,
   };
 }
 
@@ -465,6 +535,9 @@ function itemToDbRow(item) {
     checklist: item.checklist || [],
     snoozed_until: item.snoozedUntil || null,
     dismissed: item.dismissed || false,
+    household_id: item.householdId || currentHousehold?.id || null,
+    assigned_to: item.assignedTo || null,
+    created_by: item.createdBy || currentUser.id,
   };
 }
 
@@ -565,7 +638,7 @@ function fmtInterval(days) {
 }
 
 function badgeFor(item) {
-  if (isSnoozed(item)) return `<span class="badge snoozed">Snoozed �· ${item.snoozedUntil}</span>`;
+  if (isSnoozed(item)) return `<span class="badge snoozed">Snoozed �· ${item.snoozedUntil}</span>`;
   const cl = item.checklist||[];
   if (cl.length>0 && expandedId===item.id) {
     const done=cl.filter(c=>c.done).length;
@@ -808,6 +881,7 @@ function clHTML(item) {
 
 function rowHTML(item, isOverdue) {
   const exp=expandedId===item.id;
+  const avatarHTML = currentHousehold ? itemAvatarHTML(item.assignedTo || item.createdBy) : '';
   return `<div class="row-outer" id="outer-${item.id}">
     <div class="row-wrap${exp?' expanded':''}" id="wrap-${item.id}">
       ${!exp?`<div class="row-bg">
@@ -822,6 +896,7 @@ function rowHTML(item, isOverdue) {
           <div class="item-name">${item.name}</div>
           <div class="item-sub">${subFor(item)}</div>
         </div>
+        ${avatarHTML}
         ${badgeFor(item)}
       </div>
       ${exp?`<div class="checklist-panel" id="clpanel-${item.id}">${clHTML(item)}</div>`:''}
@@ -927,7 +1002,7 @@ function updatePreview(){
   if(m)parts.push(`${m} month${m>1?'s':''}`);
   if(w)parts.push(`${w} week${w>1?'s':''}`);
   if(d)parts.push(`${d} day${d>1?'s':''}`);
-  document.getElementById('intervalPreview').textContent=total>0?`Every ${parts.join(', ')} �· ${total} days total`:'Set at least one value above';
+  document.getElementById('intervalPreview').textContent=total>0?`Every ${parts.join(', ')} �· ${total} days total`:'Set at least one value above';
   validateForm();
 }
 function openModal(){
@@ -991,9 +1066,286 @@ async function saveItem(){
   render();
 }
 
+// ─── HOUSEHOLD ───────────────────────────────────────────────────────────────
+let currentHousehold = null;
+let householdMembers = [];
+let pendingInvite = null; // invite waiting for this user
+
+// Helper: get initials from a name or email
+function getInitials(nameOrEmail) {
+  if (!nameOrEmail) return '?';
+  const parts = nameOrEmail.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
+  return nameOrEmail.slice(0,2).toUpperCase();
+}
+
+// Build avatar HTML for a member object {display_name, avatar_url, email}
+function memberAvatarHTML(member, size=36) {
+  const initials = getInitials(member.display_name || member.email);
+  if (member.avatar_url) {
+    return `<div class="member-avatar" style="width:${size}px;height:${size}px"><img src="${member.avatar_url}" alt="${initials}"/></div>`;
+  }
+  return `<div class="member-avatar" style="width:${size}px;height:${size}px;font-size:${Math.floor(size*0.36)}px">${initials}</div>`;
+}
+
+// Build small item-row avatar HTML for a userId
+function itemAvatarHTML(userId) {
+  if (!userId || !currentHousehold) return '';
+  const member = householdMembers.find(m => m.user_id === userId);
+  if (!member) return '';
+  const initials = getInitials(member.display_name || member.email);
+  if (member.avatar_url) {
+    return `<div class="item-avatar"><img src="${member.avatar_url}" alt="${initials}"/></div>`;
+  }
+  return `<div class="item-avatar">${initials}</div>`;
+}
+
+async function loadHousehold() {
+  // Find household this user belongs to
+  const { data: memberships } = await sb.from('household_members')
+    .select('household_id, role')
+    .eq('user_id', currentUser.id)
+    .limit(1);
+
+  if (!memberships || memberships.length === 0) {
+    currentHousehold = null;
+    householdMembers = [];
+    return;
+  }
+
+  const householdId = memberships[0].household_id;
+
+  // Load household details
+  const { data: hh } = await sb.from('households')
+    .select('*')
+    .eq('id', householdId)
+    .single();
+  currentHousehold = hh || null;
+
+  // Load members with user profile info from auth.users via users table
+  // We store display_name and avatar_url in the users table (populated by trigger)
+  const { data: members } = await sb.from('household_members')
+    .select('user_id, role')
+    .eq('household_id', householdId);
+
+  if (members && members.length > 0) {
+    // Fetch user profiles
+    const userIds = members.map(m => m.user_id);
+    const { data: profiles } = await sb.from('users')
+      .select('id, display_name, avatar_url, email')
+      .in('id', userIds);
+
+    householdMembers = members.map(m => {
+      const profile = (profiles || []).find(p => p.id === m.user_id) || {};
+      return {
+        user_id: m.user_id,
+        role: m.role,
+        display_name: profile.display_name || profile.email || 'Member',
+        avatar_url: profile.avatar_url || null,
+        email: profile.email || '',
+      };
+    });
+  }
+}
+
+async function checkPendingInvites() {
+  const { data: invites } = await sb.from('household_invites')
+    .select('*, households(name)')
+    .eq('invited_user_id', currentUser.id)
+    .eq('status', 'pending')
+    .limit(1);
+
+  if (invites && invites.length > 0) {
+    pendingInvite = invites[0];
+    const householdName = invites[0].households?.name || 'a household';
+    document.getElementById('inviteBannerSub').textContent = `Invited to join "${householdName}"`;
+    document.getElementById('inviteBanner').classList.add('show');
+    document.getElementById('notifBadge').classList.add('show');
+  } else {
+    pendingInvite = null;
+    document.getElementById('inviteBanner').classList.remove('show');
+    document.getElementById('notifBadge').classList.remove('show');
+  }
+}
+
+async function acceptPendingInvite() {
+  if (!pendingInvite) return;
+  // Update invite status
+  await sb.from('household_invites')
+    .update({ status: 'accepted' })
+    .eq('id', pendingInvite.id);
+  // Add to household members
+  await sb.from('household_members')
+    .insert({ household_id: pendingInvite.household_id, user_id: currentUser.id, role: 'member' });
+  pendingInvite = null;
+  document.getElementById('inviteBanner').classList.remove('show');
+  document.getElementById('notifBadge').classList.remove('show');
+  await loadHousehold();
+  await loadItems();
+  showToast('🏠 Welcome to the household!');
+  render();
+}
+
+async function declinePendingInvite() {
+  if (!pendingInvite) return;
+  await sb.from('household_invites')
+    .update({ status: 'declined' })
+    .eq('id', pendingInvite.id);
+  pendingInvite = null;
+  document.getElementById('inviteBanner').classList.remove('show');
+  document.getElementById('notifBadge').classList.remove('show');
+  showToast('Invite declined');
+}
+
+async function createHousehold(name) {
+  const { data: hh, error } = await sb.from('households')
+    .insert({ name, created_by: currentUser.id })
+    .select()
+    .single();
+  if (error) { showToast('Error: ' + error.message); return; }
+  // Add creator as admin member
+  await sb.from('household_members')
+    .insert({ household_id: hh.id, user_id: currentUser.id, role: 'admin' });
+  // Assign all existing personal items to this household
+  await sb.from('tether_items')
+    .update({ household_id: hh.id, created_by: currentUser.id })
+    .eq('user_id', currentUser.id);
+  await loadHousehold();
+  await loadItems();
+  showToast('🏠 Household created!');
+  openHouseholdSheet(); // refresh sheet
+  render();
+}
+
+async function sendHouseholdInvite(email) {
+  if (!currentHousehold) return;
+  email = email.trim().toLowerCase();
+  if (!email) return;
+
+  // Check if this email belongs to an existing user
+  const { data: existingUsers } = await sb.from('users')
+    .select('id, email')
+    .eq('email', email)
+    .limit(1);
+
+  const invitedUserId = existingUsers && existingUsers.length > 0 ? existingUsers[0].id : null;
+
+  // Check not already a member
+  if (invitedUserId) {
+    const { data: existing } = await sb.from('household_members')
+      .select('id')
+      .eq('household_id', currentHousehold.id)
+      .eq('user_id', invitedUserId)
+      .limit(1);
+    if (existing && existing.length > 0) {
+      showToast('Already a member!'); return;
+    }
+  }
+
+  // Check no pending invite already
+  const { data: existingInvite } = await sb.from('household_invites')
+    .select('id')
+    .eq('household_id', currentHousehold.id)
+    .eq('invited_email', email)
+    .eq('status', 'pending')
+    .limit(1);
+  if (existingInvite && existingInvite.length > 0) {
+    showToast('Invite already sent!'); return;
+  }
+
+  const { error } = await sb.from('household_invites').insert({
+    household_id: currentHousehold.id,
+    invited_by: currentUser.id,
+    invited_email: email,
+    invited_user_id: invitedUserId || null,
+    status: 'pending',
+  });
+
+  if (error) { showToast('Error: ' + error.message); return; }
+  showToast('✉️ Invite sent to ' + email);
+  openHouseholdSheet(); // refresh
+}
+
+// ─── HOUSEHOLD SHEET UI ───────────────────────────────────────────────────────
+function openHouseholdSheet() {
+  renderHouseholdContent();
+  document.getElementById('householdBg').classList.add('open');
+}
+function closeHouseholdSheet() {
+  document.getElementById('householdBg').classList.remove('open');
+}
+function bgClickHousehold(e) {
+  if (e.target === document.getElementById('householdBg')) closeHouseholdSheet();
+}
+
+async function renderHouseholdContent() {
+  const el = document.getElementById('householdContent');
+
+  if (!currentHousehold) {
+    // No household yet — show create form
+    el.innerHTML = `
+      <div class="household-title">Your Household</div>
+      <div class="household-sub">Create a household to share tasks and events with your family. Everyone in your household sees everything.</div>
+      <div class="create-form">
+        <input type="text" id="hhNameInput" placeholder="e.g. The Monette Family" maxlength="50"/>
+        <button class="btn-create-household" onclick="handleCreateHousehold()">Create Household</button>
+      </div>`;
+    setTimeout(() => document.getElementById('hhNameInput')?.focus(), 300);
+    return;
+  }
+
+  // Load pending outbound invites
+  const { data: pendingInvites } = await sb.from('household_invites')
+    .select('invited_email, status')
+    .eq('household_id', currentHousehold.id)
+    .eq('status', 'pending');
+
+  const membersHTML = householdMembers.map(m => {
+    const isYou = m.user_id === currentUser.id;
+    return `<div class="member-row">
+      ${memberAvatarHTML(m, 36)}
+      <div class="member-info">
+        <div class="member-name">${m.display_name}${isYou ? '<span class="member-you-tag">You</span>' : ''}</div>
+        <div class="member-role">${m.role === 'admin' ? 'Admin' : 'Member'}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const pendingHTML = pendingInvites && pendingInvites.length > 0
+    ? pendingInvites.map(i => `
+        <div class="pending-invite-row">
+          <div class="pending-invite-email">${i.invited_email}</div>
+          <div class="pending-invite-tag">Pending</div>
+        </div>`).join('')
+    : '';
+
+  el.innerHTML = `
+    <div class="household-title">${currentHousehold.name}</div>
+    <div class="household-section-title">Members (${householdMembers.length})</div>
+    <div class="member-list">${membersHTML}</div>
+    ${pendingHTML ? `<div class="household-section-title">Pending Invites</div><div>${pendingHTML}</div>` : ''}
+    <hr style="border:none;border-top:0.5px solid #EEEDFE;margin:1rem 0"/>
+    <div class="household-section-title">Invite Someone</div>
+    <div class="invite-input-row">
+      <input type="email" id="inviteEmailInput" placeholder="their@email.com" autocomplete="off"/>
+      <button onclick="handleSendInvite()">Send</button>
+    </div>`;
+}
+
+function handleCreateHousehold() {
+  const name = document.getElementById('hhNameInput')?.value.trim();
+  if (!name) return;
+  createHousehold(name);
+}
+
+function handleSendInvite() {
+  const email = document.getElementById('inviteEmailInput')?.value.trim();
+  if (!email) return;
+  sendHouseholdInvite(email);
+}
+
 // ─── BOOT ─────────────────────────────────────────────────────────────────────
 updatePreview();
 initAuth();
 </script>
 </body>
-</html>
