@@ -498,10 +498,8 @@ async function deleteItemFromDb(id) {
 const today = new Date(); today.setHours(0,0,0,0);
 function isoToday() { return today.toISOString().slice(0,10); }
 function dateDiff(a,b) { return Math.round((b-a)/86400000); }
-function startOfWeek() { const d=new Date(today); d.setDate(d.getDate()-d.getDay()); return d; }
-function endOfWeek() { const d=startOfWeek(); d.setDate(d.getDate()+6); return d; }
-function startOfMonth() { return new Date(today.getFullYear(), today.getMonth(), 1); }
-function endOfMonth() { return new Date(today.getFullYear(), today.getMonth()+1, 0); }
+function rollingWeekEnd() { const d=new Date(today); d.setDate(d.getDate()+7); return d; }
+function rollingMonthEnd() { const d=new Date(today); d.setDate(d.getDate()+30); return d; }
 
 function nextFromDays(wd) {
   const d = new Date(today);
@@ -542,14 +540,14 @@ function itemVisibleInTab(item, tabName) {
     return d <= 0;
   }
   if (tabName === 'week') {
-    // Show overdue through end of this week
+    // Rolling 7 days from today
     const due = getDueDate(item);
-    return due <= endOfWeek();
+    return due <= rollingWeekEnd();
   }
   if (tabName === 'month') {
-    // Show everything due this month and overdue
+    // Rolling 30 days from today
     const due = getDueDate(item);
-    return due <= endOfMonth();
+    return due <= rollingMonthEnd();
   }
   return true;
 }
