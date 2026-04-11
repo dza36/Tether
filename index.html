@@ -61,6 +61,7 @@
     .badge.snoozed{background:#FAEEDA;color:#854F0B}
     .badge.progress{background:#534AB7;color:#EEEDFE}
     .badge.past{background:#CECBF6;color:#3C3489}
+    .badge.dismissed{background:#F0EFFE;color:#AFA9EC}
 
     /* Checklist */
     .checklist-panel{background:#F0EFFE;border:0.5px solid #AFA9EC;border-top:none;border-radius:0 0 14px 14px;padding:.65rem .9rem .75rem}
@@ -89,6 +90,13 @@
     .empty-state .empty-icon{font-size:48px;margin-bottom:1rem;opacity:.5}
     .empty-state p{font-size:14px}
 
+    /* Clean slate state */
+    .clean-slate{text-align:center;padding:3rem 2rem;animation:fadeInUp .4s ease}
+    .clean-slate .slate-icon{font-size:56px;margin-bottom:1rem}
+    .clean-slate .slate-title{font-size:20px;font-weight:700;color:#26215C;margin-bottom:.5rem}
+    .clean-slate .slate-sub{font-size:14px;color:#AFA9EC;line-height:1.5}
+    @keyframes fadeInUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
     /* Add item modal */
     .modal-bg{display:none;position:fixed;inset:0;background:rgba(38,33,92,.5);z-index:100;align-items:flex-end;justify-content:center}
     .modal-bg.open{display:flex}
@@ -116,6 +124,25 @@
     .btn-save{width:100%;padding:15px;font-size:16px;font-weight:700;border-radius:14px;border:none;background:#534AB7;color:#fff;cursor:pointer;margin-top:.5rem;letter-spacing:.01em}
     .btn-save:active{transform:scale(.98)}
     .btn-save:disabled{background:#EEEDFE;color:#AFA9EC;cursor:not-allowed}
+
+    /* Snooze bottom sheet */
+    .snooze-bg{display:none;position:fixed;inset:0;background:rgba(38,33,92,.5);z-index:150;align-items:flex-end;justify-content:center}
+    .snooze-bg.open{display:flex}
+    .snooze-sheet{background:#fff;border-radius:20px 20px 0 0;border:0.5px solid #CECBF6;padding:1.25rem 1.25rem 2.5rem;width:100%;max-width:430px}
+    .snooze-handle{width:40px;height:4px;border-radius:2px;background:#CECBF6;margin:0 auto 1.25rem}
+    .snooze-title{font-size:16px;font-weight:700;color:#26215C;margin-bottom:.25rem;text-align:center}
+    .snooze-item-name{font-size:13px;color:#AFA9EC;text-align:center;margin-bottom:1.25rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .snooze-days-row{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:1.25rem}
+    .snooze-days-btn{width:44px;height:44px;border-radius:50%;border:0.5px solid #CECBF6;background:#F7F6FF;font-size:22px;font-weight:300;color:#534AB7;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+    .snooze-days-btn:active{background:#EEEDFE}
+    .snooze-days-val{font-size:28px;font-weight:700;color:#26215C;min-width:80px;text-align:center}
+    .snooze-days-label{font-size:12px;color:#AFA9EC;text-align:center;margin-top:-8px;margin-bottom:1.25rem}
+    .snooze-actions{display:flex;flex-direction:column;gap:8px}
+    .snooze-btn-snooze{width:100%;padding:14px;font-size:15px;font-weight:700;border-radius:14px;border:none;background:#534AB7;color:#fff;cursor:pointer}
+    .snooze-btn-snooze:active{transform:scale(.98)}
+    .snooze-btn-dismiss{width:100%;padding:14px;font-size:15px;font-weight:600;border-radius:14px;border:0.5px solid #CECBF6;background:#F7F6FF;color:#26215C;cursor:pointer}
+    .snooze-btn-dismiss:active{background:#EEEDFE}
+    .snooze-btn-cancel{width:100%;padding:12px;font-size:14px;font-weight:500;border-radius:14px;border:none;background:transparent;color:#AFA9EC;cursor:pointer}
 
     /* Auth screen */
     .auth-screen{display:none;position:fixed;inset:0;background:#F7F6FF;z-index:300;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
@@ -179,7 +206,7 @@
   <div class="auth-tagline">Stay tethered to what matters</div>
   <div class="auth-btns">
     <button class="oauth-btn" onclick="signInWith('google')">
-      <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 7.9 2.9l5.7-5.7C34.5 6.5 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.8 18.9 12 24 12c3.1 0 5.8 1.1 7.9 2.9l5.7-5.7C34.5 6.5 29.5 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.3 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8H6.3C9.7 35.5 16.3 44 24 44z" /><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.6l6.2 5.2C36.9 36.2 44 31 44 24c0-1.3-.1-2.7-.4-3.9z"/></svg>
+      <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 7.9 2.9l5.7-5.7C34.5 6.5 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.8 18.9 12 24 12c3.1 0 5.8 1.1 7.9 2.9l5.7-5.7C34.5 6.5 29.5 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.3 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8H6.3C9.7 35.5 16.3 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.6l6.2 5.2C36.9 36.2 44 31 44 24c0-1.3-.1-2.7-.4-3.9z"/></svg>
       Continue with Google
     </button>
     <button class="oauth-btn" onclick="signInWith('apple')">
@@ -215,9 +242,9 @@
     </div>
   </div>
   <div class="tabs">
-    <div class="tab active" onclick="setTab('all',this)">All</div>
-    <div class="tab" onclick="setTab('tasks',this)">Recurring</div>
-    <div class="tab" onclick="setTab('events',this)">Events</div>
+    <div class="tab active" onclick="setTab('today',this)">Today</div>
+    <div class="tab" onclick="setTab('week',this)">This Week</div>
+    <div class="tab" onclick="setTab('month',this)">This Month</div>
   </div>
   <div class="hint">Swipe <b>right to complete</b> · <b class="sn">left to snooze</b> · <b class="hold">hold for checklist</b></div>
   <div class="list" id="list"></div>
@@ -294,12 +321,31 @@
   </div>
 </div>
 
+<!-- Snooze bottom sheet -->
+<div class="snooze-bg" id="snoozeBg" onclick="bgClickSnooze(event)">
+  <div class="snooze-sheet">
+    <div class="snooze-handle"></div>
+    <div class="snooze-title">Snooze</div>
+    <div class="snooze-item-name" id="snoozeItemName"></div>
+    <div class="snooze-days-row">
+      <button class="snooze-days-btn" onclick="adjustSnoozeDays(-1)">−</button>
+      <div class="snooze-days-val" id="snoozeDaysVal">1 Day</div>
+      <button class="snooze-days-btn" onclick="adjustSnoozeDays(1)">+</button>
+    </div>
+    <div class="snooze-days-label" id="snoozeDateLabel"></div>
+    <div class="snooze-actions">
+      <button class="snooze-btn-snooze" onclick="confirmSnooze()">⏱ Snooze</button>
+      <button class="snooze-btn-dismiss" onclick="confirmDismiss()">👋 Dismiss until next due date</button>
+      <button class="snooze-btn-cancel" onclick="closeSnoozeSheet()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
 // ─── SUPABASE CONFIG ──────────────────────────────────────────────────────────
-// Replace these two values before deploying. Do not commit real keys to git.
-const SUPABASE_URL  = 'https://gnudccfibmslzotaaerr.supabase.co';   // e.g. https://xxxx.supabase.co
+const SUPABASE_URL  = 'https://gnudccfibmslzotaaerr.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdudWRjY2ZpYm1zbHpvdGFhZXJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NjE2ODAsImV4cCI6MjA5MTIzNzY4MH0.H0l8uLg4PmQWqosYdzjUwa4q0Xe-5ErtNR2XtUbW5OM';
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
@@ -314,18 +360,11 @@ async function initAuth() {
   } else {
     showAuth();
   }
-
   sb.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_OUT') {
-      showAuth();
-      return;
-    }
-    if (session?.user) {
-      await onSignedIn(session.user);
-    }
+    if (event === 'SIGNED_OUT') { showAuth(); return; }
+    if (session?.user) await onSignedIn(session.user);
   });
 }
-
 
 async function onSignedIn(user) {
   currentUser = user;
@@ -382,10 +421,8 @@ async function sendMagicLink() {
 
 async function signOut() {
   await sb.auth.signOut();
-  items = [];
-  currentUser = null;
-  closeUserMenu();
-  showAuth();
+  items = []; currentUser = null;
+  closeUserMenu(); showAuth();
 }
 
 // ─── USER MENU ────────────────────────────────────────────────────────────────
@@ -399,7 +436,7 @@ let items = [];
 function dbRowToItem(row) {
   return {
     id: row.id,
-    _dbId: row.id,  
+    _dbId: row.id,
     name: row.name,
     type: row.type,
     days: row.days,
@@ -407,6 +444,8 @@ function dbRowToItem(row) {
     weekdays: row.weekdays,
     date: row.date,
     checklist: row.checklist || [],
+    snoozedUntil: row.snoozed_until || null,
+    dismissed: row.dismissed || false,
   };
 }
 
@@ -420,6 +459,8 @@ function itemToDbRow(item) {
     weekdays: item.weekdays || null,
     date: item.date || null,
     checklist: item.checklist || [],
+    snoozed_until: item.snoozedUntil || null,
+    dismissed: item.dismissed || false,
   };
 }
 
@@ -433,13 +474,11 @@ async function loadItems() {
 
 async function persistItem(item) {
   if (item._dbId) {
-    // Update existing
     const { error } = await sb.from('tether_items')
       .update(itemToDbRow(item))
       .eq('id', item._dbId);
     if (error) showToast('Save error: ' + error.message);
   } else {
-    // Insert new — use the UUID returned as the item id
     const { data, error } = await sb.from('tether_items')
       .insert(itemToDbRow(item))
       .select()
@@ -459,6 +498,11 @@ async function deleteItemFromDb(id) {
 const today = new Date(); today.setHours(0,0,0,0);
 function isoToday() { return today.toISOString().slice(0,10); }
 function dateDiff(a,b) { return Math.round((b-a)/86400000); }
+function startOfWeek() { const d=new Date(today); d.setDate(d.getDate()-d.getDay()); return d; }
+function endOfWeek() { const d=startOfWeek(); d.setDate(d.getDate()+6); return d; }
+function startOfMonth() { return new Date(today.getFullYear(), today.getMonth(), 1); }
+function endOfMonth() { return new Date(today.getFullYear(), today.getMonth()+1, 0); }
+
 function nextFromDays(wd) {
   const d = new Date(today);
   for (let i = 0; i < 8; i++) {
@@ -474,7 +518,42 @@ function getDueDate(item) {
   const l = new Date(item.lastDone+'T00:00:00');
   const d = new Date(l); d.setDate(d.getDate()+(item.days||0)); return d;
 }
-function daysUntil(item) { return dateDiff(today,getDueDate(item)); }
+
+function daysUntil(item) { return dateDiff(today, getDueDate(item)); }
+
+// Is item snoozed (i.e. snoozedUntil is in the future)?
+function isSnoozed(item) {
+  if (!item.snoozedUntil) return false;
+  const snoozeDate = new Date(item.snoozedUntil + 'T00:00:00');
+  return snoozeDate > today;
+}
+
+// Tab filtering
+function itemVisibleInTab(item, tabName) {
+  // Snoozed items never show
+  if (isSnoozed(item)) return false;
+  // Dismissed items never show (they will reappear when due again naturally)
+  if (item.dismissed) return false;
+
+  const d = daysUntil(item);
+
+  if (tabName === 'today') {
+    // Show overdue and due today
+    return d <= 0;
+  }
+  if (tabName === 'week') {
+    // Show overdue through end of this week
+    const due = getDueDate(item);
+    return due <= endOfWeek();
+  }
+  if (tabName === 'month') {
+    // Show everything due this month and overdue
+    const due = getDueDate(item);
+    return due <= endOfMonth();
+  }
+  return true;
+}
+
 function fmtInterval(days) {
   if (!days) return '—';
   if (days%365===0) return `Every ${days/365}yr`;
@@ -482,10 +561,11 @@ function fmtInterval(days) {
   if (days%7===0) return `Every ${days/7}wk`;
   return `Every ${days}d`;
 }
+
 function badgeFor(item) {
-  if (item.snoozed) return `<span class="badge snoozed">Snoozed</span>`;
+  if (isSnoozed(item)) return `<span class="badge snoozed">Snoozed · ${item.snoozedUntil}</span>`;
   const cl = item.checklist||[];
-  if (cl.length>0&&expandedId===item.id) {
+  if (cl.length>0 && expandedId===item.id) {
     const done=cl.filter(c=>c.done).length;
     return `<span class="badge progress">${done}/${cl.length}</span>`;
   }
@@ -501,6 +581,7 @@ function badgeFor(item) {
   if (d<=3) return `<span class="badge soon">in ${d}d</span>`;
   return `<span class="badge ok">in ${d}d</span>`;
 }
+
 function subFor(item) {
   const wd=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   if (item.type==='interval') return `${fmtInterval(item.days||0)} · last ${item.lastDone}`;
@@ -515,41 +596,93 @@ function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent=msg; t.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=>t.classList.remove('show'),2400);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2400);
 }
 
 // ─── ITEM ACTIONS ─────────────────────────────────────────────────────────────
-let tab='all', itemType='interval', selectedWeekdays=[1], expandedId=null;
+let tab='today', itemType='interval', selectedWeekdays=[1], expandedId=null;
 
 async function completeItem(id) {
   const item = items.find(i=>i.id===id); if (!item) return;
   if (item.checklist) item.checklist.forEach(c=>c.done=false);
+  item.snoozedUntil = null;
+  item.dismissed = false;
+
   if (item.type==='interval') {
-    item.lastDone=isoToday(); showToast('✓ Done — countdown reset');
+    // Reset countdown but hide from today — it'll reappear when due
+    item.lastDone = isoToday();
+    showToast('✓ Done — see you in ' + fmtInterval(item.days).toLowerCase().replace('every ',''));
     await persistItem(item);
   } else if (item.type==='weekday') {
+    // Nothing to change — next occurrence is calculated from weekday schedule
     showToast('✓ Done — see you next week');
     await persistItem(item);
   } else {
-    items=items.filter(i=>i.id!==id);
+    // One-time event — delete it
+    items = items.filter(i=>i.id!==id);
     await deleteItemFromDb(id);
     showToast('✓ Event cleared');
   }
   if (expandedId===id) expandedId=null;
-  setTimeout(render,50);
+  setTimeout(render, 50);
 }
 
-async function snoozeItem(id) {
+// ─── SNOOZE SHEET ─────────────────────────────────────────────────────────────
+let snoozeTargetId = null;
+let snoozeDays = 1;
+
+function openSnoozeSheet(id) {
   const item = items.find(i=>i.id===id); if (!item) return;
-  if (item.type==='interval') {
-    const l=new Date(item.lastDone+'T00:00:00');l.setDate(l.getDate()-1);item.lastDone=l.toISOString().slice(0,10);
-  } else if (item.type==='event') {
-    const d=new Date(item.date+'T00:00:00');d.setDate(d.getDate()+1);item.date=d.toISOString().slice(0,10);
-  }
-  item.snoozed=true;
+  snoozeTargetId = id;
+  snoozeDays = 1;
+  document.getElementById('snoozeItemName').textContent = item.name;
+  updateSnoozeDaysDisplay();
+  document.getElementById('snoozeBg').classList.add('open');
+}
+
+function closeSnoozeSheet() {
+  document.getElementById('snoozeBg').classList.remove('open');
+  snoozeTargetId = null;
+}
+
+function bgClickSnooze(e) {
+  if (e.target === document.getElementById('snoozeBg')) closeSnoozeSheet();
+}
+
+function adjustSnoozeDays(delta) {
+  snoozeDays = Math.max(1, snoozeDays + delta);
+  updateSnoozeDaysDisplay();
+}
+
+function updateSnoozeDaysDisplay() {
+  const val = document.getElementById('snoozeDaysVal');
+  const label = document.getElementById('snoozeDateLabel');
+  val.textContent = snoozeDays === 1 ? '1 Day' : `${snoozeDays} Days`;
+  const target = new Date(today);
+  target.setDate(target.getDate() + snoozeDays);
+  label.textContent = 'Returns ' + target.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'});
+}
+
+async function confirmSnooze() {
+  const item = items.find(i=>i.id===snoozeTargetId); if (!item) return;
+  const target = new Date(today);
+  target.setDate(target.getDate() + snoozeDays);
+  item.snoozedUntil = target.toISOString().slice(0,10);
+  item.dismissed = false;
+  closeSnoozeSheet();
   await persistItem(item);
-  setTimeout(()=>{item.snoozed=false;render();},3000);
-  showToast('⏱ Snoozed 1 day'); setTimeout(render,50);
+  showToast(`⏱ Snoozed ${snoozeDays === 1 ? '1 day' : snoozeDays + ' days'}`);
+  render();
+}
+
+async function confirmDismiss() {
+  const item = items.find(i=>i.id===snoozeTargetId); if (!item) return;
+  item.dismissed = true;
+  item.snoozedUntil = null;
+  closeSnoozeSheet();
+  await persistItem(item);
+  showToast('👋 Dismissed — back when due');
+  render();
 }
 
 function toggleExpand(id) { expandedId=expandedId===id?null:id; render(); }
@@ -557,28 +690,24 @@ function toggleExpand(id) { expandedId=expandedId===id?null:id; render(); }
 async function toggleCheck(id,idx) {
   const item=items.find(i=>i.id===id); if (!item) return;
   item.checklist[idx].done=!item.checklist[idx].done;
-  await persistItem(item);
-  renderChecklist(id); renderBadge(id);
+  await persistItem(item); renderChecklist(id); renderBadge(id);
 }
 async function deleteCheckItem(id,idx) {
   const item=items.find(i=>i.id===id); if (!item) return;
   item.checklist.splice(idx,1);
-  await persistItem(item);
-  renderChecklist(id); renderBadge(id);
+  await persistItem(item); renderChecklist(id); renderBadge(id);
 }
 async function addCheckItem(id) {
   const inp=document.getElementById('clinput-'+id);
   const text=(inp?.value||'').trim(); if (!text) return;
   const item=items.find(i=>i.id===id); if (!item) return;
   item.checklist.push({text,done:false}); inp.value='';
-  await persistItem(item);
-  renderChecklist(id); renderBadge(id); inp.focus();
+  await persistItem(item); renderChecklist(id); renderBadge(id); inp.focus();
 }
 async function resetChecklist(id) {
   const item=items.find(i=>i.id===id); if (!item) return;
   item.checklist.forEach(c=>c.done=false);
-  await persistItem(item);
-  renderChecklist(id); renderBadge(id);
+  await persistItem(item); renderChecklist(id); renderBadge(id);
 }
 
 function renderBadge(id) {
@@ -613,7 +742,7 @@ function clHTML(item) {
     +(done>0?`<div class="cl-reset" onclick="resetChecklist('${item.id}')">Reset all</div>`:'');
 }
 
-function rowHTML(item,isOverdue) {
+function rowHTML(item, isOverdue) {
   const exp=expandedId===item.id;
   return `<div class="row-outer" id="outer-${item.id}">
     <div class="row-wrap${exp?' expanded':''}" id="wrap-${item.id}">
@@ -637,18 +766,44 @@ function rowHTML(item,isOverdue) {
 }
 
 function render() {
-  const el=document.getElementById('list');
-  let filtered=items;
-  if (tab==='tasks') filtered=items.filter(i=>i.type!=='event');
-  if (tab==='events') filtered=items.filter(i=>i.type==='event');
-  const sorted=[...filtered].sort((a,b)=>daysUntil(a)-daysUntil(b));
-  const overdue=sorted.filter(i=>daysUntil(i)<0&&i.type!=='event');
-  const rest=sorted.filter(i=>!(daysUntil(i)<0&&i.type!=='event'));
-  let html='';
-  if (overdue.length) { html+=`<div class="section-label">Overdue</div>`; overdue.forEach(i=>html+=rowHTML(i,true)); }
-  if (rest.length) { if (overdue.length) html+=`<div class="section-label">Upcoming</div>`; rest.forEach(i=>html+=rowHTML(i,false)); }
-  if (!sorted.length) html=`<div class="empty-state"><div class="empty-icon">⚓</div><p>Nothing here yet.<br>Tap + to add your first item.</p></div>`;
-  el.innerHTML=html;
+  const el = document.getElementById('list');
+
+  // Filter items for current tab — also handle dismissed items resetting
+  // A dismissed item should reappear if its next due date has arrived
+  items.forEach(item => {
+    if (item.dismissed && daysUntil(item) <= 0) {
+      item.dismissed = false; // Due again — bring it back silently
+    }
+    if (item.snoozedUntil) {
+      const snoozeDate = new Date(item.snoozedUntil + 'T00:00:00');
+      if (snoozeDate <= today) item.snoozedUntil = null; // Snooze expired
+    }
+  });
+
+  const filtered = items.filter(i => itemVisibleInTab(i, tab));
+  const sorted = [...filtered].sort((a,b) => daysUntil(a) - daysUntil(b));
+  const overdue = sorted.filter(i => daysUntil(i) < 0 && i.type !== 'event');
+  const rest = sorted.filter(i => !(daysUntil(i) < 0 && i.type !== 'event'));
+
+  let html = '';
+
+  if (sorted.length === 0) {
+    if (tab === 'today') {
+      // Clean slate moment!
+      html = `<div class="clean-slate">
+        <div class="slate-icon">⚓</div>
+        <div class="slate-title">You're tethered.</div>
+        <div class="slate-sub">Nothing left for today.<br>Rest easy — you've got this.</div>
+      </div>`;
+    } else {
+      html = `<div class="empty-state"><div class="empty-icon">⚓</div><p>Nothing due ${tab === 'week' ? 'this week' : 'this month'}.<br>You're ahead of the game.</p></div>`;
+    }
+  } else {
+    if (overdue.length) { html += `<div class="section-label">Overdue</div>`; overdue.forEach(i => html += rowHTML(i, true)); }
+    if (rest.length) { if (overdue.length) html += `<div class="section-label">Upcoming</div>`; rest.forEach(i => html += rowHTML(i, false)); }
+  }
+
+  el.innerHTML = html;
   el.querySelectorAll('.item[data-id]').forEach(attachSwipe);
 }
 
@@ -673,7 +828,11 @@ function attachSwipe(el) {
     const lc=document.getElementById('lc-'+id),ls=document.getElementById('ls-'+id);
     if(lc)lc.classList.remove('show');if(ls)ls.classList.remove('show');
     if(curX>THRESHOLD){el.classList.add('completing');setTimeout(()=>completeItem(id),220);}
-    else if(curX<-THRESHOLD){el.classList.add('snoozing');setTimeout(()=>snoozeItem(id),220);}
+    else if(curX<-THRESHOLD){
+      // Animate off then show snooze sheet
+      el.classList.add('snoozing');
+      setTimeout(()=>{ render(); openSnoozeSheet(id); },220);
+    }
     else el.style.transform='translateX(0)';
   }
   el.addEventListener('mousedown',e=>{start(e.clientX,e.clientY);e.preventDefault()});
@@ -685,7 +844,12 @@ function attachSwipe(el) {
 }
 
 // ─── TABS ─────────────────────────────────────────────────────────────────────
-function setTab(t,el){tab=t;document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));el.classList.add('active');render();}
+function setTab(t,el){
+  tab=t;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  el.classList.add('active');
+  render();
+}
 
 // ─── ADD ITEM MODAL ───────────────────────────────────────────────────────────
 function updatePreview(){
@@ -708,10 +872,10 @@ function openModal(){
   document.getElementById('fWeeks').value='1';
   document.getElementById('fLastDone').value=isoToday();
   document.getElementById('fEventDate').value=isoToday();
-  itemType='interval';selectedWeekdays=[1];
+  itemType='interval'; selectedWeekdays=[1];
   document.querySelectorAll('.type-pill').forEach(p=>p.classList.toggle('active',p.dataset.type==='interval'));
   document.querySelectorAll('.day-pill').forEach(p=>p.classList.toggle('active',p.dataset.day==='1'));
-  setType('interval',null);updatePreview();validateForm();
+  setType('interval',null); updatePreview(); validateForm();
   document.getElementById('modalBg').classList.add('open');
   setTimeout(()=>document.getElementById('fName').focus(),300);
 }
@@ -742,8 +906,8 @@ function validateForm(){
   document.getElementById('btnSave').disabled=!valid;
 }
 async function saveItem(){
-  const name=document.getElementById('fName').value.trim();if(!name)return;
-  const item={name,type:itemType,checklist:[]};
+  const name=document.getElementById('fName').value.trim(); if(!name) return;
+  const item={name,type:itemType,checklist:[],snoozedUntil:null,dismissed:false};
   if(itemType==='interval'){
     const d=parseInt(document.getElementById('fDays').value)||0;
     const w=parseInt(document.getElementById('fWeeks').value)||0;
@@ -751,13 +915,13 @@ async function saveItem(){
     const y=parseInt(document.getElementById('fYears').value)||0;
     item.days=d+(w*7)+(m*30)+(y*365);
     item.lastDone=document.getElementById('fLastDone').value||isoToday();
-  }else if(itemType==='weekday'){
+  } else if(itemType==='weekday'){
     item.weekdays=[...selectedWeekdays];
-  }else{
+  } else {
     item.date=document.getElementById('fEventDate').value;
   }
   closeModal();
-  await persistItem(item);   // sets item.id from Supabase
+  await persistItem(item);
   items.push(item);
   showToast(`⚓ "${name}" added`);
   render();
