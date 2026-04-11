@@ -580,11 +580,16 @@ function badgeFor(item) {
   return `<span class="badge ok">in ${d}d</span>`;
 }
 
+function fmtDate(d) { return d.toLocaleDateString("en-US",{month:"short",day:"numeric"}); }
 function subFor(item) {
-  const wd=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  if (item.type==='interval') return `${fmtInterval(item.days||0)} Â· last ${item.lastDone}`;
-  if (item.type==='weekday') return `Every ${(item.weekdays||[]).map(d=>wd[d]).join(', ')} Â· next ${getDueDate(item).toLocaleDateString('en-US',{month:'short',day:'numeric'})}`;
-  return getDueDate(item).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+  const wd=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  if (item.type==="interval") {
+    const lastDone = new Date(item.lastDone+"T00:00:00");
+    const nextDue = getDueDate(item);
+    return `Completed ${fmtDate(lastDone)} · Next due ${fmtDate(nextDue)}`;
+  }
+  if (item.type==="weekday") return `Every ${(item.weekdays||[]).map(d=>wd[d]).join(", ")} · Next due ${fmtDate(getDueDate(item))}`;
+  return getDueDate(item).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",year:"numeric"});
 }
 function dotClass(t) { return t==='interval'?'dot-interval':t==='weekday'?'dot-weekday':'dot-event'; }
 
