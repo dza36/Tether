@@ -843,7 +843,7 @@ function showToast(msg) {
 }
 
 // ─── ITEM ACTIONS ─────────────────────────────────────────────────────────────
-let tab="today", expandedId=null;
+let tab="today", expandedId=null, itemType="interval", selectedWeekdays=[1];
 
 async function completeItem(id) {
   const item = items.find(i=>i.id===id); if (!item) return;
