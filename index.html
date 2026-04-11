@@ -242,6 +242,22 @@
     /* Item member avatar */
     .item-avatar{width:26px;height:26px;border-radius:50%;background:#EEEDFE;border:1.5px solid #CECBF6;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#534AB7;overflow:hidden;flex-shrink:0}
     .item-avatar img{width:100%;height:100%;object-fit:cover}
+
+    /* Assign picker */
+    .assign-bg{display:none;position:fixed;inset:0;background:rgba(38,33,92,.5);z-index:250;align-items:flex-end;justify-content:center}
+    .assign-bg.open{display:flex}
+    .assign-sheet{background:#fff;border-radius:20px 20px 0 0;border:0.5px solid #CECBF6;padding:1.25rem 1.25rem 2.5rem;width:100%;max-width:430px}
+    .assign-handle{width:40px;height:4px;border-radius:2px;background:#CECBF6;margin:0 auto 1.25rem}
+    .assign-title{font-size:16px;font-weight:700;color:#26215C;margin-bottom:1rem;text-align:center}
+    .assign-members{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-bottom:1rem}
+    .assign-member{display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;padding:8px;border-radius:12px;border:2px solid transparent;transition:all .15s;min-width:60px}
+    .assign-member.selected{border-color:#534AB7;background:#EEEDFE}
+    .assign-member:active{background:#EEEDFE}
+    .assign-member-avatar{width:44px;height:44px;border-radius:50%;background:#EEEDFE;border:1.5px solid #CECBF6;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#534AB7;overflow:hidden}
+    .assign-member-avatar img{width:100%;height:100%;object-fit:cover}
+    .assign-member-name{font-size:11px;color:#26215C;font-weight:600;text-align:center;max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .assign-unassign{width:100%;padding:12px;font-size:14px;font-weight:600;border-radius:12px;border:0.5px solid #CECBF6;background:#F7F6FF;color:#AFA9EC;cursor:pointer;margin-top:.5rem}
+    .assign-cancel{width:100%;padding:12px;font-size:14px;border-radius:12px;border:none;background:transparent;color:#AFA9EC;cursor:pointer;margin-top:.25rem}
   </style>
 </head>
 <body>
@@ -301,7 +317,7 @@
     <div class="tab" onclick="setTab('week',this)">This Week</div>
     <div class="tab" onclick="setTab('month',this)">This Month</div>
   </div>
-  <div class="hint">Swipe <b>right to complete</b> �· <b class="sn">left to snooze</b> �· <b class="hold">hold for checklist</b></div>
+  <div class="hint">Swipe <b>right to complete</b> &#9875; <b class="sn">left to snooze</b> &#9875; <b class="hold">hold for checklist</b></div>
   <div class="invite-banner" id="inviteBanner">
     <div class="invite-banner-text">Household invite<div class="invite-banner-sub" id="inviteBannerSub"></div></div>
     <div class="invite-banner-btns">
@@ -408,6 +424,17 @@
       <button class="snooze-btn-dismiss" onclick="confirmDismiss()">👋 Dismiss until next due date</button>
       <button class="snooze-btn-cancel" onclick="closeSnoozeSheet()">Cancel</button>
     </div>
+  </div>
+</div>
+
+<!-- Assign picker -->
+<div class="assign-bg" id="assignBg" onclick="bgClickAssign(event)">
+  <div class="assign-sheet">
+    <div class="assign-handle"></div>
+    <div class="assign-title">Assign to...</div>
+    <div class="assign-members" id="assignMembers"></div>
+    <button class="assign-unassign" onclick="confirmAssign(null)">Remove assignment</button>
+    <button class="assign-cancel" onclick="closeAssignPicker()">Cancel</button>
   </div>
 </div>
 
@@ -881,7 +908,7 @@ function clHTML(item) {
 
 function rowHTML(item, isOverdue) {
   const exp=expandedId===item.id;
-  const avatarHTML = currentHousehold ? itemAvatarHTML(item.assignedTo || item.createdBy) : '';
+  const avatarHTML = currentHousehold ? itemAvatarHTML(item.assignedTo || item.createdBy, item.id) : '';
   return `<div class="row-outer" id="outer-${item.id}">
     <div class="row-wrap${exp?' expanded':''}" id="wrap-${item.id}">
       ${!exp?`<div class="row-bg">
@@ -890,7 +917,8 @@ function rowHTML(item, isOverdue) {
       </div>`:''}
       <div class="item${isOverdue?' overdue':''}${exp?' held':''} ${exp?'':'swipeable'}"
            id="item-${item.id}" data-id="${item.id}"
-           style="${exp?'position:relative;border-bottom-left-radius:0;border-bottom-right-radius:0;':'position:absolute;inset:0;cursor:grab;'}">
+           style="${exp?'position:relative;border-bottom-left-radius:0;border-bottom-right-radius:0;':'position:absolute;inset:0;cursor:grab;'}"
+           ${exp?`onclick="toggleExpand('${item.id}')"`:''}>
         <div class="type-dot ${dotClass(item.type)}"></div>
         <div class="item-body">
           <div class="item-name">${item.name}</div>
@@ -1046,6 +1074,9 @@ function validateForm(){
 }
 async function saveItem(){
   const name=document.getElementById('fName').value.trim(); if(!name) return;
+  const btnSave = document.getElementById('btnSave');
+  btnSave.disabled = true;
+  btnSave.textContent = 'Saving...';
   const item={name,type:itemType,checklist:[],snoozedUntil:null,dismissed:false};
   if(itemType==='interval'){
     const d=parseInt(document.getElementById('fDays').value)||0;
@@ -1058,11 +1089,16 @@ async function saveItem(){
     item.weekdays=[...selectedWeekdays];
   } else {
     item.date=document.getElementById('fEventDate').value;
+    if (!item.date) { showToast('Please set a date'); btnSave.disabled=false; btnSave.textContent='Add to Tether'; return; }
   }
   closeModal();
   await persistItem(item);
-  items.push(item);
-  showToast(`⚓ "${name}" added`);
+  if (item._dbId) {
+    items.push(item);
+    showToast(`⚓ "${name}" added`);
+  }
+  btnSave.disabled=false;
+  btnSave.textContent='Add to Tether';
   render();
 }
 
@@ -1088,16 +1124,14 @@ function memberAvatarHTML(member, size=36) {
   return `<div class="member-avatar" style="width:${size}px;height:${size}px;font-size:${Math.floor(size*0.36)}px">${initials}</div>`;
 }
 
-// Build small item-row avatar HTML for a userId
-function itemAvatarHTML(userId) {
-  if (!userId || !currentHousehold) return '';
+// Build small item-row avatar HTML for a userId — tappable to assign
+function itemAvatarHTML(userId, itemId) {
+  if (!currentHousehold) return '';
   const member = householdMembers.find(m => m.user_id === userId);
-  if (!member) return '';
-  const initials = getInitials(member.display_name || member.email);
-  if (member.avatar_url) {
-    return `<div class="item-avatar"><img src="${member.avatar_url}" alt="${initials}"/></div>`;
-  }
-  return `<div class="item-avatar">${initials}</div>`;
+  const initials = member ? getInitials(member.display_name || member.email) : '?';
+  const img = member?.avatar_url ? `<img src="${member.avatar_url}" alt="${initials}"/>` : initials;
+  const tap = itemId ? `onclick="openAssignPicker('${itemId}');event.stopPropagation();" style="cursor:pointer"` : '';
+  return `<div class="item-avatar" ${tap} title="Tap to reassign">${img}</div>`;
 }
 
 async function loadHousehold() {
@@ -1351,6 +1385,47 @@ function handleSendInvite() {
   const email = document.getElementById('inviteEmailInput')?.value.trim();
   if (!email) return;
   sendHouseholdInvite(email);
+}
+
+// ─── ASSIGN PICKER ───────────────────────────────────────────────────────────
+let assignTargetId = null;
+
+function openAssignPicker(itemId) {
+  assignTargetId = itemId;
+  const item = items.find(i => i.id === itemId);
+  const el = document.getElementById('assignMembers');
+  el.innerHTML = householdMembers.map(m => {
+    const isSelected = (item?.assignedTo || item?.createdBy) === m.user_id;
+    const initials = getInitials(m.display_name || m.email);
+    const img = m.avatar_url ? `<img src="${m.avatar_url}" alt="${initials}"/>` : initials;
+    const name = m.display_name?.split(' ')[0] || m.email.split('@')[0];
+    return `<div class="assign-member${isSelected?' selected':''}" onclick="confirmAssign('${m.user_id}')">
+      <div class="assign-member-avatar">${img}</div>
+      <div class="assign-member-name">${name}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('assignBg').classList.add('open');
+}
+
+function closeAssignPicker() {
+  document.getElementById('assignBg').classList.remove('open');
+  assignTargetId = null;
+}
+
+function bgClickAssign(e) {
+  if (e.target === document.getElementById('assignBg')) closeAssignPicker();
+}
+
+async function confirmAssign(userId) {
+  const item = items.find(i => i.id === assignTargetId);
+  if (!item) return;
+  item.assignedTo = userId;
+  closeAssignPicker();
+  await persistItem(item);
+  const member = householdMembers.find(m => m.user_id === userId);
+  const name = member ? (member.display_name?.split(' ')[0] || 'them') : 'no one';
+  showToast(userId ? `Assigned to ${name}` : 'Assignment removed');
+  render();
 }
 
 // ─── BOOT ─────────────────────────────────────────────────────────────────────
