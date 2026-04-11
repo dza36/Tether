@@ -84,6 +84,10 @@
     .cl-add input:focus{outline:none;border-color:#534AB7}
     .cl-add button{padding:7px 14px;font-size:12px;font-weight:600;border-radius:10px;border:none;background:#534AB7;color:#fff;cursor:pointer}
     .cl-reset{font-size:11px;color:#AFA9EC;text-align:right;margin-top:.4rem;cursor:pointer;text-decoration:underline}
+    .cl-item-actions{display:flex;gap:8px;margin-top:.75rem;padding-top:.75rem;border-top:0.5px solid #CECBF6}
+    .cl-action-btn{flex:1;padding:10px;font-size:13px;font-weight:600;border-radius:10px;border:0.5px solid #CECBF6;cursor:pointer;text-align:center}
+    .cl-action-edit{background:#F7F6FF;color:#534AB7}
+    .cl-action-delete{background:#FDF0F0;color:#A32D2D;border-color:#F5C6C6}
 
     /* Empty state */
     .empty-state{text-align:center;padding:3rem 2rem;color:#AFA9EC}
@@ -713,6 +717,63 @@ async function resetChecklist(id) {
   await persistItem(item); renderChecklist(id); renderBadge(id);
 }
 
+async function deleteItem(id) {
+  const item=items.find(i=>i.id===id); if (!item) return;
+  if (!confirm(`Delete "${item.name}"?`)) return;
+  items=items.filter(i=>i.id!==id);
+  await deleteItemFromDb(id);
+  expandedId=null;
+  showToast("🗑 Deleted");
+  render();
+}
+
+function editItem(id) {
+  const item=items.find(i=>i.id===id); if (!item) return;
+  openModal();
+  document.getElementById("fName").value=item.name;
+  itemType=item.type;
+  document.querySelectorAll(".type-pill").forEach(p=>p.classList.toggle("active",p.dataset.type===item.type));
+  setType(item.type,null);
+  if (item.type==="interval") {
+    const weeks=Math.floor((item.days||0)/7);
+    const days=(item.days||0)%7;
+    document.getElementById("fDays").value=days;
+    document.getElementById("fWeeks").value=weeks;
+    document.getElementById("fMonths").value=0;
+    document.getElementById("fYears").value=0;
+    document.getElementById("fLastDone").value=item.lastDone||"";
+    updatePreview();
+  } else if (item.type==="weekday") {
+    selectedWeekdays=[...(item.weekdays||[1])];
+    document.querySelectorAll(".day-pill").forEach(p=>p.classList.toggle("active",(item.weekdays||[]).includes(parseInt(p.dataset.day))));
+  } else if (item.type==="event") {
+    document.getElementById("fEventDate").value=item.date||"";
+  }
+  document.getElementById("btnSave").onclick=async function() {
+    const name=document.getElementById("fName").value.trim(); if (!name) return;
+    item.name=name;
+    if (item.type==="interval") {
+      const d=parseInt(document.getElementById("fDays").value)||0;
+      const w=parseInt(document.getElementById("fWeeks").value)||0;
+      const m=parseInt(document.getElementById("fMonths").value)||0;
+      const y=parseInt(document.getElementById("fYears").value)||0;
+      item.days=d+(w*7)+(m*30)+(y*365);
+      item.lastDone=document.getElementById("fLastDone").value;
+    } else if (item.type==="weekday") {
+      item.weekdays=[...selectedWeekdays];
+    } else {
+      item.date=document.getElementById("fEventDate").value;
+    }
+    closeModal();
+    await persistItem(item);
+    expandedId=null;
+    showToast("✏️ Updated");
+    render();
+    document.getElementById("btnSave").onclick=saveItem;
+  };
+  validateForm();
+}
+
 function renderBadge(id) {
   const el=document.querySelector(`#item-${id} .badge`);
   const item=items.find(i=>i.id===id);
@@ -742,7 +803,7 @@ function clHTML(item) {
   return `<div class="cl-header"><span class="cl-title">Checklist</span><span class="cl-progress">${done}/${cl.length} done</span></div>`
     +rows
     +`<div class="cl-add"><input id="clinput-${item.id}" type="text" placeholder="Add item..." onkeydown="if(event.key==='Enter')addCheckItem('${item.id}')"/><button onclick="addCheckItem('${item.id}')">Add</button></div>`
-    +(done>0?`<div class="cl-reset" onclick="resetChecklist('${item.id}')">Reset all</div>`:'');
+    +(done>0?`<div class="cl-reset" onclick="resetChecklist('${item.id}')">Reset all</div>`:'')+`<div class="cl-item-actions"><button class="cl-action-btn cl-action-edit" onclick="editItem('${item.id}')">✏️ Edit</button><button class="cl-action-btn cl-action-delete" onclick="deleteItem('${item.id}')">🗑 Delete</button></div>`;
 }
 
 function rowHTML(item, isOverdue) {
