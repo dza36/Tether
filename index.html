@@ -246,7 +246,7 @@
     <div class="tab" onclick="setTab('week',this)">This Week</div>
     <div class="tab" onclick="setTab('month',this)">This Month</div>
   </div>
-  <div class="hint">Swipe <b>right to complete</b> Â· <b class="sn">left to snooze</b> Â· <b class="hold">hold for checklist</b></div>
+  <div class="hint">Swipe <b>right to complete</b> ÂÂ· <b class="sn">left to snooze</b> ÂÂ· <b class="hold">hold for checklist</b></div>
   <div class="list" id="list"></div>
   <div class="feedback-bar">Beta feedback? Text Dan â†’ <a href="sms:+16515551234">leave a note</a></div>
 </div>
@@ -561,7 +561,7 @@ function fmtInterval(days) {
 }
 
 function badgeFor(item) {
-  if (isSnoozed(item)) return `<span class="badge snoozed">Snoozed Â· ${item.snoozedUntil}</span>`;
+  if (isSnoozed(item)) return `<span class="badge snoozed">Snoozed ÂÂ· ${item.snoozedUntil}</span>`;
   const cl = item.checklist||[];
   if (cl.length>0 && expandedId===item.id) {
     const done=cl.filter(c=>c.done).length;
@@ -586,9 +586,9 @@ function subFor(item) {
   if (item.type==="interval") {
     const lastDone = new Date(item.lastDone+"T00:00:00");
     const nextDue = getDueDate(item);
-    return `Completed ${fmtDate(lastDone)} · Next due ${fmtDate(nextDue)}`;
+    return `Completed ${fmtDate(lastDone)} Â· Next due ${fmtDate(nextDue)}`;
   }
-  if (item.type==="weekday") return `Every ${(item.weekdays||[]).map(d=>wd[d]).join(", ")} · Next due ${fmtDate(getDueDate(item))}`;
+  if (item.type==="weekday") return `Every ${(item.weekdays||[]).map(d=>wd[d]).join(", ")} Â· Next due ${fmtDate(getDueDate(item))}`;
   return getDueDate(item).toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",year:"numeric"});
 }
 function dotClass(t) { return t==='interval'?'dot-interval':t==='weekday'?'dot-weekday':'dot-event'; }
@@ -866,7 +866,7 @@ function updatePreview(){
   if(m)parts.push(`${m} month${m>1?'s':''}`);
   if(w)parts.push(`${w} week${w>1?'s':''}`);
   if(d)parts.push(`${d} day${d>1?'s':''}`);
-  document.getElementById('intervalPreview').textContent=total>0?`Every ${parts.join(', ')} Â· ${total} days total`:'Set at least one value above';
+  document.getElementById('intervalPreview').textContent=total>0?`Every ${parts.join(', ')} ÂÂ· ${total} days total`:'Set at least one value above';
   validateForm();
 }
 function openModal(){
