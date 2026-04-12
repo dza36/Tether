@@ -431,49 +431,87 @@
       <h2>New Task</h2>
       <div class="modal-close" onclick="closeTaskModal()">✕</div>
     </div>
+
+    <!-- Name -->
     <div class="field">
-      <label>Name</label>
-      <input type="text" id="fName" placeholder="e.g. Grocery shopping" oninput="validateForm()"/>
+      <label>Task name</label>
+      <input type="text" id="fName" placeholder="e.g. Mow the lawn" oninput="validateForm()"/>
     </div>
+
+    <!-- Due date -->
     <div class="field">
-      <label>Recurrence</label>
-      <div class="type-pills">
-        <div class="type-pill active" data-type="interval" onclick="setType('interval',this)">Every X days</div>
-        <div class="type-pill" data-type="weekday" onclick="setType('weekday',this)">Fixed day</div>
-      </div>
+      <label>Due date</label>
+      <input type="date" id="fDueDate" oninput="onDueDateChange();validateForm()"/>
     </div>
-    <div id="intervalSection">
-      <div class="field"><label>Repeat every</label></div>
-      <div class="interval-grid">
-        <div class="interval-row"><span class="interval-label">Days</span><input type="number" id="fDays" min="0" value="0" oninput="updatePreview()"/></div>
-        <div class="interval-row"><span class="interval-label">Weeks</span><input type="number" id="fWeeks" min="0" value="1" oninput="updatePreview()"/></div>
-        <div class="interval-row"><span class="interval-label">Months</span><input type="number" id="fMonths" min="0" value="0" oninput="updatePreview()"/></div>
-        <div class="interval-row"><span class="interval-label">Years</span><input type="number" id="fYears" min="0" value="0" oninput="updatePreview()"/></div>
-      </div>
-      <div class="interval-preview" id="intervalPreview"></div>
-      <div class="field"><label>Last completed</label><input type="date" id="fLastDone"/></div>
-    </div>
-    <div id="weekdaySection" style="display:none">
-      <div class="field"><label>Repeat on</label></div>
-      <div class="days-grid">
-        <div class="day-pill" data-day="0" onclick="toggleDay(0,this)">Su</div>
-        <div class="day-pill active" data-day="1" onclick="toggleDay(1,this)">Mo</div>
-        <div class="day-pill" data-day="2" onclick="toggleDay(2,this)">Tu</div>
-        <div class="day-pill" data-day="3" onclick="toggleDay(3,this)">We</div>
-        <div class="day-pill" data-day="4" onclick="toggleDay(4,this)">Th</div>
-        <div class="day-pill" data-day="5" onclick="toggleDay(5,this)">Fr</div>
-        <div class="day-pill" data-day="6" onclick="toggleDay(6,this)">Sa</div>
-      </div>
-    </div>
+
+    <!-- Time (optional) -->
     <div class="field">
-      <label>Time (optional)</label>
+      <label>Time <span style="font-weight:400;color:#AFA9EC">(optional)</span></label>
       <input type="time" id="fTaskTime"/>
     </div>
-    <div class="field" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
-      <label style="margin-bottom:0">🔴 Mark as urgent</label>
-      <input type="checkbox" id="fUrgent" style="width:20px;height:20px;cursor:pointer"/>
+
+    <!-- Recurring toggle -->
+    <div class="field" style="display:flex;align-items:center;justify-content:space-between;padding:4px 0">
+      <label style="margin-bottom:0;font-size:13px;font-weight:700;color:#534AB7;text-transform:uppercase;letter-spacing:.05em">🔁 Recurring</label>
+      <input type="checkbox" id="fRecurring" onchange="toggleRecurring()" style="width:20px;height:20px;cursor:pointer;accent-color:#534AB7"/>
     </div>
-    <button class="btn-save" id="btnSave" onclick="saveItem()">Add Task</button>
+
+    <!-- Recurrence section - hidden until checked -->
+    <div id="recurringSection" style="display:none;border-top:0.5px solid #EEEDFE;padding-top:1rem;margin-top:.25rem">
+
+      <!-- Every X [increment] -->
+      <div class="field">
+        <label>Repeat every</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="number" id="fEveryNum" min="1" value="1" style="width:72px;padding:10px;font-size:16px;border-radius:12px;border:0.5px solid #CECBF6;background:#F7F6FF;color:#26215C;text-align:center;font-family:inherit" oninput="onRecurrenceChange()"/>
+          <select id="fIncrement" onchange="onIncrementChange()" style="flex:1;padding:10px 14px;font-size:15px;border-radius:12px;border:0.5px solid #CECBF6;background:#F7F6FF;color:#26215C;font-family:inherit">
+            <option value="day">Day(s)</option>
+            <option value="week">Week(s)</option>
+            <option value="month">Month(s)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Weekly day picker - shown when week selected -->
+      <div id="weekDayPicker" style="display:none" class="field">
+        <label>On</label>
+        <div class="days-grid">
+          <div class="day-pill" data-day="0" onclick="toggleDay(0,this)">Su</div>
+          <div class="day-pill" data-day="1" onclick="toggleDay(1,this)">Mo</div>
+          <div class="day-pill" data-day="2" onclick="toggleDay(2,this)">Tu</div>
+          <div class="day-pill" data-day="3" onclick="toggleDay(3,this)">We</div>
+          <div class="day-pill" data-day="4" onclick="toggleDay(4,this)">Th</div>
+          <div class="day-pill" data-day="5" onclick="toggleDay(5,this)">Fr</div>
+          <div class="day-pill" data-day="6" onclick="toggleDay(6,this)">Sa</div>
+        </div>
+      </div>
+
+      <!-- Monthly options - shown when month selected -->
+      <div id="monthPicker" style="display:none" class="field">
+        <label>On</label>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <label style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:500;color:#26215C;text-transform:none;letter-spacing:0">
+            <input type="radio" name="monthType" id="fMonthDay" value="day" checked onchange="onRecurrenceChange()" style="accent-color:#534AB7"/>
+            <span id="monthDayLabel">Day 1</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:500;color:#26215C;text-transform:none;letter-spacing:0">
+            <input type="radio" name="monthType" id="fMonthWeekday" value="weekday" onchange="onRecurrenceChange()" style="accent-color:#534AB7"/>
+            <span id="monthWeekdayLabel">First Sunday</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Human readable preview -->
+      <div id="recurrencePreview" style="font-size:12px;color:#534AB7;font-weight:600;margin-top:.25rem;min-height:16px;padding:0 2px"></div>
+    </div>
+
+    <!-- Urgent flag -->
+    <div class="field" style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;margin-top:.5rem">
+      <label style="margin-bottom:0;font-size:13px;font-weight:700;color:#E24B4A;text-transform:uppercase;letter-spacing:.05em">🔴 Urgent</label>
+      <input type="checkbox" id="fUrgent" style="width:20px;height:20px;cursor:pointer;accent-color:#E24B4A"/>
+    </div>
+
+    <button class="btn-save" id="btnSave" onclick="saveItem()" disabled>Add Task</button>
   </div>
 </div>
 
@@ -1176,39 +1214,29 @@ function setTab(t,el){
 
 // ─── ADD ITEM MODAL ───────────────────────────────────────────────────────────
 
-function updatePreview(){
-  const d=parseInt(document.getElementById("fDays").value)||0;
-  const w=parseInt(document.getElementById("fWeeks").value)||0;
-  const m=parseInt(document.getElementById("fMonths").value)||0;
-  const y=parseInt(document.getElementById("fYears").value)||0;
-  const total=d+(w*7)+(m*30)+(y*365);
-  const parts=[];
-  if(y)parts.push(`${y} year${y>1?"s":""}`);
-  if(m)parts.push(`${m} month${m>1?"s":""}`);
-  if(w)parts.push(`${w} week${w>1?"s":""}`);
-  if(d)parts.push(`${d} day${d>1?"s":""}`);
-  document.getElementById("intervalPreview").textContent=total>0?`Every ${parts.join(", ")} · ${total} days total`:"Set at least one value above";
-  validateForm();
-}
+// ─── TASK MODAL JS ────────────────────────────────────────────────────────────
 
 function openModal(){ openChooser(); }
 function openChooser(){ document.getElementById("chooserBg").classList.add("open"); }
 function closeChooser(){ document.getElementById("chooserBg").classList.remove("open"); }
 function bgClickChooser(e){ if(e.target===document.getElementById("chooserBg")) closeChooser(); }
 
-
 function openTaskModal(){
   closeChooser();
   document.getElementById("fName").value="";
-  ["fDays","fMonths","fYears"].forEach(id=>document.getElementById(id).value="0");
-  document.getElementById("fWeeks").value="1";
-  document.getElementById("fLastDone").value=isoToday();
+  document.getElementById("fDueDate").value=isoToday();
   document.getElementById("fTaskTime").value="";
+  document.getElementById("fRecurring").checked=false;
   document.getElementById("fUrgent").checked=false;
-  itemType="interval"; selectedWeekdays=[1];
-  document.querySelectorAll(".type-pill").forEach(p=>p.classList.toggle("active",p.dataset.type==="interval"));
-  document.querySelectorAll(".day-pill").forEach(p=>p.classList.toggle("active",p.dataset.day==="1"));
-  setType("interval",null); updatePreview(); validateForm();
+  document.getElementById("recurringSection").style.display="none";
+  document.getElementById("fEveryNum").value="1";
+  document.getElementById("fIncrement").value="day";
+  document.getElementById("weekDayPicker").style.display="none";
+  document.getElementById("monthPicker").style.display="none";
+  selectedWeekdays=[];
+  document.querySelectorAll(".day-pill").forEach(p=>p.classList.remove("active"));
+  onDueDateChange();
+  validateForm();
   document.getElementById("taskModalBg").classList.add("open");
   setTimeout(()=>document.getElementById("fName").focus(),300);
 }
@@ -1217,48 +1245,130 @@ function bgClickTask(e){ if(e.target===document.getElementById("taskModalBg")) c
 function closeModal(){ closeTaskModal(); }
 function bgClick(e){ bgClickTask(e); }
 
-function setType(t,el){
-  itemType=t;
-  if(el){document.querySelectorAll(".type-pill").forEach(p=>p.classList.remove("active"));el.classList.add("active");}
-  document.getElementById("intervalSection").style.display=t==="interval"?"":"none";
-  document.getElementById("weekdaySection").style.display=t==="weekday"?"":"none";
+function toggleRecurring(){
+  const on = document.getElementById("fRecurring").checked;
+  document.getElementById("recurringSection").style.display = on ? "" : "none";
+  if(on) onIncrementChange();
+  onRecurrenceChange();
   validateForm();
 }
-function toggleDay(day,el){
-  if(selectedWeekdays.includes(day)){if(selectedWeekdays.length===1)return;selectedWeekdays=selectedWeekdays.filter(d=>d!==day);el.classList.remove("active");}
-  else{selectedWeekdays.push(day);el.classList.add("active");}
+
+function onDueDateChange(){
+  // Update monthly labels based on selected date
+  const dateVal = document.getElementById("fDueDate").value;
+  if(!dateVal) return;
+  const d = new Date(dateVal+"T00:00:00");
+  const dayNum = d.getDate();
+  const dayName = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][d.getDay()];
+  const weekNum = Math.ceil(dayNum/7);
+  const ordinals = ["","First","Second","Third","Fourth","Fifth"];
+  const ordinal = ordinals[weekNum] || "Last";
+  document.getElementById("monthDayLabel").textContent = `Day ${dayNum} of the month`;
+  document.getElementById("monthWeekdayLabel").textContent = `${ordinal} ${dayName}`;
+  // Auto-select the matching weekday in week picker
+  const dayIndex = d.getDay();
+  selectedWeekdays = [dayIndex];
+  document.querySelectorAll(".day-pill").forEach(p=>{
+    p.classList.toggle("active", parseInt(p.dataset.day)===dayIndex);
+  });
+  onRecurrenceChange();
 }
-function validateForm(){
-  const name=document.getElementById("fName").value.trim();
-  let valid=name.length>0;
-  if(itemType==="interval"){
-    const d=parseInt(document.getElementById("fDays").value)||0;
-    const w=parseInt(document.getElementById("fWeeks").value)||0;
-    const m=parseInt(document.getElementById("fMonths").value)||0;
-    const y=parseInt(document.getElementById("fYears").value)||0;
-    valid=valid&&(d+w+m+y>0);
+
+function onIncrementChange(){
+  const inc = document.getElementById("fIncrement").value;
+  document.getElementById("weekDayPicker").style.display = inc==="week" ? "" : "none";
+  document.getElementById("monthPicker").style.display = inc==="month" ? "" : "none";
+  onRecurrenceChange();
+}
+
+function onRecurrenceChange(){
+  const preview = document.getElementById("recurrencePreview");
+  if(!preview) return;
+  const recurring = document.getElementById("fRecurring")?.checked;
+  if(!recurring){ preview.textContent=""; return; }
+  const num = parseInt(document.getElementById("fEveryNum").value)||1;
+  const inc = document.getElementById("fIncrement").value;
+  const wd=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  let text="";
+  if(inc==="day") text=`Every ${num} day${num>1?"s":""}`;
+  else if(inc==="week"){
+    const days=selectedWeekdays.map(d=>wd[d]).join(", ");
+    text=`Every ${num===1?"":num+" "}week${num>1?"s":""}`+(days?` on ${days}`:"");
+  } else if(inc==="month"){
+    const isWeekday=document.getElementById("fMonthWeekday")?.checked;
+    const label=isWeekday?document.getElementById("monthWeekdayLabel").textContent:document.getElementById("monthDayLabel").textContent;
+    text=`Every ${num===1?"":num+" "}month${num>1?"s":""} · ${label}`;
   }
+  preview.textContent=text;
+}
+
+function toggleDay(day,el){
+  if(selectedWeekdays.includes(day)){
+    if(selectedWeekdays.length===1)return;
+    selectedWeekdays=selectedWeekdays.filter(d=>d!==day);
+    el.classList.remove("active");
+  } else {
+    selectedWeekdays.push(day);
+    el.classList.add("active");
+  }
+  onRecurrenceChange();
+}
+
+function validateForm(){
+  const name=document.getElementById("fName")?.value.trim();
+  const date=document.getElementById("fDueDate")?.value;
+  const valid=!!(name && date);
   const btn=document.getElementById("btnSave");
   if(btn) btn.disabled=!valid;
 }
+
+// Keep updatePreview as no-op for compatibility with editItem
+function updatePreview(){ onRecurrenceChange(); }
+function setType(t,el){ /* no-op - kept for edit compatibility */ }
+
 async function saveItem(){
   const name=document.getElementById("fName").value.trim(); if(!name) return;
   const btnSave=document.getElementById("btnSave");
   btnSave.disabled=true; btnSave.textContent="Saving...";
-  const item={name,type:itemType,checklist:[],snoozedUntil:null,dismissed:false,
+
+  const dueDate=document.getElementById("fDueDate").value;
+  const recurring=document.getElementById("fRecurring").checked;
+  const inc=document.getElementById("fIncrement")?.value||"day";
+  const num=parseInt(document.getElementById("fEveryNum")?.value)||1;
+
+  let type, days, weekdays, lastDone;
+
+  if(!recurring){
+    // One-time task — treat as interval with a very large number, store as event-like
+    // Actually store as interval with days=0 and lastDone=dueDate so it shows as due that day
+    type="interval"; days=0; lastDone=dueDate;
+  } else if(inc==="day"){
+    type="interval"; days=num;
+    // lastDone calculated so first due = dueDate
+    const d=new Date(dueDate+"T00:00:00");
+    d.setDate(d.getDate()-days);
+    lastDone=d.toISOString().slice(0,10);
+  } else if(inc==="week"){
+    type="weekday"; weekdays=[...selectedWeekdays];
+    lastDone=dueDate;
+  } else if(inc==="month"){
+    // For now store as interval with 30*num days — monthly recurrence coming later
+    type="interval"; days=30*num;
+    const d=new Date(dueDate+"T00:00:00");
+    d.setDate(d.getDate()-days);
+    lastDone=d.toISOString().slice(0,10);
+  }
+
+  const item={
+    name, type, checklist:[], snoozedUntil:null, dismissed:false,
+    days: days||null,
+    lastDone: lastDone||null,
+    weekdays: weekdays||null,
+    date: null,
     startTime:document.getElementById("fTaskTime")?.value||null,
     isUrgent:document.getElementById("fUrgent")?.checked||false,
   };
-  if(itemType==="interval"){
-    const d=parseInt(document.getElementById("fDays").value)||0;
-    const w=parseInt(document.getElementById("fWeeks").value)||0;
-    const m=parseInt(document.getElementById("fMonths").value)||0;
-    const y=parseInt(document.getElementById("fYears").value)||0;
-    item.days=d+(w*7)+(m*30)+(y*365);
-    item.lastDone=document.getElementById("fLastDone").value||isoToday();
-  } else if(itemType==="weekday"){
-    item.weekdays=[...selectedWeekdays];
-  }
+
   closeTaskModal();
   await persistItem(item);
   if(item._dbId){items.push(item);showToast(`⚓ "${name}" added`);}
