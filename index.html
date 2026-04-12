@@ -304,6 +304,7 @@
     .event-action-edit{background:#F7F6FF;color:#534AB7}
     .event-action-delete{background:#FDF0F0;color:#A32D2D;border-color:#F5C6C6}
   </style>
+  <script src="version.js"></script>
 </head>
 <body>
 
@@ -371,7 +372,7 @@
     </div>
   </div>
   <div class="list" id="list"></div>
-  <div class="feedback-bar">Beta feedback? Text Dan → <a href="sms:+16515551234">leave a note</a></div>
+  <div class="feedback-bar">Beta feedback? Text Dan → <a href="sms:+16515551234">leave a note</a> · <span id="appVersion"></span></div>
 </div>
 
 <!-- User menu -->
@@ -1924,5 +1925,6 @@ async function confirmAssign(userId) {
 // ─── BOOT ─────────────────────────────────────────────────────────────────────
 updatePreview();
 initAuth();
+document.getElementById('appVersion').textContent = typeof APP_VERSION !== 'undefined' ? 'v' + APP_VERSION : '';
 </script>
 </body>

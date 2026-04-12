@@ -1,0 +1,30 @@
+name: Auto Version
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Calculate build number
+        id: build
+        run: echo "NUM=$(git rev-list --count HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Update version.js
+        run: |
+          echo "const APP_VERSION = \"0.1.${{ steps.build.outputs.NUM }}\";" > version.js
+
+      - name: Commit version bump
+        run: |
+          git config user.email "action@github.com"
+          git config user.name "GitHub Action"
+          git add version.js
+          git diff --staged --quiet || git commit -m "chore: auto version bump v0.1.${{ steps.build.outputs.NUM }}"
+          git push
