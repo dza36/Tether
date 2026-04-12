@@ -1054,17 +1054,16 @@ function rowHTML(item, isOverdue) {
   const isEvent = item.type === 'event';
   // Events don't show avatar or swipe — they expand on tap
   const avatarHTML = (currentHousehold && !isEvent) ? itemAvatarHTML(item.assignedTo || item.createdBy, item.id) : '';
+  const itemStyle = isEvent ? 'position:relative;cursor:pointer;' : exp ? 'position:relative;border-bottom-left-radius:0;border-bottom-right-radius:0;' : 'position:absolute;inset:0;cursor:grab;';
+  const itemClick = (isEvent || exp) ? `onclick="toggleExpand('${item.id}')"` : '';
+  const itemClass = `item${isOverdue?' overdue':''}${exp?' held':''}${(exp||isEvent)?'':' swipeable'}`;
   return `<div class="row-outer" id="outer-${item.id}">
     <div class="row-wrap${exp?' expanded':''}" id="wrap-${item.id}">
       ${(!exp && !isEvent)?`<div class="row-bg">
         <div class="bg-complete"><span class="bg-label" id="lc-${item.id}">✓ Complete</span></div>
         <div class="bg-snooze"><span class="bg-label" id="ls-${item.id}">⏱ Snooze</span></div>
       </div>`:''}
-      <div class="item${isOverdue?' overdue':''}${exp?' held':''} ${(exp||isEvent)?'':'swipeable'}"
-           id="item-${item.id}" data-id="${item.id}"
-           style="${(exp||isEvent)?'position:relative;border-bottom-left-radius:0;border-bottom-right-radius:0;':'position:absolute;inset:0;cursor:grab;'}"
-           onclick="${isEvent?`toggleExpand('${item.id}')`:exp?`toggleExpand('${item.id}')`:''}"
-           ${isEvent?'style="position:relative;cursor:pointer;"':''}>
+      <div class="${itemClass}" id="item-${item.id}" data-id="${item.id}" style="${itemStyle}" ${itemClick}>
         <div class="type-icon-wrap">${iconFor(item)}</div>
         <div class="item-body">
           <div class="item-name">${item.name}</div>
