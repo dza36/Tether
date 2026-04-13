@@ -23,10 +23,11 @@ function getDueDate(item) {
 
 function daysUntil(item) { return dateDiff(today, getDueDate(item)); }
 
-// Is item snoozed (i.e. snoozedUntil is in the future)?
+// Is item snoozed?
 function isSnoozed(item) {
-  if (!item.snoozedUntil) return false;
-  const snoozeDate = new Date(item.snoozedUntil + 'T00:00:00');
+  if (item.status !== 'snoozed') return false;
+  if (!item.altDueDate) return false;
+  const snoozeDate = new Date(item.altDueDate + 'T00:00:00');
   return snoozeDate > today;
 }
 
@@ -35,7 +36,7 @@ function itemVisibleInTab(item, tabName) {
   // Snoozed items never show
   if (isSnoozed(item)) return false;
   // Dismissed items never show (they will reappear when due again naturally)
-  if (item.dismissed) return false;
+  if (item.status === 'cancelled') return false;
 
   const d = daysUntil(item);
   const due = getDueDate(item);
@@ -64,7 +65,7 @@ function fmtInterval(days) {
 }
 
 function badgeFor(item) {
-  if (isSnoozed(item)) return `<span class="badge snoozed">Snoozed �· ${item.snoozedUntil}</span>`;
+  if (isSnoozed(item)) return `<span class="badge snoozed">Snoozed · ${item.altDueDate}</span>`;
   const cl = item.checklist||[];
   if (cl.length>0 && expandedId===item.id) {
     const done=cl.filter(c=>c.done).length;
@@ -126,8 +127,7 @@ let tab="today", expandedId=null, itemType="interval", selectedWeekdays=[1];
 async function completeItem(id) {
   const item = items.find(i=>i.id===id); if (!item) return;
   if (item.checklist) item.checklist.forEach(c=>c.done=false);
-  item.snoozedUntil = null;
-  item.dismissed = false;
+  item.altDueDate = null;
 
   if (item.type==='interval') {
     // Reset countdown but hide from today — it'll reappear when due
@@ -188,8 +188,8 @@ async function confirmSnooze() {
   const item = items.find(i=>i.id===snoozeTargetId); if (!item) return;
   const target = new Date(today);
   target.setDate(target.getDate() + snoozeDays);
-  item.snoozedUntil = target.toISOString().slice(0,10);
-  item.dismissed = false;
+  item.status = 'snoozed';
+  item.altDueDate = target.toISOString().slice(0,10);
   closeSnoozeSheet();
   await persistItem(item);
   showToast(`⏱ Snoozed ${snoozeDays === 1 ? '1 day' : snoozeDays + ' days'}`);
@@ -198,11 +198,11 @@ async function confirmSnooze() {
 
 async function confirmDismiss() {
   const item = items.find(i=>i.id===snoozeTargetId); if (!item) return;
-  item.dismissed = true;
-  item.snoozedUntil = null;
+  item.status = 'cancelled';
+  item.altDueDate = null;
   closeSnoozeSheet();
   await persistItem(item);
-  showToast('👋 Dismissed — back when due');
+  showToast('👋 Dismissed');
   render();
 }
 
@@ -434,15 +434,16 @@ function rowHTML(item, isOverdue) {
 function render() {
   const el = document.getElementById('list');
 
-  // Filter items for current tab — also handle dismissed items resetting
-  // A dismissed item should reappear if its next due date has arrived
+  // Filter items for current tab — expire snoozed items if their altDueDate has passed
   items.forEach(item => {
-    if (item.dismissed && daysUntil(item) <= 0) {
-      item.dismissed = false; // Due again — bring it back silently
-    }
-    if (item.snoozedUntil) {
-      const snoozeDate = new Date(item.snoozedUntil + 'T00:00:00');
-      if (snoozeDate <= today) item.snoozedUntil = null; // Snooze expired
+    // Auto-expire snooze when altDueDate has passed
+    if (item.status === 'snoozed' && item.altDueDate) {
+      const snoozeDate = new Date(item.altDueDate + 'T00:00:00');
+      if (snoozeDate <= today) {
+        item.status = item.lastDone ? 'recurred' : 'active';
+        item.altDueDate = null;
+        persistItem(item);
+      }
     }
   });
 
@@ -726,7 +727,7 @@ async function saveItem(){
   }
 
   const item={
-    name, type, checklist:[], snoozedUntil:null, dismissed:false,
+    name, type, checklist:[], status:'active',
     days, lastDone, weekdays, weekInterval, monthDay, monthWeek, monthWeekday,
     date,
     startTime:document.getElementById("fTaskTime")?.value||null,
@@ -772,7 +773,7 @@ async function saveEvent(){
   const btn=document.getElementById("btnEventSave");
   btn.disabled=true; btn.textContent="Saving...";
   const item={
-    name,type:"event",checklist:[],snoozedUntil:null,dismissed:false,
+    name,type:"event",checklist:[],status:'active',
     date:document.getElementById("fEventStartDate").value,
     startTime:document.getElementById("fEventStartTime").value||null,
     endTime:document.getElementById("fEventEndTime").value||null,
