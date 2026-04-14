@@ -1,8 +1,7 @@
 name: Auto Version
 
 on:
-  push:
-    branches: [master]
+  workflow_dispatch: # disabled — version is now generated in azure-static-web-apps workflow
 
 jobs:
   version:
