@@ -159,8 +159,6 @@ async function persistItem(item) {
         .eq('id', item._dbId);
       if (error) { console.error('persistItem update error', error); showToast('Save error: ' + (error.message || JSON.stringify(error))); }
     } else {
-      const row = itemToDbRow(item);
-      console.log('persistItem insert', row);
       const { data, error } = await sb.from('tether_items')
         .insert(row)
         .select()
