@@ -135,19 +135,24 @@ async function completeItem(id) {
   if (item.checklist) item.checklist.forEach(c=>c.done=false);
   item.altDueDate = null;
 
+  // Capture due date before mutating lastDone
+  const dueDate = getDueDate(item).toISOString().slice(0,10);
+
   if (item.type==='interval') {
-    // Reset countdown but hide from today — it'll reappear when due
     item.lastDone = isoToday();
     showToast('✓ Done — see you in ' + fmtInterval(item.days).toLowerCase().replace('every ',''));
     await persistItem(item);
+    recordCompletion(item, dueDate);
   } else if (item.type==='weekday') {
-    item.lastDone = isoToday();
+    // Set lastDone to the due date (not today) so early completions skip correctly
+    item.lastDone = dueDate;
     const nextDay = nextFromDays(item.weekdays||[1], 1);
     const daysAway = Math.round((nextDay - today) / 86400000);
     const dayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][nextDay.getDay()];
     const seeYou = daysAway === 1 ? 'tomorrow' : daysAway <= 6 ? dayName : daysAway === 7 ? 'next week' : `in ${daysAway} days`;
     showToast(`✓ Done — see you ${seeYou}`);
     await persistItem(item);
+    recordCompletion(item, dueDate);
   } else if (item.type==='monthly') {
     const l = new Date(item.lastDone+'T00:00:00');
     const months = item.days||1;
@@ -162,8 +167,8 @@ async function completeItem(id) {
     item.lastDone = next.toISOString().slice(0,10);
     showToast('✓ Done — see you next month');
     await persistItem(item);
+    recordCompletion(item, dueDate);
   } else if (item.type==='event') {
-    // Events are dismissed, not completed — status change only
     item.status = 'dismissed';
     await persistItem(item);
     showToast('👋 Dismissed');
@@ -172,9 +177,22 @@ async function completeItem(id) {
     item.status = 'completed';
     await persistItem(item);
     showToast('✓ Done');
+    recordCompletion(item, dueDate);
   }
   if (expandedId===id) expandedId=null;
   setTimeout(render, 50);
+}
+
+function recordCompletion(item, dueDate) {
+  // Fire and forget — non-blocking, non-critical
+  sb.from('tether_completions').insert({
+    item_id: item.id,
+    user_id: currentUser.id,
+    household_id: item.householdId || currentHousehold?.id || null,
+    action: 'completed',
+    completed_at: new Date().toISOString(),
+    due_date: dueDate,
+  }).then(({error}) => { if (error) console.warn('recordCompletion failed', error); });
 }
 
 // ─── SNOOZE SHEET ─────────────────────────────────────────────────────────────
