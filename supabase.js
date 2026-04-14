@@ -160,7 +160,7 @@ async function persistItem(item) {
       if (error) { console.error('persistItem update error', error); showToast('Save error: ' + (error.message || JSON.stringify(error))); }
     } else {
       const { data, error } = await sb.from('tether_items')
-        .insert(row)
+        .insert(itemToDbRow(item))
         .select()
         .single();
       if (error) { console.error('persistItem insert error', error); showToast('Save error: ' + (error.message || JSON.stringify(error))); return; }
