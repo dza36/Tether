@@ -1,13 +1,13 @@
 // ─── CORE LOGIC ───────────────────────────────────────────────────────────────
-const today = new Date(); today.setHours(0,0,0,0);
+let today = new Date(); today.setHours(0,0,0,0);
 function isoToday() { return today.toISOString().slice(0,10); }
 function dateDiff(a,b) { return Math.round((b-a)/86400000); }
 function rollingWeekEnd() { const d=new Date(today); d.setDate(d.getDate()+7); return d; }
 function rollingMonthEnd() { const d=new Date(today); d.setDate(d.getDate()+30); return d; }
 
-function nextFromDays(wd) {
+function nextFromDays(wd, startI=0) {
   const d = new Date(today);
-  for (let i = 0; i < 8; i++) {
+  for (let i = startI; i < startI+8; i++) {
     const t = new Date(d); t.setDate(t.getDate()+i);
     if (wd.includes(t.getDay())) return t;
   }
@@ -15,8 +15,9 @@ function nextFromDays(wd) {
 }
 
 function getDueDate(item) {
-  if (item.type==='event') return new Date(item.date+'T00:00:00');
-  if (item.type==='weekday') return nextFromDays(item.weekdays||[1]);
+  if (item.type==='event'||item.type==='oneTime') return new Date((item.date||isoToday())+'T00:00:00');
+  if (item.type==='weekday') return nextFromDays(item.weekdays||[1], item.lastDone===isoToday()?1:0);
+  if (item.type==='monthly') return new Date((item.lastDone||isoToday())+'T00:00:00');
   const l = new Date(item.lastDone+'T00:00:00');
   const d = new Date(l); d.setDate(d.getDate()+(item.days||0)); return d;
 }
@@ -135,14 +136,28 @@ async function completeItem(id) {
     showToast('✓ Done — see you in ' + fmtInterval(item.days).toLowerCase().replace('every ',''));
     await persistItem(item);
   } else if (item.type==='weekday') {
-    // Nothing to change — next occurrence is calculated from weekday schedule
+    item.lastDone = isoToday();
     showToast('✓ Done — see you next week');
     await persistItem(item);
+  } else if (item.type==='monthly') {
+    const l = new Date(item.lastDone+'T00:00:00');
+    const months = item.days||1;
+    let next;
+    if (item.monthWeek!=null && item.monthWeekday!=null) {
+      next = new Date(l.getFullYear(), l.getMonth()+months, 1);
+      let count=0, tries=0;
+      while (tries++<35) { if (next.getDay()===item.monthWeekday&&++count===item.monthWeek) break; next.setDate(next.getDate()+1); }
+    } else {
+      next = new Date(l.getFullYear(), l.getMonth()+months, item.monthDay||l.getDate());
+    }
+    item.lastDone = next.toISOString().slice(0,10);
+    showToast('✓ Done — see you next month');
+    await persistItem(item);
   } else {
-    // One-time event — delete it
+    // One-time item or event — delete it
     items = items.filter(i=>i.id!==id);
     await deleteItemFromDb(id);
-    showToast('✓ Event cleared');
+    showToast('✓ Done');
   }
   if (expandedId===id) expandedId=null;
   setTimeout(render, 50);
@@ -432,6 +447,7 @@ function rowHTML(item, isOverdue) {
 }
 
 function render() {
+  today = new Date(); today.setHours(0,0,0,0);
   const el = document.getElementById('list');
 
   // Filter items for current tab — expire snoozed items if their altDueDate has passed
