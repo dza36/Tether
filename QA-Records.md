@@ -85,7 +85,7 @@ WHERE id::text LIKE '11111111%';
 ## Pre-Launch Checklist
 
 - [ ] Delete all test users (SQL above)
-- [ ] Write RLS policies for `contacts`, `groups`, `group_members`
+- [x] Write RLS policies for `contacts`, `groups`, `group_members`
 - [ ] Remove `.tether.test` email domain from any allowlists
 - [ ] Confirm `items.household_id` nullable migration didn't break anything in prod
 - [ ] Smoke test contacts flow with real accounts
