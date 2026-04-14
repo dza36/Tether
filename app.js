@@ -39,6 +39,8 @@ function itemVisibleInTab(item, tabName) {
   if (isSnoozed(item)) return false;
   // Dismissed events never show
   if (item.status === 'dismissed') return false;
+  // Completed one-time tasks never show again
+  if (item.status === 'completed') return false;
   // Dismissed tasks never show (they will reappear when due again naturally)
   if (item.status === 'cancelled') return false;
 
@@ -166,9 +168,9 @@ async function completeItem(id) {
     await persistItem(item);
     showToast('👋 Dismissed');
   } else {
-    // One-time item — delete it
-    items = items.filter(i=>i.id!==id);
-    await deleteItemFromDb(id);
+    // One-time item — archive it (keep for history)
+    item.status = 'completed';
+    await persistItem(item);
     showToast('✓ Done');
   }
   if (expandedId===id) expandedId=null;
@@ -236,24 +238,49 @@ async function confirmDismiss() {
 // ─── CONFIRM COMPLETE ─────────────────────────────────────────────────────────
 let pendingCompleteId = null;
 
+function hasUncheckedItems(item) {
+  const cl = item.checklist || [];
+  return cl.length > 0 && cl.some(c => !c.done);
+}
+
 function needsCompleteConfirm(item) {
+  if (hasUncheckedItems(item)) return true;
   const d = daysUntil(item);
-  if (d > 0) return true; // due tomorrow or later — always confirm
+  if (d > 0) return true;
   if (d === 0 && item.startTime) {
     const now = new Date();
     const [h, m] = item.startTime.split(':').map(Number);
     const start = new Date(today); start.setHours(h, m, 0, 0);
-    return (start - now) / 60000 > 60; // more than 60 min before start time
+    return (start - now) / 60000 > 60;
   }
   return false;
 }
 
-function openConfirmComplete(id) {
+function openConfirmComplete(id, reason) {
+  // reason: 'lastCheck' | undefined (auto-detect)
   const item = items.find(i=>i.id===id); if (!item) return;
   pendingCompleteId = id;
+
+  const unchecked = (item.checklist||[]).filter(c => !c.done).length;
   const d = daysUntil(item);
+  const timingIssue = d > 0 || (d === 0 && item.startTime && (() => {
+    const now = new Date();
+    const [h,m] = item.startTime.split(':').map(Number);
+    const start = new Date(today); start.setHours(h,m,0,0);
+    return (start - now) / 60000 > 60;
+  })());
+
   let title;
-  if (d > 0) {
+  if (reason === 'lastCheck') {
+    title = 'Complete the task?';
+  } else if (unchecked > 0 && timingIssue) {
+    const due = getDueDate(item);
+    const dayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][due.getDay()];
+    const whenStr = d === 1 ? 'tomorrow' : `${dayName}`;
+    title = `Not due until ${whenStr} · ${unchecked} item${unchecked===1?'':'s'} not checked off`;
+  } else if (unchecked > 0) {
+    title = `${unchecked} item${unchecked===1?'':'s'} not checked off`;
+  } else if (d > 0) {
     const due = getDueDate(item);
     const dayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][due.getDay()];
     title = d === 1 ? "This isn't due until tomorrow" : `This isn't due until ${dayName}`;
@@ -263,6 +290,7 @@ function openConfirmComplete(id) {
     const h12 = h % 12 || 12;
     title = `This isn't until ${h12}:${String(m).padStart(2,'0')} ${ampm}`;
   }
+
   document.getElementById('confirmCompleteTitle').textContent = title;
   document.getElementById('confirmCompleteSub').textContent = item.name;
   document.getElementById('confirmCompleteBg').classList.add('open');
@@ -297,6 +325,11 @@ async function toggleCheck(id,idx) {
   const item=items.find(i=>i.id===id); if (!item) return;
   item.checklist[idx].done=!item.checklist[idx].done;
   await persistItem(item); renderChecklist(id); renderBadge(id);
+  // Auto-prompt complete when last item gets checked
+  const cl = item.checklist||[];
+  if (item.checklist[idx].done && cl.every(c=>c.done)) {
+    openConfirmComplete(id, 'lastCheck');
+  }
 }
 async function deleteCheckItem(id,idx) {
   const item=items.find(i=>i.id===id); if (!item) return;
