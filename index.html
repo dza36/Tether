@@ -285,6 +285,19 @@
   </div>
 </div>
 
+<!-- Confirm complete bottom sheet -->
+<div class="snooze-bg" id="confirmCompleteBg" onclick="bgClickConfirmComplete(event)">
+  <div class="snooze-sheet">
+    <div class="snooze-handle"></div>
+    <div class="snooze-title" id="confirmCompleteTitle"></div>
+    <div class="snooze-item-name" id="confirmCompleteSub"></div>
+    <div class="snooze-actions">
+      <button class="snooze-btn-snooze" onclick="doCompleteItem()">✓ Mark it done</button>
+      <button class="snooze-btn-cancel" onclick="closeConfirmComplete()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- Assign picker -->
 <div class="assign-bg" id="assignBg" onclick="bgClickAssign(event)">
   <div class="assign-sheet">

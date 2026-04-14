@@ -225,6 +225,57 @@ async function confirmDismiss() {
   render();
 }
 
+// ─── CONFIRM COMPLETE ─────────────────────────────────────────────────────────
+let pendingCompleteId = null;
+
+function needsCompleteConfirm(item) {
+  const d = daysUntil(item);
+  if (d > 0) return true; // due tomorrow or later — always confirm
+  if (d === 0 && item.startTime) {
+    const now = new Date();
+    const [h, m] = item.startTime.split(':').map(Number);
+    const start = new Date(today); start.setHours(h, m, 0, 0);
+    return (start - now) / 60000 > 60; // more than 60 min before start time
+  }
+  return false;
+}
+
+function openConfirmComplete(id) {
+  const item = items.find(i=>i.id===id); if (!item) return;
+  pendingCompleteId = id;
+  const d = daysUntil(item);
+  let title;
+  if (d > 0) {
+    const due = getDueDate(item);
+    const dayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][due.getDay()];
+    title = d === 1 ? "This isn't due until tomorrow" : `This isn't due until ${dayName}`;
+  } else {
+    const [h, m] = item.startTime.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    title = `This isn't until ${h12}:${String(m).padStart(2,'0')} ${ampm}`;
+  }
+  document.getElementById('confirmCompleteTitle').textContent = title;
+  document.getElementById('confirmCompleteSub').textContent = item.name;
+  document.getElementById('confirmCompleteBg').classList.add('open');
+}
+
+function closeConfirmComplete() {
+  document.getElementById('confirmCompleteBg').classList.remove('open');
+  pendingCompleteId = null;
+  render();
+}
+
+function bgClickConfirmComplete(e) {
+  if (e.target === document.getElementById('confirmCompleteBg')) closeConfirmComplete();
+}
+
+async function doCompleteItem() {
+  const id = pendingCompleteId;
+  closeConfirmComplete();
+  if (id) await completeItem(id);
+}
+
 function toggleExpand(id) {
   expandedId = expandedId===id ? null : id;
   render();
@@ -525,7 +576,11 @@ function attachSwipe(el) {
     clearTimeout(holdTimer);if(!dragging)return;dragging=false;el.classList.remove('swiping');
     const lc=document.getElementById('lc-'+id),ls=document.getElementById('ls-'+id);
     if(lc)lc.classList.remove('show');if(ls)ls.classList.remove('show');
-    if(curX>THRESHOLD){el.classList.add('completing');setTimeout(()=>completeItem(id),220);}
+    if(curX>THRESHOLD){
+      const swipeItem=items.find(i=>i.id===id);
+      if(swipeItem&&needsCompleteConfirm(swipeItem)){el.style.transform='translateX(0)';openConfirmComplete(id);}
+      else{el.classList.add('completing');setTimeout(()=>completeItem(id),220);}
+    }
     else if(curX<-THRESHOLD){
       // Animate off then show snooze sheet
       el.classList.add('snoozing');
