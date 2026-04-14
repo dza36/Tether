@@ -152,19 +152,26 @@ async function loadItems() {
 }
 
 async function persistItem(item) {
-  if (item._dbId) {
-    const { error } = await sb.from('tether_items')
-      .update(itemToDbRow(item))
-      .eq('id', item._dbId);
-    if (error) showToast('Save error: ' + error.message);
-  } else {
-    const { data, error } = await sb.from('tether_items')
-      .insert(itemToDbRow(item))
-      .select()
-      .single();
-    if (error) { showToast('Save error: ' + error.message); return; }
-    item.id = data.id;
-    item._dbId = data.id;
+  try {
+    if (item._dbId) {
+      const { error } = await sb.from('tether_items')
+        .update(itemToDbRow(item))
+        .eq('id', item._dbId);
+      if (error) { console.error('persistItem update error', error); showToast('Save error: ' + (error.message || JSON.stringify(error))); }
+    } else {
+      const row = itemToDbRow(item);
+      console.log('persistItem insert', row);
+      const { data, error } = await sb.from('tether_items')
+        .insert(row)
+        .select()
+        .single();
+      if (error) { console.error('persistItem insert error', error); showToast('Save error: ' + (error.message || JSON.stringify(error))); return; }
+      item.id = data.id;
+      item._dbId = data.id;
+    }
+  } catch(e) {
+    console.error('persistItem exception', e);
+    showToast('Save error: ' + e.message);
   }
 }
 
