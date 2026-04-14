@@ -189,6 +189,38 @@
   .notif-badge.show{display:block}
 
   /* Pending invite banner */
+  /* Events banner */
+  .events-banner{display:flex;align-items:center;justify-content:space-between;padding:.6rem 1rem;margin:0 1rem .75rem;background:#F7F6FF;border:0.5px solid #CECBF6;border-radius:12px;cursor:pointer;user-select:none}
+  .events-banner:active{background:#EEEDFE}
+  .events-banner span{font-size:13px;font-weight:600;color:#26215C}
+  .events-banner-arrow{font-size:18px;color:#534AB7;font-weight:400;line-height:1}
+
+  /* Events list sheet */
+  .events-list-bg{display:none;position:fixed;inset:0;background:rgba(38,33,92,.5);z-index:150;align-items:flex-end;justify-content:center}
+  .events-list-bg.open{display:flex}
+  .events-list-sheet{background:#fff;border-radius:20px 20px 0 0;border:0.5px solid #CECBF6;width:100%;max-width:430px;max-height:85vh;display:flex;flex-direction:column}
+  .events-list-handle{width:36px;height:4px;background:#CECBF6;border-radius:2px;margin:12px auto 0}
+  .events-list-header{display:flex;align-items:center;justify-content:space-between;padding:.75rem 1.25rem .5rem}
+  .events-list-title{font-size:17px;font-weight:700;color:#26215C}
+  .events-list-close{font-size:18px;color:#AFA9EC;cursor:pointer;padding:4px;line-height:1}
+  .events-list-toggle{display:flex;gap:0;margin:0 1.25rem .75rem;border:0.5px solid #CECBF6;border-radius:10px;overflow:hidden}
+  .events-toggle-btn{flex:1;text-align:center;padding:8px 0;font-size:13px;font-weight:600;color:#AFA9EC;cursor:pointer;background:#F7F6FF;transition:background .15s,color .15s}
+  .events-toggle-btn.active{background:#534AB7;color:#fff}
+  .events-list-body{flex:1;overflow-y:auto;padding:0 1.25rem 2rem}
+  .events-month-label{font-size:11px;font-weight:700;color:#AFA9EC;text-transform:uppercase;letter-spacing:.06em;margin:1rem 0 .4rem}
+  .events-list-row{display:flex;align-items:center;gap:10px;padding:.75rem 0;border-bottom:0.5px solid #F0EFF9;cursor:pointer}
+  .events-list-row:last-child{border-bottom:none}
+  .events-list-row:active{opacity:.7}
+  .events-list-icon{font-size:22px;width:32px;text-align:center;flex-shrink:0}
+  .events-list-info{flex:1;min-width:0}
+  .events-list-name{font-size:15px;font-weight:600;color:#26215C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .events-list-meta{font-size:12px;color:#AFA9EC;margin-top:2px}
+  .events-list-rsvp{font-size:11px;font-weight:600;padding:3px 8px;border-radius:6px;flex-shrink:0}
+  .events-list-rsvp.going{background:#DCFCE7;color:#166534}
+  .events-list-rsvp.pending{background:#FEF9C3;color:#854D0E}
+  .events-list-rsvp.maybe{background:#F0F9FF;color:#0C4A6E}
+  .events-list-empty{text-align:center;padding:2.5rem 1rem;color:#AFA9EC;font-size:14px}
+
   .invite-banner{background:#534AB7;color:#fff;padding:.75rem 1rem;display:none;align-items:center;justify-content:space-between;gap:8px;margin:0 1rem .75rem;border-radius:12px}
   .invite-banner.show{display:flex}
   .invite-banner-text{font-size:13px;font-weight:600;flex:1}

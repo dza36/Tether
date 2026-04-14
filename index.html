@@ -69,6 +69,10 @@
     <div class="tab" onclick="setTab('month',this)">This Month</div>
   </div>
   <div class="hint">Swipe <b>right to complete</b> &#9875; <b class="sn">left to snooze</b> &#9875; <b class="hold">hold for checklist</b></div>
+  <div class="events-banner" id="eventsBanner" onclick="openEventsList()">
+    <span id="eventsBannerText">No events this week</span>
+    <span class="events-banner-arrow">›</span>
+  </div>
   <div class="invite-banner" id="inviteBanner">
     <div class="invite-banner-text">Household invite<div class="invite-banner-sub" id="inviteBannerSub"></div></div>
     <div class="invite-banner-btns">
@@ -306,6 +310,22 @@
     <div class="assign-members" id="assignMembers"></div>
     <button class="assign-unassign" onclick="confirmAssign(null)">Remove assignment</button>
     <button class="assign-cancel" onclick="closeAssignPicker()">Cancel</button>
+  </div>
+</div>
+
+<!-- Events list bottom sheet -->
+<div class="events-list-bg" id="eventsListBg" onclick="bgClickEventsList(event)">
+  <div class="events-list-sheet">
+    <div class="events-list-handle"></div>
+    <div class="events-list-header">
+      <div class="events-list-title">Events</div>
+      <div class="events-list-close" onclick="closeEventsList()">✕</div>
+    </div>
+    <div class="events-list-toggle">
+      <div class="events-toggle-btn active" id="eventsToggleFuture" onclick="setEventsView('future',this)">Future</div>
+      <div class="events-toggle-btn" id="eventsTogglePast" onclick="setEventsView('past',this)">Past</div>
+    </div>
+    <div class="events-list-body" id="eventsListBody"></div>
   </div>
 </div>
 

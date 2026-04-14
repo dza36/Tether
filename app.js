@@ -562,6 +562,21 @@ function render() {
 
   el.innerHTML = html;
   el.querySelectorAll('.item[data-id]').forEach(attachSwipe);
+
+  // Update events banner
+  const weekEnd = rollingWeekEnd();
+  const weekEvents = items.filter(i =>
+    i.type === 'event' &&
+    i.status !== 'dismissed' &&
+    getDueDate(i) >= today &&
+    getDueDate(i) <= weekEnd
+  );
+  const bannerText = document.getElementById('eventsBannerText');
+  if (bannerText) {
+    bannerText.textContent = weekEvents.length > 0
+      ? `${weekEvents.length} event${weekEvents.length === 1 ? '' : 's'} this week`
+      : 'No events this week';
+  }
 }
 
 // ─── SWIPE ────────────────────────────────────────────────────────────────────
@@ -871,6 +886,85 @@ async function saveEvent(){
   if(item._dbId){items.push(item);showToast(`${selectedEventIcon} "${name}" added`);}
   btn.disabled=false; btn.textContent="Add Event";
   render();
+}
+
+// ─── EVENTS LIST ─────────────────────────────────────────────────────────────
+let eventsView = 'future'; // 'future' | 'past'
+
+function openEventDetail(id) {
+  // TODO: full event detail sheet — placeholder
+  const item = items.find(i => i.id === id);
+  if (item) showToast(`${item.eventIcon || '📅'} ${item.name}`);
+}
+
+function openEventsList() {
+  eventsView = 'future';
+  document.getElementById('eventsToggleFuture').classList.add('active');
+  document.getElementById('eventsTogglePast').classList.remove('active');
+  renderEventsList();
+  document.getElementById('eventsListBg').classList.add('open');
+}
+
+function closeEventsList() {
+  document.getElementById('eventsListBg').classList.remove('open');
+}
+
+function bgClickEventsList(e) {
+  if (e.target === document.getElementById('eventsListBg')) closeEventsList();
+}
+
+function setEventsView(view, el) {
+  eventsView = view;
+  el.parentElement.querySelectorAll('.events-toggle-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderEventsList();
+}
+
+function renderEventsList() {
+  const body = document.getElementById('eventsListBody');
+  const now = new Date(); now.setHours(0,0,0,0);
+
+  const eventItems = items.filter(i => i.type === 'event');
+
+  let list;
+  if (eventsView === 'future') {
+    list = eventItems
+      .filter(i => i.status !== 'dismissed' && getDueDate(i) >= now)
+      .sort((a, b) => getDueDate(a) - getDueDate(b));
+  } else {
+    list = eventItems
+      .filter(i => i.status === 'dismissed' || getDueDate(i) < now)
+      .sort((a, b) => getDueDate(b) - getDueDate(a));
+  }
+
+  if (list.length === 0) {
+    body.innerHTML = `<div class="events-list-empty">${eventsView === 'future' ? 'No upcoming events' : 'No past events'}</div>`;
+    return;
+  }
+
+  // Group by month
+  let html = '';
+  let lastMonth = null;
+  list.forEach(item => {
+    const due = getDueDate(item);
+    const monthKey = due ? due.toLocaleString('default', { month: 'long', year: 'numeric' }) : 'Unknown';
+    if (monthKey !== lastMonth) {
+      html += `<div class="events-month-label">${monthKey}</div>`;
+      lastMonth = monthKey;
+    }
+    const icon = item.eventIcon || '📅';
+    const dateStr = item.date ? fmtDate(new Date(item.date + 'T00:00:00')) : '';
+    const timeStr = item.startTime ? ` · ${fmtTime(item.startTime)}` : '';
+    html += `<div class="events-list-row" onclick="openEventDetail('${item.id}')">
+      <div class="events-list-icon">${icon}</div>
+      <div class="events-list-info">
+        <div class="events-list-name">${item.name}</div>
+        <div class="events-list-meta">${dateStr}${timeStr}</div>
+      </div>
+    </div>`;
+  });
+
+  body.innerHTML = html;
 }
 
 // ─── HOUSEHOLD ───────────────────────────────────────────────────────────────
