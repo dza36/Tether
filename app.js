@@ -967,6 +967,182 @@ function renderEventsList() {
   body.innerHTML = html;
 }
 
+// ─── GROUPS SHEET ────────────────────────────────────────────────────────────
+function openGroupsSheet() {
+  document.getElementById('groupsBg').classList.add('open');
+  renderGroupsSheet(null);
+}
+function closeGroupsSheet() {
+  document.getElementById('groupsBg').classList.remove('open');
+}
+function bgClickGroupsSheet(e) {
+  if (e.target === document.getElementById('groupsBg')) closeGroupsSheet();
+}
+
+async function renderGroupsSheet(groupId) {
+  const body    = document.getElementById('groupsBody');
+  const title   = document.getElementById('groupsTitle');
+  const backBtn = document.getElementById('groupsBack');
+  body.innerHTML = `<div class="social-loading">Loading…</div>`;
+
+  if (!groupId) {
+    // ── Group list view ──
+    title.textContent = 'Groups';
+    backBtn.style.display = 'none';
+
+    const { data: groups, error } = await sb.from('groups')
+      .select('id, name')
+      .eq('created_by', currentUser.id)
+      .order('name');
+
+    if (error || !groups?.length) {
+      body.innerHTML = `<div class="social-empty">No groups yet</div>`;
+      return;
+    }
+
+    // Get member counts
+    const { data: counts } = await sb.from('group_members')
+      .select('group_id')
+      .in('group_id', groups.map(g => g.id));
+
+    const countMap = {};
+    (counts || []).forEach(r => { countMap[r.group_id] = (countMap[r.group_id] || 0) + 1; });
+
+    body.innerHTML = groups.map(g => {
+      const n = countMap[g.id] || 0;
+      return `<div class="social-row" onclick="renderGroupsSheet('${g.id}')">
+        <div class="social-avatar" style="background:#F7F6FF;font-size:18px">👥</div>
+        <div class="social-row-info">
+          <div class="social-row-name">${g.name}</div>
+          <div class="social-row-meta">${n} member${n === 1 ? '' : 's'}</div>
+        </div>
+        <div class="social-row-arrow">›</div>
+      </div>`;
+    }).join('');
+
+  } else {
+    // ── Group detail view ──
+    backBtn.style.display = '';
+
+    const { data: group } = await sb.from('groups').select('name').eq('id', groupId).single();
+    title.textContent = group?.name || 'Group';
+
+    const { data: members, error } = await sb.from('group_members')
+      .select('user_id')
+      .eq('group_id', groupId);
+
+    if (error || !members?.length) {
+      body.innerHTML = `<div class="social-empty">No members</div>`;
+      return;
+    }
+
+    const { data: profiles } = await sb.from('users')
+      .select('id, display_name, avatar_url, email')
+      .in('id', members.map(m => m.user_id))
+      .order('display_name');
+
+    body.innerHTML = (profiles || []).map(u => {
+      const initials = getInitials(u.display_name || u.email);
+      const avatar   = u.avatar_url
+        ? `<img src="${u.avatar_url}" alt="${initials}"/>`
+        : initials;
+      return `<div class="social-row">
+        <div class="social-avatar">${avatar}</div>
+        <div class="social-row-info">
+          <div class="social-row-name">${u.display_name || u.email}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+}
+
+// ─── CONTACTS SHEET ───────────────────────────────────────────────────────────
+function openContactsSheet() {
+  document.getElementById('contactsBg').classList.add('open');
+  renderContactsSheet();
+}
+function closeContactsSheet() {
+  document.getElementById('contactsBg').classList.remove('open');
+}
+function bgClickContactsSheet(e) {
+  if (e.target === document.getElementById('contactsBg')) closeContactsSheet();
+}
+
+async function renderContactsSheet() {
+  const body = document.getElementById('contactsBody');
+  body.innerHTML = `<div class="social-loading">Loading…</div>`;
+
+  // Load all accepted contacts
+  const { data: contactRows, error } = await sb.from('contacts')
+    .select('recipient_id')
+    .eq('requester_id', currentUser.id)
+    .eq('status', 'accepted');
+
+  if (error || !contactRows?.length) {
+    body.innerHTML = `<div class="social-empty">No contacts yet</div>`;
+    return;
+  }
+
+  const contactIds = contactRows.map(r => r.recipient_id);
+
+  // Load profiles and group memberships in parallel
+  const [profilesRes, groupsRes, membersRes] = await Promise.all([
+    sb.from('users').select('id, display_name, avatar_url, email').in('id', contactIds).order('display_name'),
+    sb.from('groups').select('id, name').eq('created_by', currentUser.id).order('name'),
+    sb.from('group_members').select('group_id, user_id').in('user_id', contactIds),
+  ]);
+
+  const profiles   = profilesRes.data  || [];
+  const groups     = groupsRes.data    || [];
+  const memberships= membersRes.data   || [];
+
+  // Build map: userId → [groupName, ...]
+  const userGroups = {};
+  memberships.forEach(m => {
+    const g = groups.find(g => g.id === m.group_id);
+    if (!g) return;
+    if (!userGroups[m.user_id]) userGroups[m.user_id] = [];
+    userGroups[m.user_id].push(g.name);
+  });
+
+  // Build sections: one per group (members of that group), then ungrouped
+  const rendered = new Set();
+  let html = '';
+
+  groups.forEach(g => {
+    const members = profiles.filter(p =>
+      memberships.some(m => m.group_id === g.id && m.user_id === p.id)
+    );
+    if (!members.length) return;
+    html += `<div class="social-section-label">${g.name}</div>`;
+    members.forEach(u => {
+      html += contactRowHTML(u);
+      rendered.add(u.id);
+    });
+  });
+
+  const ungrouped = profiles.filter(p => !rendered.has(p.id));
+  if (ungrouped.length) {
+    html += `<div class="social-section-label">Not in a group</div>`;
+    ungrouped.forEach(u => { html += contactRowHTML(u); });
+  }
+
+  body.innerHTML = html || `<div class="social-empty">No contacts yet</div>`;
+}
+
+function contactRowHTML(u) {
+  const initials = getInitials(u.display_name || u.email);
+  const avatar   = u.avatar_url
+    ? `<img src="${u.avatar_url}" alt="${initials}"/>`
+    : initials;
+  return `<div class="social-row">
+    <div class="social-avatar">${avatar}</div>
+    <div class="social-row-info">
+      <div class="social-row-name">${u.display_name || u.email}</div>
+    </div>
+  </div>`;
+}
+
 // ─── HOUSEHOLD ───────────────────────────────────────────────────────────────
 let currentHousehold = null;
 let householdMembers = [];

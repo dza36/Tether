@@ -98,9 +98,40 @@
     <div class="menu-item" onclick="openHouseholdSheet();closeUserMenu();">
       <span class="menu-icon">🏠</span> Household
     </div>
+    <div class="menu-item" onclick="openGroupsSheet();closeUserMenu();">
+      <span class="menu-icon">👥</span> Groups
+    </div>
+    <div class="menu-item" onclick="openContactsSheet();closeUserMenu();">
+      <span class="menu-icon">🤝</span> Contacts
+    </div>
     <div class="menu-item danger" onclick="signOut()">
       <span class="menu-icon">🚪</span> Sign out
     </div>
+  </div>
+</div>
+
+<!-- Groups bottom sheet -->
+<div class="social-bg" id="groupsBg" onclick="bgClickGroupsSheet(event)">
+  <div class="social-sheet">
+    <div class="social-handle"></div>
+    <div class="social-header" id="groupsHeader">
+      <div class="social-back" id="groupsBack" onclick="renderGroupsSheet(null)" style="display:none">‹</div>
+      <div class="social-title" id="groupsTitle">Groups</div>
+      <div class="social-close" onclick="closeGroupsSheet()">✕</div>
+    </div>
+    <div class="social-body" id="groupsBody"></div>
+  </div>
+</div>
+
+<!-- Contacts bottom sheet -->
+<div class="social-bg" id="contactsBg" onclick="bgClickContactsSheet(event)">
+  <div class="social-sheet">
+    <div class="social-handle"></div>
+    <div class="social-header">
+      <div class="social-title">Contacts</div>
+      <div class="social-close" onclick="closeContactsSheet()">✕</div>
+    </div>
+    <div class="social-body" id="contactsBody"></div>
   </div>
 </div>
 
