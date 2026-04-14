@@ -137,7 +137,11 @@ async function completeItem(id) {
     await persistItem(item);
   } else if (item.type==='weekday') {
     item.lastDone = isoToday();
-    showToast('✓ Done — see you next week');
+    const nextDay = nextFromDays(item.weekdays||[1], 1);
+    const daysAway = Math.round((nextDay - today) / 86400000);
+    const dayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][nextDay.getDay()];
+    const seeYou = daysAway === 1 ? 'tomorrow' : daysAway <= 6 ? dayName : daysAway === 7 ? 'next week' : `in ${daysAway} days`;
+    showToast(`✓ Done — see you ${seeYou}`);
     await persistItem(item);
   } else if (item.type==='monthly') {
     const l = new Date(item.lastDone+'T00:00:00');
