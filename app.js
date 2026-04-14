@@ -26,17 +26,20 @@ function daysUntil(item) { return dateDiff(today, getDueDate(item)); }
 
 // Is item snoozed?
 function isSnoozed(item) {
-  if (item.status !== 'snoozed') return false;
   if (!item.altDueDate) return false;
   const snoozeDate = new Date(item.altDueDate + 'T00:00:00');
-  return snoozeDate > today;
+  if (snoozeDate <= today) return false;
+  // Events use altDueDate directly; tasks also require status='snoozed'
+  return item.type === 'event' || item.status === 'snoozed';
 }
 
 // Tab filtering
 function itemVisibleInTab(item, tabName) {
   // Snoozed items never show
   if (isSnoozed(item)) return false;
-  // Dismissed items never show (they will reappear when due again naturally)
+  // Dismissed events never show
+  if (item.status === 'dismissed') return false;
+  // Dismissed tasks never show (they will reappear when due again naturally)
   if (item.status === 'cancelled') return false;
 
   const d = daysUntil(item);
@@ -157,8 +160,13 @@ async function completeItem(id) {
     item.lastDone = next.toISOString().slice(0,10);
     showToast('✓ Done — see you next month');
     await persistItem(item);
+  } else if (item.type==='event') {
+    // Events are dismissed, not completed — status change only
+    item.status = 'dismissed';
+    await persistItem(item);
+    showToast('👋 Dismissed');
   } else {
-    // One-time item or event — delete it
+    // One-time item — delete it
     items = items.filter(i=>i.id!==id);
     await deleteItemFromDb(id);
     showToast('✓ Done');
@@ -326,7 +334,7 @@ function editItem(id) {
     document.getElementById("fEventName").value=item.name;
     document.getElementById("fEventStartDate").value=item.date||"";
     document.getElementById("fEventStartTime").value=item.startTime||"";
-    document.getElementById("fEventEndDate").value="";
+    document.getElementById("fEventEndDate").value=item.endDate||"";
     document.getElementById("fEventEndTime").value=item.endTime||"";
     document.getElementById("btnEventSave").disabled=false;
     document.getElementById("btnEventSave").onclick=async function(){
@@ -850,9 +858,12 @@ async function saveEvent(){
   const item={
     name,type:"event",checklist:[],status:'active',
     date:document.getElementById("fEventStartDate").value,
+    endDate:document.getElementById("fEventEndDate").value||null,
     startTime:document.getElementById("fEventStartTime").value||null,
     endTime:document.getElementById("fEventEndTime").value||null,
     eventIcon:selectedEventIcon,
+    guestsCanInvite:true,
+    allowAdditionalItems:true,
     isUrgent:false,
   };
   closeEventModal();
@@ -1183,21 +1194,22 @@ async function loadEventPanel(itemId) {
   // RSVP section
   const rsvpHTML = `
     <div class="event-rsvp-row">
-      <button class="rsvp-btn accept${myRsvp?.rsvp_status==='accepted'?' active-accept':''}" onclick="rsvpEvent('${itemId}','accepted')">✓ Going</button>
-      <button class="rsvp-btn decline${myRsvp?.rsvp_status==='declined'?' active-decline':''}" onclick="rsvpEvent('${itemId}','declined')">✕ Can't make it</button>
+      <button class="rsvp-btn accept${myRsvp?.rsvp_status==='going'?' active-accept':''}" onclick="rsvpEvent('${itemId}','going')">✓ Going</button>
+      <button class="rsvp-btn tentative${myRsvp?.rsvp_status==='maybe'?' active-tentative':''}" onclick="rsvpEvent('${itemId}','maybe')">~ Tentative</button>
+      <button class="rsvp-btn decline${myRsvp?.rsvp_status==='not_going'?' active-decline':''}" onclick="rsvpEvent('${itemId}','not_going')">✕ Can't make it</button>
     </div>`;
 
   // Attendees section
   const attendeesHTML = guests.length > 0 ? `
-    <div class="event-section-title">Attendees (${guests.filter(g=>g.rsvp_status==='accepted').length} going)</div>
+    <div class="event-section-title">Attendees (${guests.filter(g=>g.rsvp_status==='going').length} going)</div>
     <div class="attendee-list">
       ${guests.map(g => {
         const profile = guestProfiles.find(p => p.id === g.user_id) || {};
         const initials = getInitials(profile.display_name || profile.email || '?');
         const img = profile.avatar_url ? `<img src="${profile.avatar_url}" alt="${initials}"/>` : initials;
         const name = profile.display_name || profile.email?.split('@')[0] || 'Guest';
-        const statusClass = g.rsvp_status === 'accepted' ? 'going' : g.rsvp_status === 'declined' ? 'declined' : 'pending';
-        const statusLabel = g.rsvp_status === 'accepted' ? 'Going' : g.rsvp_status === 'declined' ? 'Declined' : 'Invited';
+        const statusClass = g.rsvp_status === 'going' ? 'going' : g.rsvp_status === 'not_going' ? 'declined' : g.rsvp_status === 'maybe' ? 'tentative' : 'pending';
+        const statusLabel = g.rsvp_status === 'going' ? 'Going' : g.rsvp_status === 'not_going' ? 'Declined' : g.rsvp_status === 'maybe' ? 'Tentative' : 'Invited';
         return `<div class="attendee-row">
           <div class="attendee-avatar">${img}</div>
           <div class="attendee-name">${name}</div>
@@ -1273,7 +1285,7 @@ async function rsvpEvent(itemId, status) {
     await sb.from('event_guests')
       .insert({ item_id: itemId, user_id: currentUser.id, rsvp_status: status, responded_at: new Date().toISOString() });
   }
-  showToast(status === 'accepted' ? '✓ You\'re going!' : 'Noted — you can\'t make it');
+  showToast(status === 'going' ? '✓ You\'re going!' : status === 'maybe' ? 'Marked as tentative' : 'Noted — you can\'t make it');
   loadEventPanel(itemId);
 }
 

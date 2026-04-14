@@ -88,6 +88,7 @@ function bgClickMenu(e) { if (e.target === document.getElementById('userMenuBg')
 // ─── DATA (Supabase) ──────────────────────────────────────────────────────────
 let items = [];
 
+// ── Task mappers (tether_items) ───────────────────────────────────────────────
 function dbRowToItem(row) {
   return {
     id: row.id,
@@ -143,15 +144,88 @@ function itemToDbRow(item) {
   };
 }
 
+// ── Event mappers (items) ─────────────────────────────────────────────────────
+function dbRowToEvent(row) {
+  return {
+    id: row.id,
+    _dbId: row.id,
+    name: row.name,
+    type: 'event',
+    status: row.status || 'active',
+    date: row.event_date || null,
+    endDate: row.end_date || null,
+    startTime: row.start_time || null,
+    endTime: row.end_time || null,
+    eventIcon: row.event_icon || null,
+    householdId: row.household_id || null,
+    createdBy: row.created_by || null,
+    guestsCanInvite: row.guests_can_invite ?? true,
+    allowAdditionalItems: row.allow_additional_items ?? true,
+    altDueDate: row.snoozed_until || null,
+    visibility: row.visibility || 'household',
+    checklist: [],
+    isUrgent: false,
+  };
+}
+
+function eventToDbRow(item) {
+  return {
+    household_id: item.householdId || currentHousehold?.id || null,
+    created_by: item.createdBy || currentUser.id,
+    item_type: 'event',
+    name: item.name,
+    event_date: item.date || null,
+    end_date: item.endDate || null,
+    start_time: item.startTime || null,
+    end_time: item.endTime || null,
+    event_icon: item.eventIcon || null,
+    status: item.status || 'active',
+    guests_can_invite: item.guestsCanInvite ?? true,
+    allow_additional_items: item.allowAdditionalItems ?? true,
+    snoozed_until: item.altDueDate || null,
+    visibility: item.visibility || 'household',
+  };
+}
+
+// ── Load ──────────────────────────────────────────────────────────────────────
 async function loadItems() {
-  const { data, error } = await sb.from('tether_items')
-    .select('*')
-    .order('created_at', { ascending: true });
-  if (error) { showToast('Load error: ' + error.message); return; }
-  items = (data || []).map(dbRowToItem);
+  const [tasksRes, eventsRes] = await Promise.all([
+    sb.from('tether_items').select('*').order('created_at', { ascending: true }),
+    sb.from('items').select('*').eq('item_type', 'event').order('created_at', { ascending: true }),
+  ]);
+  if (tasksRes.error) { showToast('Load error: ' + tasksRes.error.message); return; }
+  if (eventsRes.error) { showToast('Load error: ' + eventsRes.error.message); return; }
+  items = [
+    ...(tasksRes.data || []).map(dbRowToItem),
+    ...(eventsRes.data || []).map(dbRowToEvent),
+  ];
+}
+
+// ── Persist ───────────────────────────────────────────────────────────────────
+async function persistEvent(item) {
+  try {
+    if (item._dbId) {
+      const { error } = await sb.from('items')
+        .update(eventToDbRow(item))
+        .eq('id', item._dbId);
+      if (error) { console.error('persistEvent update error', error); showToast('Save error: ' + (error.message || JSON.stringify(error))); }
+    } else {
+      const { data, error } = await sb.from('items')
+        .insert(eventToDbRow(item))
+        .select()
+        .single();
+      if (error) { console.error('persistEvent insert error', error); showToast('Save error: ' + (error.message || JSON.stringify(error))); return; }
+      item.id = data.id;
+      item._dbId = data.id;
+    }
+  } catch(e) {
+    console.error('persistEvent exception', e);
+    showToast('Save error: ' + e.message);
+  }
 }
 
 async function persistItem(item) {
+  if (item.type === 'event') return persistEvent(item);
   try {
     if (item._dbId) {
       const { error } = await sb.from('tether_items')
@@ -174,7 +248,9 @@ async function persistItem(item) {
 }
 
 async function deleteItemFromDb(id) {
-  const { error } = await sb.from('tether_items').delete().eq('id', id);
+  const item = items.find(i => i.id === id);
+  const table = item?.type === 'event' ? 'items' : 'tether_items';
+  const { error } = await sb.from(table).delete().eq('id', id);
   if (error) showToast('Delete error: ' + error.message);
 }
 
