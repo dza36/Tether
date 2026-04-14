@@ -872,53 +872,276 @@ async function saveItem(){
   render();
 }
 
-let selectedEventIcon="📅";
-function openEventModal(){
+let selectedEventIcon = '📅';
+let eventAttendeeDraft = [];   // [{userId, displayName, avatarUrl}]
+let eventBringDraft    = [];   // [string]
+let attendeeSearchCache = null; // {groups, contacts, memberMap}
+let attendeeGroupViewId = null; // null=list, uuid=member view
+let eventDetailCurrentId = null;
+
+function openEventModal() {
   closeChooser();
-  selectedEventIcon="📅";
-  document.getElementById("fEventName").value="";
-  document.getElementById("fEventStartDate").value=isoToday();
-  document.getElementById("fEventStartTime").value="";
-  document.getElementById("fEventEndDate").value="";
-  document.getElementById("fEventEndTime").value="";
-  document.querySelectorAll(".event-icon-pill").forEach(p=>p.classList.toggle("active",p.dataset.icon==="📅"));
+  selectedEventIcon = '📅';
+  eventAttendeeDraft = [];
+  eventBringDraft = [];
+  attendeeSearchCache = null;
+  document.getElementById('eventModalTitle').textContent = 'New Event';
+  document.getElementById('fEventName').value = '';
+  document.getElementById('fEventStartDate').value = isoToday();
+  document.getElementById('fEventStartTime').value = '';
+  document.getElementById('fEventEndDate').value = '';
+  document.getElementById('fEventEndTime').value = '';
+  document.getElementById('fGuestsCanInvite').checked = true;
+  document.getElementById('fAllowAdditions').checked = true;
+  document.querySelectorAll('.event-icon-pill').forEach(p => p.classList.toggle('active', p.dataset.icon === '📅'));
+  updateAttendeesLabel(); updateBringLabel();
   validateEventForm();
-  document.getElementById("eventModalBg").classList.add("open");
-  setTimeout(()=>document.getElementById("fEventName").focus(),300);
+  document.getElementById('eventModalBg').classList.add('open');
+  setTimeout(() => document.getElementById('fEventName').focus(), 300);
 }
-function closeEventModal(){ document.getElementById("eventModalBg").classList.remove("open"); }
-function bgClickEventModal(e){ if(e.target===document.getElementById("eventModalBg")) closeEventModal(); }
-function selectEventIcon(icon,el){
-  selectedEventIcon=icon;
-  document.querySelectorAll(".event-icon-pill").forEach(p=>p.classList.remove("active"));
-  el.classList.add("active");
+function closeEventModal() { document.getElementById('eventModalBg').classList.remove('open'); }
+function bgClickEventModal(e) { if (e.target === document.getElementById('eventModalBg')) closeEventModal(); }
+function selectEventIcon(icon, el) {
+  selectedEventIcon = icon;
+  document.querySelectorAll('.event-icon-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
 }
-function validateEventForm(){
-  const name=document.getElementById("fEventName").value.trim();
-  const date=document.getElementById("fEventStartDate").value;
-  const time=document.getElementById("fEventStartTime").value;
-  document.getElementById("btnEventSave").disabled=!(name&&date&&time);
+function validateEventForm() {
+  const name = document.getElementById('fEventName').value.trim();
+  const date = document.getElementById('fEventStartDate').value;
+  document.getElementById('btnEventSave').disabled = !(name && date);
 }
-async function saveEvent(){
-  const name=document.getElementById("fEventName").value.trim(); if(!name) return;
-  const btn=document.getElementById("btnEventSave");
-  btn.disabled=true; btn.textContent="Saving...";
-  const item={
-    name,type:"event",checklist:[],status:'active',
-    date:document.getElementById("fEventStartDate").value,
-    endDate:document.getElementById("fEventEndDate").value||null,
-    startTime:document.getElementById("fEventStartTime").value||null,
-    endTime:document.getElementById("fEventEndTime").value||null,
-    eventIcon:selectedEventIcon,
-    guestsCanInvite:true,
-    allowAdditionalItems:true,
-    isUrgent:false,
+function updateAttendeesLabel() {
+  const n = eventAttendeeDraft.length;
+  document.getElementById('eventAttendeesLabel').textContent =
+    n > 0 ? `Add attendees · ${n} person${n===1?'':'s'}` : 'Add attendees';
+}
+function updateBringLabel() {
+  const n = eventBringDraft.length;
+  document.getElementById('eventBringLabel').textContent =
+    n > 0 ? `Add items to bring · ${n} item${n===1?'':'s'}` : 'Add items to bring';
+}
+
+async function saveEvent() {
+  const name = document.getElementById('fEventName').value.trim(); if (!name) return;
+  const btn = document.getElementById('btnEventSave');
+  btn.disabled = true; btn.textContent = 'Saving...';
+  const item = {
+    name, type: 'event', checklist: [], status: 'active',
+    date: document.getElementById('fEventStartDate').value,
+    endDate: document.getElementById('fEventEndDate').value || null,
+    startTime: document.getElementById('fEventStartTime').value || null,
+    endTime: document.getElementById('fEventEndTime').value || null,
+    eventIcon: selectedEventIcon,
+    guestsCanInvite: document.getElementById('fGuestsCanInvite').checked,
+    allowAdditionalItems: document.getElementById('fAllowAdditions').checked,
+    isUrgent: false,
   };
   closeEventModal();
   await persistItem(item);
-  if(item._dbId){items.push(item);showToast(`${selectedEventIcon} "${name}" added`);}
-  btn.disabled=false; btn.textContent="Add Event";
+  if (!item._dbId) { btn.disabled = false; btn.textContent = 'Add Event'; return; }
+
+  // Save attendees
+  if (eventAttendeeDraft.length) {
+    await Promise.all(eventAttendeeDraft.map(a =>
+      sb.from('event_guests').insert({
+        item_id: item._dbId, user_id: a.userId,
+        invited_by: currentUser.id, is_owner: false,
+      })
+    ));
+  }
+  // Save bring items
+  if (eventBringDraft.length) {
+    await Promise.all(eventBringDraft.map(text =>
+      sb.from('potluck_items').insert({
+        item_id: item._dbId, name: text,
+        added_by: currentUser.id, is_request: true,
+      })
+    ));
+  }
+
+  items.push(item);
+  showToast(`${selectedEventIcon} "${name}" added`);
+  btn.disabled = false; btn.textContent = 'Add Event';
   render();
+}
+
+// ─── ATTENDEE SEARCH ──────────────────────────────────────────────────────────
+async function openAttendeeSearch() {
+  attendeeGroupViewId = null;
+  document.getElementById('attendeeSearchInput').value = '';
+  document.getElementById('attendeeSearchBg').classList.add('open');
+  document.getElementById('attendeeSearchBody').innerHTML = '<div class="social-loading">Loading…</div>';
+
+  if (!attendeeSearchCache) {
+    const [groupsRes, contactsRes] = await Promise.all([
+      sb.from('groups').select('id, name').eq('created_by', currentUser.id).order('name'),
+      sb.from('contacts').select('recipient_id').eq('requester_id', currentUser.id).eq('status', 'accepted'),
+    ]);
+    const groups = groupsRes.data || [];
+    const contactIds = (contactsRes.data || []).map(r => r.recipient_id);
+    const [profilesRes, membersRes] = await Promise.all([
+      contactIds.length ? sb.from('users').select('id, display_name, avatar_url, email').in('id', contactIds).order('display_name') : Promise.resolve({data:[]}),
+      groups.length ? sb.from('group_members').select('group_id, user_id').in('group_id', groups.map(g=>g.id)) : Promise.resolve({data:[]}),
+    ]);
+    const profiles = profilesRes.data || [];
+    const memberships = membersRes.data || [];
+
+    // Build memberMap: groupId → [{userId, displayName, avatarUrl}]
+    const memberMap = {};
+    for (const g of groups) {
+      const memberIds = memberships.filter(m => m.group_id === g.id).map(m => m.user_id);
+      const profilesInGroup = await sb.from('users').select('id, display_name, avatar_url, email').in('id', memberIds).order('display_name');
+      memberMap[g.id] = (profilesInGroup.data || []).map(p => ({userId:p.id, displayName:p.display_name||p.email, avatarUrl:p.avatar_url}));
+    }
+    attendeeSearchCache = { groups, contacts: profiles.map(p => ({userId:p.id, displayName:p.display_name||p.email, avatarUrl:p.avatar_url})), memberMap };
+  }
+  renderAttendeeSearch();
+}
+function closeAttendeeSearch() {
+  document.getElementById('attendeeSearchBg').classList.remove('open');
+  updateAttendeesLabel();
+}
+function bgClickAttendeeSearch(e) { if (e.target === document.getElementById('attendeeSearchBg')) closeAttendeeSearch(); }
+
+function attendeeSearchBack() {
+  attendeeGroupViewId = null;
+  document.getElementById('attendeeSearchInput').value = '';
+  renderAttendeeSearch();
+}
+
+function renderAttendeeSearch() {
+  if (!attendeeSearchCache) return;
+  const body = document.getElementById('attendeeSearchBody');
+  const q = document.getElementById('attendeeSearchInput').value.trim().toLowerCase();
+  const back = document.getElementById('attendeeSearchBack');
+  const title = document.getElementById('attendeeSearchTitle');
+
+  if (attendeeGroupViewId) {
+    // Member picker view
+    back.style.display = '';
+    const group = attendeeSearchCache.groups.find(g => g.id === attendeeGroupViewId);
+    title.textContent = group?.name || 'Group';
+    let members = attendeeSearchCache.memberMap[attendeeGroupViewId] || [];
+    if (q) members = members.filter(m => m.displayName.toLowerCase().includes(q));
+    body.innerHTML = members.map(m => attendeeCheckRowHTML(m)).join('') || '<div class="social-empty">No members</div>';
+  } else {
+    // List view
+    back.style.display = 'none';
+    title.textContent = 'Add Attendees';
+    let html = '';
+
+    // Groups
+    const groups = q
+      ? attendeeSearchCache.groups.filter(g => g.name.toLowerCase().includes(q))
+      : attendeeSearchCache.groups;
+    if (groups.length) {
+      html += '<div class="social-section-label">Groups</div>';
+      html += groups.map(g => {
+        const members = attendeeSearchCache.memberMap[g.id] || [];
+        const selectedCount = members.filter(m => eventAttendeeDraft.some(a => a.userId === m.userId)).length;
+        const meta = selectedCount > 0 ? `${selectedCount} of ${members.length} selected` : `${members.length} member${members.length===1?'':'s'}`;
+        return `<div class="social-row" onclick="attendeeGroupViewId='${g.id}';renderAttendeeSearch()">
+          <div class="social-avatar" style="background:#F7F6FF;font-size:18px">👥</div>
+          <div class="social-row-info">
+            <div class="social-row-name">${g.name}</div>
+            <div class="social-row-meta">${meta}</div>
+          </div>
+          <div class="social-row-arrow">›</div>
+        </div>`;
+      }).join('');
+    }
+
+    // Contacts (not already shown via a group for filtering purposes)
+    let contacts = q
+      ? attendeeSearchCache.contacts.filter(c => c.displayName.toLowerCase().includes(q))
+      : attendeeSearchCache.contacts;
+    if (contacts.length) {
+      html += '<div class="social-section-label">Contacts</div>';
+      html += contacts.map(c => attendeeCheckRowHTML(c)).join('');
+    }
+    body.innerHTML = html || '<div class="social-empty">No contacts or groups yet</div>';
+  }
+}
+
+function attendeeCheckRowHTML(person) {
+  const checked = eventAttendeeDraft.some(a => a.userId === person.userId);
+  const initials = getInitials(person.displayName);
+  const avatar = person.avatarUrl ? `<img src="${person.avatarUrl}" alt="${initials}"/>` : initials;
+  return `<div class="attendee-check-row" onclick="toggleAttendee('${person.userId}','${person.displayName.replace(/'/g,"\\'")}','${person.avatarUrl||''}')">
+    <div class="social-avatar">${avatar}</div>
+    <div class="social-row-info"><div class="social-row-name">${person.displayName}</div></div>
+    <div class="attendee-checkbox${checked?' checked':''}">${checked?'✓':''}</div>
+  </div>`;
+}
+
+function toggleAttendee(userId, displayName, avatarUrl) {
+  const idx = eventAttendeeDraft.findIndex(a => a.userId === userId);
+  if (idx >= 0) eventAttendeeDraft.splice(idx, 1);
+  else eventAttendeeDraft.push({userId, displayName, avatarUrl: avatarUrl || null});
+  renderAttendeeSearch();
+}
+
+// ─── EVENT BRING DRAFT ────────────────────────────────────────────────────────
+function openEventBringDraft() {
+  renderEventBringDraft();
+  document.getElementById('eventBringDraftBg').classList.add('open');
+  setTimeout(() => document.getElementById('eventBringDraftInput').focus(), 300);
+}
+function closeEventBringDraft() {
+  document.getElementById('eventBringDraftBg').classList.remove('open');
+  updateBringLabel();
+}
+function bgClickEventBringDraft(e) { if (e.target === document.getElementById('eventBringDraftBg')) closeEventBringDraft(); }
+
+function renderEventBringDraft() {
+  const body = document.getElementById('eventBringDraftBody');
+  if (!eventBringDraft.length) {
+    body.innerHTML = '<div class="social-empty">No items yet — add below</div>';
+    return;
+  }
+  body.innerHTML = eventBringDraft.map((text, i) =>
+    `<div class="bring-draft-item">
+      <span class="bring-draft-item-name">${text}</span>
+      <span class="bring-draft-item-remove" onclick="removeEventBringDraftItem(${i})">✕</span>
+    </div>`
+  ).join('');
+}
+function addEventBringDraftItem() {
+  const inp = document.getElementById('eventBringDraftInput');
+  const text = inp.value.trim(); if (!text) return;
+  eventBringDraft.push(text); inp.value = '';
+  renderEventBringDraft();
+}
+function removeEventBringDraftItem(idx) {
+  eventBringDraft.splice(idx, 1);
+  renderEventBringDraft();
+}
+
+// ─── EVENT DETAIL SHEET ───────────────────────────────────────────────────────
+function openEventDetail(id) {
+  const item = items.find(i => i.id === id); if (!item) return;
+  eventDetailCurrentId = id;
+  document.getElementById('eventDetailIcon').textContent = item.eventIcon || '📅';
+  document.getElementById('eventDetailName').textContent = item.name;
+  // Meta: date + time
+  const dateStr = item.date ? fmtDate(new Date(item.date + 'T00:00:00')) : '';
+  const timeStr = item.startTime ? ` · ${fmtTime(item.startTime)}${item.endTime?' – '+fmtTime(item.endTime):''}` : '';
+  const endDateStr = item.endDate && item.endDate !== item.date ? ` → ${fmtDate(new Date(item.endDate+'T00:00:00'))}` : '';
+  document.getElementById('eventDetailMeta').textContent = dateStr + endDateStr + timeStr;
+  const isOwner = item.createdBy === currentUser.id;
+  document.getElementById('eventDetailEditBtn').style.display = isOwner ? '' : 'none';
+  document.getElementById('evpanel-detail').innerHTML = 'Loading…';
+  document.getElementById('eventDetailBg').classList.add('open');
+  loadEventPanel(id);
+}
+function closeEventDetail() {
+  document.getElementById('eventDetailBg').classList.remove('open');
+  eventDetailCurrentId = null;
+}
+function bgClickEventDetail(e) { if (e.target === document.getElementById('eventDetailBg')) closeEventDetail(); }
+function editCurrentEvent() {
+  if (eventDetailCurrentId) { closeEventDetail(); editItem(eventDetailCurrentId); }
 }
 
 // ─── EVENTS LIST ─────────────────────────────────────────────────────────────
@@ -1465,8 +1688,12 @@ function handleSendInvite() {
 let eventBringCollapsed = {};
 
 async function loadEventPanel(itemId) {
-  const panel = document.getElementById('evpanel-' + itemId);
-  if (!panel) return;
+  // Render into inline row panel and/or the open detail sheet
+  const targets = [document.getElementById('evpanel-' + itemId)];
+  if (eventDetailCurrentId === itemId) targets.push(document.getElementById('evpanel-detail'));
+  const validTargets = targets.filter(Boolean);
+  if (!validTargets.length) return;
+  const panel = validTargets[0]; // used for early returns below
 
   const item = items.find(i => i.id === itemId);
   if (!item) return;
@@ -1562,7 +1789,8 @@ async function loadEventPanel(itemId) {
     ${isOwner ? `<button class="event-action-btn event-action-delete" onclick="deleteItem('${itemId}')">🗑 Delete</button>` : ''}
   </div>`;
 
-  panel.innerHTML = rsvpHTML + (attendeesHTML || '') + bringHTML + actionsHTML;
+  const finalHTML = rsvpHTML + (attendeesHTML || '') + bringHTML + actionsHTML;
+  validTargets.forEach(t => t.innerHTML = finalHTML);
 }
 
 function toggleBringList(itemId) {

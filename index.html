@@ -261,7 +261,7 @@
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-header">
-      <h2>New Event</h2>
+      <h2 id="eventModalTitle">New Event</h2>
       <div class="modal-close" onclick="closeEventModal()">✕</div>
     </div>
     <div class="field">
@@ -269,7 +269,7 @@
       <input type="text" id="fEventName" placeholder="e.g. Jimmy's Hockey Tournament" oninput="validateEventForm()"/>
     </div>
     <div class="field">
-      <label>Event Icon</label>
+      <label>Icon</label>
       <div style="display:flex;flex-wrap:wrap;gap:8px">
         <div class="event-icon-pill active" data-icon="📅" onclick="selectEventIcon('📅',this)">📅</div>
         <div class="event-icon-pill" data-icon="⭐" onclick="selectEventIcon('⭐',this)">⭐</div>
@@ -283,20 +283,100 @@
       </div>
     </div>
     <div class="field">
-      <label>Start date & time</label>
-      <div style="display:flex;gap:8px">
+      <label>Date</label>
+      <div style="display:flex;gap:8px;align-items:center">
         <input type="date" id="fEventStartDate" style="flex:1" oninput="validateEventForm()"/>
-        <input type="time" id="fEventStartTime" style="flex:1" oninput="validateEventForm()"/>
+        <span style="color:#AFA9EC;font-size:13px;flex-shrink:0">→</span>
+        <input type="date" id="fEventEndDate" style="flex:1"/>
       </div>
     </div>
     <div class="field">
-      <label>End date & time (optional)</label>
-      <div style="display:flex;gap:8px">
-        <input type="date" id="fEventEndDate" style="flex:1"/>
+      <label>Time <span style="font-weight:400;color:#AFA9EC;font-size:12px">(optional)</span></label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="time" id="fEventStartTime" style="flex:1"/>
+        <span style="color:#AFA9EC;font-size:13px;flex-shrink:0">–</span>
         <input type="time" id="fEventEndTime" style="flex:1"/>
       </div>
     </div>
+    <div class="event-card" onclick="openAttendeeSearch()">
+      <div class="event-card-left">
+        <span class="event-card-icon">👥</span>
+        <span class="event-card-label" id="eventAttendeesLabel">Add attendees</span>
+      </div>
+      <div class="event-card-right" onclick="event.stopPropagation()">
+        <span class="event-card-toggle-label">Guests can invite</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="fGuestsCanInvite" checked/>
+          <span class="toggle-thumb"></span>
+        </label>
+      </div>
+    </div>
+    <div class="event-card" onclick="openEventBringDraft()">
+      <div class="event-card-left">
+        <span class="event-card-icon">🛍️</span>
+        <span class="event-card-label" id="eventBringLabel">Add items to bring</span>
+      </div>
+      <div class="event-card-right" onclick="event.stopPropagation()">
+        <span class="event-card-toggle-label">Allow additions</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="fAllowAdditions" checked/>
+          <span class="toggle-thumb"></span>
+        </label>
+      </div>
+    </div>
     <button class="btn-save" id="btnEventSave" onclick="saveEvent()" disabled>Add Event</button>
+  </div>
+</div>
+
+<!-- Attendee search sheet -->
+<div class="social-bg" id="attendeeSearchBg" onclick="bgClickAttendeeSearch(event)" style="z-index:170">
+  <div class="social-sheet">
+    <div class="social-handle"></div>
+    <div class="social-header">
+      <div class="social-back" id="attendeeSearchBack" onclick="attendeeSearchBack()" style="display:none">‹</div>
+      <div class="social-title" id="attendeeSearchTitle">Add Attendees</div>
+      <div class="social-close" onclick="closeAttendeeSearch()">✕</div>
+    </div>
+    <div style="padding:0 1.25rem .75rem">
+      <input type="search" id="attendeeSearchInput" placeholder="Search..." oninput="renderAttendeeSearch()" style="width:100%;padding:10px 14px;border-radius:12px;border:0.5px solid #CECBF6;background:#F7F6FF;font-size:14px;outline:none;box-sizing:border-box;font-family:inherit;color:#26215C"/>
+    </div>
+    <div class="social-body" id="attendeeSearchBody"></div>
+    <div class="attendee-done-row">
+      <button onclick="closeAttendeeSearch()" id="btnAttendeeDone">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Event bring draft sheet (creation) -->
+<div class="social-bg" id="eventBringDraftBg" onclick="bgClickEventBringDraft(event)" style="z-index:170">
+  <div class="social-sheet">
+    <div class="social-handle"></div>
+    <div class="social-header">
+      <div class="social-title">Items to Bring</div>
+      <div class="social-close" onclick="closeEventBringDraft()">✕</div>
+    </div>
+    <div class="social-body" id="eventBringDraftBody"></div>
+    <div class="bring-draft-input-row">
+      <input type="text" id="eventBringDraftInput" placeholder="Add an item..." onkeydown="if(event.key==='Enter')addEventBringDraftItem()"/>
+      <button onclick="addEventBringDraftItem()">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- Event detail sheet -->
+<div class="event-detail-bg" id="eventDetailBg" onclick="bgClickEventDetail(event)">
+  <div class="event-detail-sheet">
+    <div class="event-detail-handle"></div>
+    <div class="event-detail-header">
+      <div class="event-detail-icon" id="eventDetailIcon">📅</div>
+      <div class="event-detail-name" id="eventDetailName">Event</div>
+      <div class="event-detail-edit" id="eventDetailEditBtn" onclick="editCurrentEvent()" style="display:none">✏️</div>
+      <div class="event-detail-close" onclick="closeEventDetail()">✕</div>
+    </div>
+    <div class="event-detail-meta" id="eventDetailMeta"></div>
+    <div class="event-detail-body">
+      <div id="evpanel-detail"></div>
+    </div>
   </div>
 </div>
 
