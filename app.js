@@ -1764,7 +1764,19 @@ async function loadEventPanel(itemId) {
 
   const myRsvp = guests.find(g => g.user_id === currentUser.id);
   const isOwner = item.createdBy === currentUser.id;
-  const collapsed = eventBringCollapsed[itemId] !== false; // default collapsed if items exist
+
+  // Build a map of user_id → claimed item names for inline display
+  const claimsByUser = {};
+  claims.forEach(c => {
+    const bi = bringItems.find(b => b.id === c.potluck_item_id);
+    if (!bi) return;
+    if (!claimsByUser[c.user_id]) claimsByUser[c.user_id] = [];
+    claimsByUser[c.user_id].push(bi.name);
+  });
+
+  // Default collapsed if all items are claimed, expanded if anything unclaimed
+  const allClaimed = bringItems.length > 0 && bringItems.every(bi => claims.find(c => c.potluck_item_id === bi.id));
+  const collapsed = eventBringCollapsed[itemId] !== undefined ? eventBringCollapsed[itemId] : allClaimed;
 
   // RSVP section
   const rsvpHTML = `
@@ -1774,7 +1786,7 @@ async function loadEventPanel(itemId) {
       <button class="rsvp-btn decline${myRsvp?.rsvp_status==='not_going'?' active-decline':''}" onclick="rsvpEvent('${itemId}','not_going')">✕ Can't make it</button>
     </div>`;
 
-  // Attendees section
+  // Attendees section — with inline bring items per person
   const attendeesHTML = guests.length > 0 ? `
     <div class="event-section-title">Attendees (${guests.filter(g=>g.rsvp_status==='going').length} going)</div>
     <div class="attendee-list">
@@ -1785,9 +1797,14 @@ async function loadEventPanel(itemId) {
         const name = profile.display_name || profile.email?.split('@')[0] || 'Guest';
         const statusClass = g.rsvp_status === 'going' ? 'going' : g.rsvp_status === 'not_going' ? 'declined' : g.rsvp_status === 'maybe' ? 'tentative' : 'pending';
         const statusLabel = g.rsvp_status === 'going' ? 'Going' : g.rsvp_status === 'not_going' ? 'Declined' : g.rsvp_status === 'maybe' ? 'Tentative' : 'Invited';
+        const bringing = claimsByUser[g.user_id];
+        const bringingHTML = bringing?.length ? `<div class="attendee-bringing">${bringing.join(' · ')}</div>` : '';
         return `<div class="attendee-row">
           <div class="attendee-avatar">${img}</div>
-          <div class="attendee-name">${name}</div>
+          <div class="attendee-info">
+            <div class="attendee-name">${name}</div>
+            ${bringingHTML}
+          </div>
           <div class="attendee-status ${statusClass}">${statusLabel}</div>
         </div>`;
       }).join('')}
@@ -1808,7 +1825,7 @@ async function loadEventPanel(itemId) {
             || householdMembers.find(m => m.user_id === claim.user_id))
           : null;
         const claimerName = claimerProfile
-          ? (claimerProfile.display_name || claimerProfile.email || 'Someone').split(' ')[0]
+          ? (claimerProfile.display_name || claimerProfile.email?.split('@')[0] || 'Someone')
           : 'Someone';
         return `<div class="bring-item">
           <div class="bring-item-name">${bi.name}</div>
