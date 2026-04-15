@@ -578,6 +578,7 @@ function render() {
   });
 
   const filtered = items.filter(i => itemVisibleInTab(i, tab));
+  console.log('[render] tab='+tab+' items='+items.length+' filtered='+filtered.length, filtered.filter(i=>i.type==='event').map(i=>i.name+' due='+i.date));
 
   // Sort: urgent first, then timed (by time), then untimed (by due date)
   const sorted = [...filtered].sort((a, b) => {
