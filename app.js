@@ -579,16 +579,19 @@ function render() {
 
   const filtered = items.filter(i => itemVisibleInTab(i, tab));
 
-  // Sort: urgent first, then timed (by time), then untimed (by due date)
+  // Sort: urgent → by due date → within same day: timed by time, then untimed
   const sorted = [...filtered].sort((a, b) => {
     if (a.isUrgent && !b.isUrgent) return -1;
     if (!a.isUrgent && b.isUrgent) return 1;
+    const aDays = daysUntil(a);
+    const bDays = daysUntil(b);
+    if (aDays !== bDays) return aDays - bDays;
     const aHasTime = !!(a.startTime);
     const bHasTime = !!(b.startTime);
     if (aHasTime && bHasTime) return a.startTime.localeCompare(b.startTime);
     if (aHasTime && !bHasTime) return -1;
     if (!aHasTime && bHasTime) return 1;
-    return daysUntil(a) - daysUntil(b);
+    return 0;
   });
   const overdue = sorted.filter(i => daysUntil(i) < 0 && i.type !== 'event');
   const rest = sorted.filter(i => !(daysUntil(i) < 0 && i.type !== 'event'));
