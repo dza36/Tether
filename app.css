@@ -401,3 +401,199 @@
   .event-detail-body{flex:1;overflow-y:auto;padding:.25rem 1.25rem 2rem}
   /* Override event-panel style inside detail sheet (no bg, no border) */
   .event-detail-body .event-panel{background:transparent;border:none;border-radius:0;padding:0}
+
+@media (prefers-color-scheme: dark) {
+  :root { color-scheme: dark; }
+  html,body{background:#0F0E1A}
+  .app{background:#0F0E1A}
+  /* Topbar */
+  .topbar{background:#0F0E1A}
+  .app-title{color:#E8E5FF}
+  .avatar-btn{border-color:#2E2A5E;background:#1E1A3C}
+  .notif-badge{border-color:#0F0E1A}
+  /* Tabs */
+  .tab{border-color:#2E2A5E;color:#7B72D4}
+  .tab.active{background:#1E1A3C;border-color:#534AB7;color:#E8E5FF}
+  .hint{color:#6B65A8}
+  .section-label{color:#6B65A8}
+  /* Rows */
+  .item{background:#1E1A3C;border-color:#2E2A5E}
+  .item.overdue{background:#2A1010;border-color:#C43A3A}
+  .item.held{background:#201C42;border-color:#534AB7}
+  .item-name{color:#E8E5FF}
+  .item-sub{color:#7B72D4}
+  /* Badges */
+  .badge.ok{background:#1A3020;color:#6FBA6F}
+  .badge.soon{background:#2A1E10;color:#D4A054}
+  .badge.overdue{background:#2A1010;color:#E87070}
+  .badge.event{background:#1E1A3C;color:#8880C4}
+  .badge.snoozed{background:#2A1E10;color:#D4A054}
+  .badge.past{background:#1E1A3C;color:#6B65A8}
+  .badge.dismissed{background:#1E1A3C;color:#6B65A8}
+  /* Checklist panel */
+  .checklist-panel{background:#1A1730;border-color:#2E2A5E}
+  .cl-title,.cl-progress{color:#7B72D4}
+  .cl-item{border-color:#2E2A5E}
+  .cl-check{background:#1E1A3C;border-color:#2E2A5E}
+  .cl-label{color:#E8E5FF}
+  .cl-label.done{color:#6B65A8}
+  .cl-add input{background:#1E1A3C;border-color:#2E2A5E;color:#E8E5FF}
+  .cl-item-actions{border-color:#2E2A5E}
+  .cl-action-edit{background:#1A1730;color:#7B72D4;border-color:#2E2A5E}
+  .cl-action-delete{background:#2A1010;color:#E87070;border-color:#4A1818}
+  .cl-reset{color:#6B65A8}
+  /* Modal */
+  .modal-bg{background:rgba(0,0,0,.75)}
+  .modal{background:#1A1730;border-color:#2E2A5E}
+  .modal-handle{background:#2E2A5E}
+  .modal-header h2{color:#E8E5FF}
+  .modal-close{color:#6B65A8}
+  .field label{color:#7B72D4}
+  .field input,.field select{background:#1E1A3C;border-color:#2E2A5E;color:#E8E5FF}
+  .type-pill{border-color:#2E2A5E;color:#7B72D4}
+  .type-pill.active{background:#1E1A3C;border-color:#534AB7;color:#E8E5FF}
+  .interval-label,.interval-preview{color:#7B72D4}
+  .interval-row input{background:#1E1A3C;border-color:#2E2A5E;color:#E8E5FF}
+  .day-pill{border-color:#2E2A5E;color:#7B72D4}
+  .day-pill.active{background:#1E1A3C;border-color:#534AB7;color:#E8E5FF}
+  .btn-save:disabled{background:#1E1A3C;color:#6B65A8}
+  /* Event creation cards */
+  .event-card{background:#1E1A3C;border-color:#2E2A5E}
+  .event-card:active{background:#201C42}
+  .event-card-label{color:#E8E5FF}
+  .toggle-thumb{background:#2E2A5E}
+  .event-icon-pill{background:#1E1A3C;border-color:#2E2A5E}
+  /* Snooze sheet */
+  .snooze-bg{background:rgba(0,0,0,.75)}
+  .snooze-sheet{background:#1A1730;border-color:#2E2A5E}
+  .snooze-handle{background:#2E2A5E}
+  .snooze-title{color:#E8E5FF}
+  .snooze-days-btn{background:#1E1A3C;border-color:#2E2A5E;color:#7B72D4}
+  .snooze-days-btn:active{background:#201C42}
+  .snooze-days-val{color:#E8E5FF}
+  .snooze-btn-dismiss{background:#1E1A3C;border-color:#2E2A5E;color:#E8E5FF}
+  .snooze-btn-dismiss:active{background:#201C42}
+  .snooze-btn-cancel{color:#6B65A8}
+  /* Auth */
+  .auth-screen{background:#0F0E1A}
+  .auth-logo{color:#E8E5FF}
+  .auth-tagline{color:#6B65A8}
+  .auth-divider span{color:#6B65A8}
+  .auth-divider hr{border-color:#2E2A5E}
+  .oauth-btn{background:#1A1730;border-color:#2E2A5E;color:#E8E5FF}
+  .oauth-btn:active{background:#1E1A3C}
+  .magic-form input{background:#1A1730;border-color:#2E2A5E;color:#E8E5FF}
+  /* Loading */
+  .loading-screen{background:#0F0E1A}
+  .loading-logo{color:#E8E5FF}
+  .loading-spinner{border-color:#1E1A3C;border-top-color:#534AB7}
+  /* User menu */
+  .user-menu-bg{background:rgba(0,0,0,.75)}
+  .user-menu{background:#1A1730;border-color:#2E2A5E}
+  .user-menu-handle{background:#2E2A5E}
+  .user-info{border-color:#2E2A5E}
+  .user-avatar-lg{background:#1E1A3C;border-color:#2E2A5E}
+  .user-name{color:#E8E5FF}
+  .user-email{color:#6B65A8}
+  .menu-item{border-color:#2E2A5E;color:#E8E5FF}
+  .menu-item.danger{color:#E87070}
+  /* Toast */
+  .toast{background:#1E1A3C;color:#E8E5FF}
+  /* Feedback bar */
+  .feedback-bar{background:#1A1730;border-color:#2E2A5E;color:#7B72D4}
+  .feedback-bar a{color:#E8E5FF}
+  /* Events banner */
+  .events-banner{background:#1A1730;border-color:#2E2A5E}
+  .events-banner:active{background:#1E1A3C}
+  .events-banner span{color:#E8E5FF}
+  .events-banner-arrow{color:#7B72D4}
+  /* Events list sheet */
+  .events-list-bg{background:rgba(0,0,0,.75)}
+  .events-list-sheet{background:#1A1730;border-color:#2E2A5E}
+  .events-list-handle{background:#2E2A5E}
+  .events-list-title{color:#E8E5FF}
+  .events-list-close{color:#6B65A8}
+  .events-list-toggle{border-color:#2E2A5E}
+  .events-toggle-btn{background:#1E1A3C;color:#6B65A8}
+  .events-month-label{color:#6B65A8}
+  .events-list-row{border-color:#2E2A5E}
+  .events-list-name{color:#E8E5FF}
+  .events-list-meta{color:#6B65A8}
+  .events-list-rsvp.going{background:#1A3020;color:#6FBA6F}
+  .events-list-rsvp.pending{background:#2A1E10;color:#D4A054}
+  .events-list-rsvp.maybe{background:#0C1E2A;color:#5BA3D0}
+  .events-list-rsvp.not_going{background:#2A1010;color:#E87070}
+  .events-list-empty{color:#6B65A8}
+  /* Household sheet */
+  .household-bg{background:rgba(0,0,0,.75)}
+  .household-sheet{background:#1A1730;border-color:#2E2A5E}
+  .household-handle{background:#2E2A5E}
+  .household-title{color:#E8E5FF}
+  .member-row{border-color:#2E2A5E}
+  .member-avatar{background:#1E1A3C;border-color:#2E2A5E}
+  .member-name{color:#E8E5FF}
+  .member-you-tag{background:#1E1A3C;color:#7B72D4}
+  .household-section-title{color:#7B72D4}
+  .invite-input-row input{background:#1E1A3C;border-color:#2E2A5E;color:#E8E5FF}
+  .pending-invite-email{color:#E8E5FF}
+  .pending-invite-tag{background:#1E1A3C;border-color:#2E2A5E;color:#6B65A8}
+  .create-form input{background:#1E1A3C;border-color:#2E2A5E;color:#E8E5FF}
+  .household-sub{color:#6B65A8}
+  /* Social (groups / contacts) */
+  .social-bg{background:rgba(0,0,0,.75)}
+  .social-sheet{background:#1A1730;border-color:#2E2A5E}
+  .social-handle{background:#2E2A5E}
+  .social-title{color:#E8E5FF}
+  .social-close{color:#6B65A8}
+  .social-section-label{color:#6B65A8}
+  .social-row{border-color:#2E2A5E}
+  .social-avatar{background:#1E1A3C}
+  .social-row-name{color:#E8E5FF}
+  .social-row-meta{color:#6B65A8}
+  .social-row-arrow{color:#2E2A5E}
+  .social-empty,.social-loading{color:#6B65A8}
+  /* Assign picker */
+  .assign-bg{background:rgba(0,0,0,.75)}
+  .assign-sheet{background:#1A1730;border-color:#2E2A5E}
+  .assign-handle{background:#2E2A5E}
+  .assign-title{color:#E8E5FF}
+  .assign-member.selected{border-color:#534AB7;background:#1E1A3C}
+  .assign-member:active{background:#1E1A3C}
+  .assign-member-avatar{background:#1E1A3C;border-color:#2E2A5E}
+  .assign-member-name{color:#E8E5FF}
+  .assign-unassign{background:#1E1A3C;border-color:#2E2A5E;color:#6B65A8}
+  .assign-cancel{color:#6B65A8}
+  /* Event panel (inline expand) */
+  .event-panel{background:#201C42;border-color:#2E2A5E}
+  .event-section-title{color:#7B72D4}
+  .rsvp-btn{background:#1E1A3C;border-color:#2E2A5E;color:#E8E5FF}
+  .rsvp-btn.accept{background:#1A3020;color:#6FBA6F;border-color:#2A4030}
+  .rsvp-btn.decline{background:#2A1010;color:#E87070;border-color:#4A1818}
+  .rsvp-btn.tentative{background:#2A1E10;color:#D4A054;border-color:#4A3010}
+  .attendee-row{border-color:#2E2A5E}
+  .attendee-avatar{background:#1E1A3C;border-color:#2E2A5E}
+  .attendee-name{color:#E8E5FF}
+  .attendee-status.pending{background:#1E1A3C;color:#6B65A8}
+  .bring-item{border-color:#2E2A5E}
+  .bring-item-name{color:#E8E5FF}
+  .bring-claim-btn{border-color:#534AB7;color:#7B72D4}
+  .bring-add-row input{background:#1E1A3C;border-color:#2E2A5E;color:#E8E5FF}
+  .event-actions{border-color:#2E2A5E}
+  .event-action-edit{background:#1A1730;color:#7B72D4;border-color:#2E2A5E}
+  .event-action-delete{background:#2A1010;color:#E87070;border-color:#4A1818}
+  /* Attendee search / bring draft sheets */
+  .attendee-done-row{border-color:#2E2A5E}
+  .attendee-check-row{border-color:#2E2A5E}
+  .attendee-checkbox{background:#1E1A3C;border-color:#2E2A5E}
+  .bring-draft-item{border-color:#2E2A5E}
+  .bring-draft-item-name{color:#E8E5FF}
+  .bring-draft-item-remove{color:#6B65A8}
+  .bring-draft-input-row{border-color:#2E2A5E}
+  .bring-draft-input-row input{background:#1E1A3C;border-color:#2E2A5E;color:#E8E5FF}
+  /* Event detail sheet */
+  .event-detail-bg{background:rgba(0,0,0,.75)}
+  .event-detail-sheet{background:#1A1730;border-color:#2E2A5E}
+  .event-detail-handle{background:#2E2A5E}
+  .event-detail-name{color:#E8E5FF}
+  .event-detail-meta{color:#6B65A8}
+}
