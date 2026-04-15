@@ -219,6 +219,7 @@
   .events-list-rsvp.going{background:#DCFCE7;color:#166534}
   .events-list-rsvp.pending{background:#FEF9C3;color:#854D0E}
   .events-list-rsvp.maybe{background:#F0F9FF;color:#0C4A6E}
+  .events-list-rsvp.not_going{background:#FEE2E2;color:#991B1B}
   .events-list-empty{text-align:center;padding:2.5rem 1rem;color:#AFA9EC;font-size:14px}
 
   .invite-banner{background:#534AB7;color:#fff;padding:.75rem 1rem;display:none;align-items:center;justify-content:space-between;gap:8px;margin:0 1rem .75rem;border-radius:12px}

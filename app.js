@@ -1163,7 +1163,7 @@ function editCurrentEvent() {
 }
 
 // ─── EVENTS LIST ─────────────────────────────────────────────────────────────
-let eventsView = 'future'; // 'future' | 'past'
+let eventsView = 'future'; // 'future' | 'pending' | 'past'
 
 function openEventDetail(id) {
   // TODO: full event detail sheet — placeholder
@@ -1172,10 +1172,7 @@ function openEventDetail(id) {
 }
 
 function openEventsList() {
-  eventsView = 'future';
-  document.getElementById('eventsToggleFuture').classList.add('active');
-  document.getElementById('eventsTogglePast').classList.remove('active');
-  renderEventsList();
+  setEventsView('future');
   document.getElementById('eventsListBg').classList.add('open');
 }
 
@@ -1187,32 +1184,57 @@ function bgClickEventsList(e) {
   if (e.target === document.getElementById('eventsListBg')) closeEventsList();
 }
 
-function setEventsView(view, el) {
+function setEventsView(view) {
   eventsView = view;
-  el.parentElement.querySelectorAll('.events-toggle-btn').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
+  ['future', 'pending', 'past'].forEach(v => {
+    const btn = document.getElementById('eventsToggle' + v.charAt(0).toUpperCase() + v.slice(1));
+    if (btn) btn.classList.toggle('active', v === view);
+  });
   renderEventsList();
 }
 
 function renderEventsList() {
   const body = document.getElementById('eventsListBody');
   const now = new Date(); now.setHours(0,0,0,0);
-
   const eventItems = items.filter(i => i.type === 'event');
 
-  let list;
-  if (eventsView === 'future') {
-    list = eventItems
-      .filter(i => i.status !== 'dismissed' && getDueDate(i) >= now)
-      .sort((a, b) => getDueDate(a) - getDueDate(b));
-  } else {
-    list = eventItems
-      .filter(i => i.status === 'dismissed' || getDueDate(i) < now)
-      .sort((a, b) => getDueDate(b) - getDueDate(a));
-  }
+  // Future: events I created or RSVPed going/maybe, not dismissed, date >= today
+  const futureList = eventItems.filter(i => {
+    if (i.status === 'dismissed') return false;
+    const due = getDueDate(i);
+    if (!due || due < now) return false;
+    const rsvp = myRsvpMap[i.id];
+    return !rsvp || rsvp.rsvp_status === 'going' || rsvp.rsvp_status === 'maybe';
+  }).sort((a, b) => getDueDate(a) - getDueDate(b));
+
+  // Pending: future-dated invites I haven't responded to yet
+  const pendingList = eventItems.filter(i => {
+    const due = getDueDate(i);
+    if (!due || due < now) return false;
+    const rsvp = myRsvpMap[i.id];
+    return rsvp && rsvp.rsvp_status === 'pending';
+  }).sort((a, b) => getDueDate(a) - getDueDate(b));
+
+  // Past: dismissed or past-date events I have any connection to
+  const pastList = eventItems.filter(i => {
+    const due = getDueDate(i);
+    return i.status === 'dismissed' || (due && due < now);
+  }).sort((a, b) => getDueDate(b) - getDueDate(a));
+
+  // Update tab labels with counts
+  const futureBtn = document.getElementById('eventsToggleFuture');
+  const pendingBtn = document.getElementById('eventsTogglePending');
+  const pastBtn = document.getElementById('eventsTogglePast');
+  if (futureBtn) futureBtn.textContent = futureList.length ? `Future (${futureList.length})` : 'Future';
+  if (pendingBtn) pendingBtn.textContent = pendingList.length ? `Pending (${pendingList.length})` : 'Pending';
+  if (pastBtn) pastBtn.textContent = pastList.length ? `Past (${pastList.length})` : 'Past';
+
+  const listMap = { future: futureList, pending: pendingList, past: pastList };
+  const emptyMap = { future: 'No upcoming events', pending: 'No pending invites', past: 'No past events' };
+  const list = listMap[eventsView] || futureList;
 
   if (list.length === 0) {
-    body.innerHTML = `<div class="events-list-empty">${eventsView === 'future' ? 'No upcoming events' : 'No past events'}</div>`;
+    body.innerHTML = `<div class="events-list-empty">${emptyMap[eventsView]}</div>`;
     return;
   }
 
@@ -1229,12 +1251,17 @@ function renderEventsList() {
     const icon = item.eventIcon || '📅';
     const dateStr = item.date ? fmtDate(new Date(item.date + 'T00:00:00')) : '';
     const timeStr = item.startTime ? ` · ${fmtTime(item.startTime)}` : '';
+    const rsvp = myRsvpMap[item.id];
+    const rsvpBadge = rsvp
+      ? `<div class="events-list-rsvp ${rsvp.rsvp_status}">${{ pending: 'Invited', going: 'Going', maybe: 'Maybe', not_going: 'Declined' }[rsvp.rsvp_status] || ''}</div>`
+      : '';
     html += `<div class="events-list-row" onclick="openEventDetail('${item.id}')">
       <div class="events-list-icon">${icon}</div>
       <div class="events-list-info">
         <div class="events-list-name">${item.name}</div>
         <div class="events-list-meta">${dateStr}${timeStr}</div>
       </div>
+      ${rsvpBadge}
     </div>`;
   });
 
@@ -1921,6 +1948,14 @@ async function confirmAssign(userId) {
   showToast(userId ? `Assigned to ${name}` : 'Assignment removed');
   render();
 }
+
+// ─── VISIBILITY REFRESH ───────────────────────────────────────────────────────
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible' && currentUser) {
+    await loadItems();
+    render();
+  }
+});
 
 // ─── BOOT ─────────────────────────────────────────────────────────────────────
 updatePreview();

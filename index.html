@@ -433,8 +433,9 @@
       <div class="events-list-close" onclick="closeEventsList()">✕</div>
     </div>
     <div class="events-list-toggle">
-      <div class="events-toggle-btn active" id="eventsToggleFuture" onclick="setEventsView('future',this)">Future</div>
-      <div class="events-toggle-btn" id="eventsTogglePast" onclick="setEventsView('past',this)">Past</div>
+      <div class="events-toggle-btn active" id="eventsToggleFuture" onclick="setEventsView('future')">Future</div>
+      <div class="events-toggle-btn" id="eventsTogglePending" onclick="setEventsView('pending')">Pending</div>
+      <div class="events-toggle-btn" id="eventsTogglePast" onclick="setEventsView('past')">Past</div>
     </div>
     <div class="events-list-body" id="eventsListBody"></div>
   </div>

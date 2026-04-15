@@ -7,6 +7,10 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
 // ─── AUTH ─────────────────────────────────────────────────────────────────────
 let currentUser = null;
 
+// ─── RSVP STATE ───────────────────────────────────────────────────────────────
+// myRsvpMap[itemId] = { rsvp_status, note } — for events the user was invited to (not owner)
+let myRsvpMap = {};
+
 async function initAuth() {
   const { data: { session } } = await sb.auth.getSession();
   if (session?.user) {
@@ -189,15 +193,31 @@ function eventToDbRow(item) {
 
 // ── Load ──────────────────────────────────────────────────────────────────────
 async function loadItems() {
-  const [tasksRes, eventsRes] = await Promise.all([
+  const [tasksRes, eventsRes, guestRes] = await Promise.all([
     sb.from('tether_items').select('*').order('created_at', { ascending: true }),
     sb.from('items').select('*').eq('item_type', 'event').order('created_at', { ascending: true }),
+    sb.from('event_guests').select('item_id, rsvp_status, note').eq('user_id', currentUser.id).eq('is_owner', false),
   ]);
   if (tasksRes.error) { showToast('Load error: ' + tasksRes.error.message); return; }
   if (eventsRes.error) { showToast('Load error: ' + eventsRes.error.message); return; }
+
+  // Build RSVP lookup for invited (non-owner) events
+  myRsvpMap = {};
+  (guestRes.data || []).forEach(r => { myRsvpMap[r.item_id] = r; });
+
+  // Fetch invited events not already returned by the events query (cross-household invites)
+  const ownedIds = new Set((eventsRes.data || []).map(r => r.id));
+  const invitedIds = Object.keys(myRsvpMap).filter(id => !ownedIds.has(id));
+  let invitedRows = [];
+  if (invitedIds.length > 0) {
+    const { data } = await sb.from('items').select('*').in('id', invitedIds);
+    invitedRows = data || [];
+  }
+
   items = [
     ...(tasksRes.data || []).map(dbRowToItem),
     ...(eventsRes.data || []).map(dbRowToEvent),
+    ...invitedRows.map(dbRowToEvent),
   ];
 }
 
