@@ -1803,10 +1803,16 @@ async function loadEventPanel(itemId) {
       const bringRowsHTML = bringItems.map(bi => {
         const claim = claims.find(c => c.potluck_item_id === bi.id);
         const isMine = claim?.user_id === currentUser.id;
-        const claimer = claim ? (householdMembers.find(m => m.user_id === claim.user_id)?.display_name?.split(' ')[0] || 'Someone') : null;
+        const claimerProfile = claim
+          ? (guestProfiles.find(p => p.id === claim.user_id)
+            || householdMembers.find(m => m.user_id === claim.user_id))
+          : null;
+        const claimerName = claimerProfile
+          ? (claimerProfile.display_name || claimerProfile.email || 'Someone').split(' ')[0]
+          : 'Someone';
         return `<div class="bring-item">
           <div class="bring-item-name">${bi.name}</div>
-          ${claimer ? `<div class="bring-item-claimer">${isMine ? '✓ You' : claimer}</div>` : ''}
+          ${claim ? `<div class="bring-item-claimer">${isMine ? '✓ You' : claimerName}</div>` : ''}
           <button class="bring-claim-btn${isMine?' claimed':''}" onclick="claimBringItem('${itemId}','${bi.id}',${isMine})">
             ${isMine ? 'Unclaim' : claim ? 'Taken' : 'I\'ll bring it'}
           </button>
