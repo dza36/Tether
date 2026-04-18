@@ -2121,17 +2121,6 @@ function applyBgColor(hex) {
 function initBgColor() {
   const saved = localStorage.getItem('tether-bg') || '#0B353B';
   document.documentElement.style.setProperty('--bg', saved);
-  const swatch = document.getElementById('bgSwatch');
-  const input = document.getElementById('bgColorInput');
-  if (swatch) swatch.style.background = saved;
-  if (input) {
-    input.value = saved;
-    input.addEventListener('change', () => {
-      const val = input.value.trim();
-      if (/^#[0-9a-fA-F]{6}$/.test(val)) applyBgColor(val);
-      else input.value = localStorage.getItem('tether-bg') || '#0B353B';
-    });
-  }
 }
 
 // ─── ANNUAL SHEET ─────────────────────────────────────────────────────────────
@@ -2210,6 +2199,156 @@ async function toggleAnnualPref(key, value) {
   renderAnnualContent();
 }
 
+// ─── THEME ────────────────────────────────────────────────────────────────────
+function initTheme() {
+  const saved = localStorage.getItem('tether-theme') || 'system';
+  applyTheme(saved);
+}
+
+function applyTheme(theme) {
+  const html = document.documentElement;
+  if (theme === 'dark') {
+    html.setAttribute('data-theme', 'dark');
+  } else if (theme === 'light') {
+    html.setAttribute('data-theme', 'light');
+  } else {
+    html.removeAttribute('data-theme');
+  }
+}
+
+function setTheme(theme) {
+  localStorage.setItem('tether-theme', theme);
+  applyTheme(theme);
+  // Refresh pill states if settings sheet is open
+  document.querySelectorAll('.theme-pill').forEach(p => {
+    p.classList.toggle('active', p.dataset.theme === theme);
+  });
+}
+
+// ─── SETTINGS SHEET ───────────────────────────────────────────────────────────
+function openSettingsSheet() {
+  renderSettingsSheet();
+  document.getElementById('settingsBg').classList.add('open');
+}
+function closeSettingsSheet() { document.getElementById('settingsBg').classList.remove('open'); }
+function bgClickSettings(e) { if (e.target === document.getElementById('settingsBg')) closeSettingsSheet(); }
+
+function renderSettingsSheet() {
+  const body = document.getElementById('settingsBody');
+  if (!body) return;
+  const currentTheme = localStorage.getItem('tether-theme') || 'system';
+  const currentBg = localStorage.getItem('tether-bg') || '#0B353B';
+  const version = typeof APP_VERSION !== 'undefined' ? 'v' + APP_VERSION : '—';
+
+  body.innerHTML = `
+    <div class="settings-section">Appearance</div>
+    <div class="settings-row">
+      <div class="settings-row-info">
+        <div class="settings-row-label">Theme</div>
+      </div>
+      <div class="theme-pills">
+        <button class="theme-pill${currentTheme==='dark'?' active':''}" data-theme="dark" onclick="setTheme('dark')">Dark</button>
+        <button class="theme-pill${currentTheme==='light'?' active':''}" data-theme="light" onclick="setTheme('light')">Light</button>
+        <button class="theme-pill${currentTheme==='system'?' active':''}" data-theme="system" onclick="setTheme('system')">System</button>
+      </div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-row-info">
+        <div class="settings-row-label">Background color</div>
+        <div class="settings-row-sub">App background tint</div>
+      </div>
+      <div class="bg-color-control">
+        <div class="bg-color-swatch" id="bgSwatch" style="background:${currentBg}"></div>
+        <input type="text" class="bg-color-input" id="bgColorInput" maxlength="7" spellcheck="false" placeholder="#0B353B" value="${currentBg}"/>
+      </div>
+    </div>
+
+    <div class="settings-section">Schedule</div>
+    <div class="settings-row">
+      <div class="settings-row-info">
+        <div class="settings-row-label">Daily reset time</div>
+        <div class="settings-row-sub">When tasks reset to "due today"</div>
+      </div>
+      <input type="time" value="00:00" style="padding:6px 10px;border-radius:10px;border:0.5px solid #CECBF6;background:#F7F6FF;color:#26215C;font-family:inherit;font-size:14px"/>
+    </div>
+
+    <div class="settings-section">Integrations</div>
+    <div class="settings-row">
+      <div class="settings-row-info">
+        <div class="settings-row-label">Calendar sync</div>
+        <div class="settings-row-sub">Coming soon</div>
+      </div>
+      <span style="font-size:12px;color:#AFA9EC;font-weight:600">Soon</span>
+    </div>
+
+    <div class="settings-section">About</div>
+    <div class="settings-row settings-version-row" onclick="openChangelogSheet()">
+      <div class="settings-row-info">
+        <div class="settings-row-label">Version</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span class="settings-version">${version}</span>
+        <span class="settings-version-chevron" style="color:#AFA9EC;font-size:16px">›</span>
+      </div>
+    </div>
+  `;
+
+  // Wire bg color input after render
+  const input = document.getElementById('bgColorInput');
+  if (input) {
+    input.addEventListener('change', () => {
+      const val = input.value.trim();
+      if (/^#[0-9a-fA-F]{6}$/.test(val)) applyBgColor(val);
+      else input.value = localStorage.getItem('tether-bg') || '#0B353B';
+    });
+  }
+}
+
+// ─── CHANGELOG SHEET ──────────────────────────────────────────────────────────
+const CHANGELOG = [
+  {
+    version: 'v0.2',
+    date: 'April 2025',
+    notes: [
+      'Annual reminders — birthdays, anniversaries, and yearly tasks',
+      'Settings sheet with Dark / Light / System theme switching',
+      'Events accessible directly from the profile menu',
+      'Keyboard-aware modals — inputs scroll into view on mobile',
+      'App version bumped to 0.2 series',
+    ]
+  },
+  {
+    version: 'v0.1',
+    date: 'Early 2025',
+    notes: [
+      'Initial release — tasks, events, household, groups, contacts',
+      'Recurring tasks: daily, weekly, monthly',
+      'Swipe right to complete, left to snooze or dismiss',
+      'Sign in with Google, Apple, Microsoft, Facebook, or magic link',
+      'Household sharing and invite system',
+    ]
+  },
+];
+
+function openChangelogSheet() {
+  renderChangelogSheet();
+  document.getElementById('changelogBg').classList.add('open');
+}
+function closeChangelogSheet() { document.getElementById('changelogBg').classList.remove('open'); }
+function bgClickChangelog(e) { if (e.target === document.getElementById('changelogBg')) closeChangelogSheet(); }
+
+function renderChangelogSheet() {
+  const body = document.getElementById('changelogBody');
+  if (!body) return;
+  body.innerHTML = CHANGELOG.map(r => `
+    <div style="margin-bottom:1.5rem">
+      <div class="changelog-version">${r.version}</div>
+      <div class="changelog-date">${r.date}</div>
+      ${r.notes.map(n => `<div class="changelog-note">${n}</div>`).join('')}
+    </div>
+  `).join('');
+}
+
 // ─── KEYBOARD-AWARE SHEETS ────────────────────────────────────────────────────
 (function initKeyboardAwareSheets() {
   if (!window.visualViewport) return;
@@ -2220,7 +2359,7 @@ async function toggleAnnualPref(key, value) {
   }
   window.visualViewport.addEventListener('resize', onViewportResize);
 
-  const sheetSelector = '.modal,.snooze-sheet,.user-menu,.events-list-sheet,.social-sheet,.household-sheet,.assign-sheet,.event-detail-sheet,.annual-sheet';
+  const sheetSelector = '.modal,.snooze-sheet,.user-menu,.events-list-sheet,.social-sheet,.household-sheet,.assign-sheet,.event-detail-sheet,.annual-sheet,.settings-sheet,.changelog-sheet';
   document.addEventListener('focusin', (e) => {
     if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement)) return;
     if (!e.target.closest(sheetSelector)) return;
@@ -2229,6 +2368,7 @@ async function toggleAnnualPref(key, value) {
 })();
 
 // ─── BOOT ─────────────────────────────────────────────────────────────────────
+initTheme();
 initBgColor();
 updatePreview();
 initAuth();

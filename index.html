@@ -115,12 +115,11 @@
     <div class="menu-item" onclick="openContactsSheet();closeUserMenu();">
       <span class="menu-icon">🤝</span> Contacts
     </div>
-    <div class="menu-item menu-item-setting">
-      <span class="menu-icon">🎨</span> Background
-      <div class="bg-color-control">
-        <div class="bg-color-swatch" id="bgSwatch"></div>
-        <input type="text" class="bg-color-input" id="bgColorInput" maxlength="7" spellcheck="false" placeholder="#0B353B"/>
-      </div>
+    <div class="menu-item" onclick="showToast('Notifications coming soon')">
+      <span class="menu-icon">🔔</span> Notifications
+    </div>
+    <div class="menu-item" onclick="openSettingsSheet();closeUserMenu();">
+      <span class="menu-icon">⚙️</span> Settings
     </div>
     <div class="menu-item danger" onclick="signOut()">
       <span class="menu-icon">🚪</span> Sign out
@@ -502,6 +501,30 @@
       <div class="annual-close" onclick="closeAnnualSheet()">✕</div>
     </div>
     <div class="annual-body" id="annualBody"></div>
+  </div>
+</div>
+
+<!-- Settings sheet -->
+<div class="settings-bg" id="settingsBg" onclick="bgClickSettings(event)">
+  <div class="settings-sheet">
+    <div class="settings-handle"></div>
+    <div class="settings-header">
+      <div class="settings-title">Settings</div>
+      <div class="settings-close" onclick="closeSettingsSheet()">✕</div>
+    </div>
+    <div class="settings-body" id="settingsBody"></div>
+  </div>
+</div>
+
+<!-- Changelog sheet -->
+<div class="changelog-bg" id="changelogBg" onclick="bgClickChangelog(event)">
+  <div class="changelog-sheet">
+    <div class="changelog-handle"></div>
+    <div class="changelog-header">
+      <div class="changelog-title">What's New</div>
+      <div class="changelog-close" onclick="closeChangelogSheet()">✕</div>
+    </div>
+    <div class="changelog-body" id="changelogBody"></div>
   </div>
 </div>
 
