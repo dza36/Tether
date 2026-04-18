@@ -2094,7 +2094,34 @@ document.addEventListener('visibilitychange', async () => {
   }
 });
 
+// ─── BACKGROUND COLOR ─────────────────────────────────────────────────────────
+function applyBgColor(hex) {
+  document.documentElement.style.setProperty('--bg', hex);
+  localStorage.setItem('tether-bg', hex);
+  const swatch = document.getElementById('bgSwatch');
+  const input = document.getElementById('bgColorInput');
+  if (swatch) swatch.style.background = hex;
+  if (input) input.value = hex;
+}
+
+function initBgColor() {
+  const saved = localStorage.getItem('tether-bg') || '#0B353B';
+  document.documentElement.style.setProperty('--bg', saved);
+  const swatch = document.getElementById('bgSwatch');
+  const input = document.getElementById('bgColorInput');
+  if (swatch) swatch.style.background = saved;
+  if (input) {
+    input.value = saved;
+    input.addEventListener('change', () => {
+      const val = input.value.trim();
+      if (/^#[0-9a-fA-F]{6}$/.test(val)) applyBgColor(val);
+      else input.value = localStorage.getItem('tether-bg') || '#0B353B';
+    });
+  }
+}
+
 // ─── BOOT ─────────────────────────────────────────────────────────────────────
+initBgColor();
 updatePreview();
 initAuth();
 document.getElementById('appVersion').textContent = typeof APP_VERSION !== 'undefined' ? 'v' + APP_VERSION : '';

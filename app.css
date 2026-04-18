@@ -1,9 +1,10 @@
+  :root{--bg:#0B353B}
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  html,body{height:100%;background:#F7F6FF;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
-  .app{max-width:430px;margin:0 auto;padding:0 0 2rem;user-select:none;min-height:100vh;background:#F7F6FF}
+  html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+  .app{max-width:430px;margin:0 auto;padding:0 0 2rem;user-select:none;min-height:100vh;background:var(--bg)}
 
   /* Topbar */
-  .topbar{padding:1rem 1rem .5rem;display:flex;align-items:center;justify-content:space-between;background:#F7F6FF;position:sticky;top:0;z-index:50}
+  .topbar{padding:1rem 1rem .5rem;display:flex;align-items:center;justify-content:space-between;background:var(--bg);position:sticky;top:0;z-index:50}
   .app-title{font-size:22px;font-weight:700;color:#26215C;letter-spacing:-.5px}
   .topbar-right{display:flex;align-items:center;gap:8px}
   .add-btn{width:36px;height:36px;border-radius:50%;border:none;background:#534AB7;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:24px;color:#fff;line-height:1;box-shadow:0 2px 8px rgba(83,74,183,.3)}
@@ -137,7 +138,7 @@
   .snooze-btn-cancel{width:100%;padding:12px;font-size:14px;font-weight:500;border-radius:14px;border:none;background:transparent;color:#AFA9EC;cursor:pointer}
 
   /* Auth screen */
-  .auth-screen{display:none;position:fixed;inset:0;background:#F7F6FF;z-index:300;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
+  .auth-screen{display:none;position:fixed;inset:0;background:var(--bg);z-index:300;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
   .auth-screen.open{display:flex}
   .auth-logo{font-size:40px;font-weight:800;color:#26215C;letter-spacing:-1.5px;margin-bottom:.25rem}
   .auth-tagline{font-size:14px;color:#AFA9EC;margin-bottom:2.5rem;text-align:center}
@@ -168,13 +169,18 @@
   .menu-item:last-child{border-bottom:none}
   .menu-item.danger{color:#A32D2D}
   .menu-icon{width:20px;text-align:center;font-size:16px}
+  .menu-item-setting{cursor:default}
+  .bg-color-control{display:flex;align-items:center;gap:6px;margin-left:auto}
+  .bg-color-swatch{width:20px;height:20px;border-radius:4px;border:1.5px solid #CECBF6;flex-shrink:0}
+  .bg-color-input{width:80px;padding:5px 8px;font-size:13px;font-family:monospace;border-radius:8px;border:0.5px solid #CECBF6;background:#F7F6FF;color:#26215C;outline:none;text-align:center}
+  .bg-color-input:focus{border-color:#534AB7}
 
   /* Toast */
   .toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%) translateY(100px);background:#26215C;border-radius:14px;padding:12px 20px;font-size:14px;font-weight:600;color:#EEEDFE;transition:transform .3s ease;z-index:400;white-space:nowrap;box-shadow:0 4px 20px rgba(38,33,92,.25)}
   .toast.show{transform:translateX(-50%) translateY(0)}
 
   /* Loading */
-  .loading-screen{display:none;position:fixed;inset:0;background:#F7F6FF;z-index:500;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+  .loading-screen{display:none;position:fixed;inset:0;background:var(--bg);z-index:500;align-items:center;justify-content:center;flex-direction:column;gap:12px}
   .loading-screen.open{display:flex}
   .loading-logo{font-size:32px;font-weight:800;color:#26215C;letter-spacing:-1px}
   .loading-spinner{width:24px;height:24px;border:3px solid #EEEDFE;border-top-color:#534AB7;border-radius:50%;animation:spin .8s linear infinite}
@@ -185,7 +191,7 @@
 
   /* Notification badge on avatar */
   .avatar-wrap{position:relative;display:inline-flex}
-  .notif-badge{position:absolute;top:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:#E24B4A;border:2px solid #F7F6FF;display:none}
+  .notif-badge{position:absolute;top:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:#E24B4A;border:2px solid var(--bg);display:none}
   .notif-badge.show{display:block}
 
   /* Pending invite banner */
@@ -404,13 +410,9 @@
 
 @media (prefers-color-scheme: dark) {
   :root { color-scheme: dark; }
-  html,body{background:#0F0E1A}
-  .app{background:#0F0E1A}
   /* Topbar */
-  .topbar{background:#0F0E1A}
   .app-title{color:#E8E5FF}
   .avatar-btn{border-color:#2E2A5E;background:#1E1A3C}
-  .notif-badge{border-color:#0F0E1A}
   /* Tabs */
   .tab{border-color:#2E2A5E;color:#7B72D4}
   .tab.active{background:#1E1A3C;border-color:#534AB7;color:#E8E5FF}
@@ -475,7 +477,6 @@
   .snooze-btn-dismiss:active{background:#201C42}
   .snooze-btn-cancel{color:#6B65A8}
   /* Auth */
-  .auth-screen{background:#0F0E1A}
   .auth-logo{color:#E8E5FF}
   .auth-tagline{color:#6B65A8}
   .auth-divider span{color:#6B65A8}
@@ -484,7 +485,6 @@
   .oauth-btn:active{background:#1E1A3C}
   .magic-form input{background:#1A1730;border-color:#2E2A5E;color:#E8E5FF}
   /* Loading */
-  .loading-screen{background:#0F0E1A}
   .loading-logo{color:#E8E5FF}
   .loading-spinner{border-color:#1E1A3C;border-top-color:#534AB7}
   /* User menu */
@@ -497,6 +497,8 @@
   .user-email{color:#6B65A8}
   .menu-item{border-color:#2E2A5E;color:#E8E5FF}
   .menu-item.danger{color:#E87070}
+  .bg-color-input{background:#1A1730;border-color:#2E2A5E;color:#E8E5FF}
+  .bg-color-swatch{border-color:#2E2A5E}
   /* Toast */
   .toast{background:#1E1A3C;color:#E8E5FF}
   /* Feedback bar */
