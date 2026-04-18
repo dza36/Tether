@@ -212,7 +212,8 @@ function teardownRealtime() {
   clearTimeout(realtimeDebounce);
 }
 
-function onRealtimeChange() {
+function onRealtimeChange(payload) {
+  console.log('[Realtime] change received', payload);
   clearTimeout(realtimeDebounce);
   realtimeDebounce = setTimeout(async () => { await loadItems(); render(); }, 300);
 }
