@@ -2134,6 +2134,82 @@ function initBgColor() {
   }
 }
 
+// ─── ANNUAL SHEET ─────────────────────────────────────────────────────────────
+function openAnnualSheet() {
+  renderAnnualContent();
+  document.getElementById('annualBg').classList.add('open');
+}
+function closeAnnualSheet() { document.getElementById('annualBg').classList.remove('open'); }
+function bgClickAnnual(e) { if (e.target === document.getElementById('annualBg')) closeAnnualSheet(); }
+
+function openTaskModalAnnual() {
+  closeAnnualSheet();
+  openTaskModal();
+  document.getElementById('fRecurring').checked = true;
+  document.getElementById('recurringSection').style.display = '';
+  document.getElementById('fIncrement').value = 'year';
+  document.getElementById('fEveryNum').value = '1';
+  document.getElementById('fDueDate').value = '';
+  onIncrementChange();
+  validateForm();
+}
+
+function renderAnnualContent() {
+  const body = document.getElementById('annualBody');
+  if (!body) return;
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const annuals = items.filter(i => i.type === 'annual');
+  let html = '<div class="annual-section">My Annuals</div>';
+
+  if (annuals.length === 0) {
+    html += `<div class="annual-empty">
+      <div class="annual-empty-icon">🗓</div>
+      <div class="annual-empty-title">No annuals yet.</div>
+      <div class="annual-empty-sub">Add birthdays, anniversaries, and yearly reminders.</div>
+      <button class="btn-save" style="max-width:200px;margin:0 auto" onclick="openTaskModalAnnual()">+ Add Annual</button>
+    </div>`;
+  } else {
+    const byMonth = {};
+    for (const item of annuals) {
+      const due = getDueDate(item);
+      const m = due.getMonth();
+      if (!byMonth[m]) byMonth[m] = [];
+      byMonth[m].push({ item, due });
+    }
+    for (const m of Object.keys(byMonth).map(Number).sort((a,b) => a-b)) {
+      html += `<div class="annual-section">${monthNames[m]}</div>`;
+      for (const { item, due } of byMonth[m].sort((a,b) => a.due.getDate() - b.due.getDate())) {
+        html += `<div class="annual-row" onclick="closeAnnualSheet();editItem('${item.id}')">
+          <div class="annual-row-icon">${iconFor(item)}</div>
+          <div class="annual-row-info">
+            <div class="annual-row-name">${item.name}</div>
+            <div class="annual-row-sub">${subFor(item)}</div>
+          </div>
+        </div>`;
+      }
+    }
+  }
+
+  html += '<div class="annual-section" style="margin-top:1.5rem">More</div>';
+  html += `<div class="annual-toggle-row">
+    <div class="annual-toggle-label"><span>🇺🇸</span> Holidays</div>
+    <input type="checkbox" ${userPrefs.holidaysEnabled ? 'checked' : ''} onchange="toggleAnnualPref('holidaysEnabled',this.checked)" style="width:20px;height:20px;cursor:pointer;accent-color:#534AB7"/>
+  </div>`;
+  if (userPrefs.holidaysEnabled) html += '<div class="annual-coming-soon">Coming soon</div>';
+  html += `<div class="annual-toggle-row">
+    <div class="annual-toggle-label"><span>🎉</span> Party Every Day</div>
+    <input type="checkbox" ${userPrefs.partyDaysEnabled ? 'checked' : ''} onchange="toggleAnnualPref('partyDaysEnabled',this.checked)" style="width:20px;height:20px;cursor:pointer;accent-color:#534AB7"/>
+  </div>`;
+  if (userPrefs.partyDaysEnabled) html += '<div class="annual-coming-soon">Coming soon</div>';
+
+  body.innerHTML = html;
+}
+
+async function toggleAnnualPref(key, value) {
+  await persistUserPref(key, value);
+  renderAnnualContent();
+}
+
 // ─── KEYBOARD-AWARE SHEETS ────────────────────────────────────────────────────
 (function initKeyboardAwareSheets() {
   if (!window.visualViewport) return;
@@ -2144,7 +2220,7 @@ function initBgColor() {
   }
   window.visualViewport.addEventListener('resize', onViewportResize);
 
-  const sheetSelector = '.modal,.snooze-sheet,.user-menu,.events-list-sheet,.social-sheet,.household-sheet,.assign-sheet,.event-detail-sheet';
+  const sheetSelector = '.modal,.snooze-sheet,.user-menu,.events-list-sheet,.social-sheet,.household-sheet,.assign-sheet,.event-detail-sheet,.annual-sheet';
   document.addEventListener('focusin', (e) => {
     if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement)) return;
     if (!e.target.closest(sheetSelector)) return;

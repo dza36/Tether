@@ -408,6 +408,32 @@
   /* Override event-panel style inside detail sheet (no bg, no border) */
   .event-detail-body .event-panel{background:transparent;border:none;border-radius:0;padding:0}
 
+  /* Annual sheet */
+  .annual-bg{display:none;position:fixed;inset:0;background:rgba(38,33,92,.5);z-index:210;align-items:flex-end;justify-content:center}
+  .annual-bg.open{display:flex}
+  .annual-sheet{background:#fff;border-radius:20px 20px 0 0;border:0.5px solid #CECBF6;width:100%;max-width:430px;max-height:calc(92vh - var(--keyboard-offset));display:flex;flex-direction:column}
+  .annual-handle{width:36px;height:4px;background:#CECBF6;border-radius:2px;margin:12px auto 0;flex-shrink:0}
+  .annual-header{display:flex;align-items:center;padding:.75rem 1.25rem .5rem;flex-shrink:0}
+  .annual-title{font-size:17px;font-weight:700;color:#26215C;flex:1}
+  .annual-add{font-size:26px;color:#534AB7;cursor:pointer;padding:4px;line-height:1;font-weight:300;margin-right:8px}
+  .annual-close{font-size:18px;color:#AFA9EC;cursor:pointer;padding:4px;line-height:1}
+  .annual-body{flex:1;overflow-y:auto;padding:0 1.25rem 2rem}
+  .annual-section{font-size:11px;font-weight:700;color:#AFA9EC;text-transform:uppercase;letter-spacing:.06em;margin:1rem 0 .4rem}
+  .annual-row{display:flex;align-items:center;gap:10px;padding:.7rem 0;border-bottom:0.5px solid #F0EFF9;cursor:pointer}
+  .annual-row:last-child{border-bottom:none}
+  .annual-row:active{opacity:.7}
+  .annual-row-icon{font-size:16px;width:24px;text-align:center;flex-shrink:0}
+  .annual-row-info{flex:1;min-width:0}
+  .annual-row-name{font-size:15px;font-weight:600;color:#26215C}
+  .annual-row-sub{font-size:12px;color:#AFA9EC;margin-top:1px}
+  .annual-toggle-row{display:flex;align-items:center;justify-content:space-between;padding:.85rem 0;border-bottom:0.5px solid #EEEDFE}
+  .annual-toggle-label{display:flex;align-items:center;gap:10px;font-size:15px;color:#26215C;font-weight:500}
+  .annual-coming-soon{font-size:12px;color:#AFA9EC;padding:.4rem 0 .4rem 2.5rem;font-style:italic}
+  .annual-empty{text-align:center;padding:2.5rem 1rem}
+  .annual-empty-icon{font-size:32px;margin-bottom:.75rem}
+  .annual-empty-title{font-size:15px;font-weight:600;color:#26215C;margin-bottom:.4rem}
+  .annual-empty-sub{font-size:13px;color:#AFA9EC;line-height:1.5;margin-bottom:1.25rem}
+
 @media (prefers-color-scheme: dark) {
   :root { color-scheme: dark; }
   /* Topbar */
@@ -598,4 +624,18 @@
   .event-detail-handle{background:#2E2A5E}
   .event-detail-name{color:#E8E5FF}
   .event-detail-meta{color:#6B65A8}
+  /* Annual sheet */
+  .annual-bg{background:rgba(0,0,0,.75)}
+  .annual-sheet{background:#1A1730;border-color:#2E2A5E}
+  .annual-handle{background:#2E2A5E}
+  .annual-title{color:#E8E5FF}
+  .annual-section{color:#6B65A8}
+  .annual-row{border-color:#2E2A5E}
+  .annual-row-name{color:#E8E5FF}
+  .annual-row-sub{color:#6B65A8}
+  .annual-toggle-row{border-color:#2E2A5E}
+  .annual-toggle-label{color:#E8E5FF}
+  .annual-coming-soon{color:#6B65A8}
+  .annual-empty-title{color:#E8E5FF}
+  .annual-empty-sub{color:#6B65A8}
 }

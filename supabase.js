@@ -11,6 +11,9 @@ let currentUser = null;
 // myRsvpMap[itemId] = { rsvp_status, note } — for events the user was invited to (not owner)
 let myRsvpMap = {};
 
+// ─── USER PREFS ───────────────────────────────────────────────────────────────
+let userPrefs = { holidaysEnabled: false, partyDaysEnabled: false };
+
 async function initAuth() {
   const { data: { session } } = await sb.auth.getSession();
   if (session?.user) {
@@ -27,7 +30,15 @@ async function initAuth() {
 async function onSignedIn(user) {
   currentUser = user;
   updateAvatar(user);
-  await Promise.all([loadItems(), loadHousehold()]);
+  const [, , prefResult] = await Promise.all([
+    loadItems(),
+    loadHousehold(),
+    sb.from('users').select('holidays_enabled, party_days_enabled').eq('id', user.id).single()
+  ]);
+  if (prefResult?.data) {
+    userPrefs.holidaysEnabled = prefResult.data.holidays_enabled || false;
+    userPrefs.partyDaysEnabled = prefResult.data.party_days_enabled || false;
+  }
   await checkPendingInvites();
   document.getElementById('loadingScreen').classList.remove('open');
   document.getElementById('authScreen').classList.remove('open');
@@ -294,6 +305,13 @@ async function persistItem(item) {
     console.error('persistItem exception', e);
     showToast('Save error: ' + e.message);
   }
+}
+
+async function persistUserPref(key, value) {
+  userPrefs[key] = value;
+  const col = key === 'holidaysEnabled' ? 'holidays_enabled' : 'party_days_enabled';
+  const { error } = await sb.from('users').update({ [col]: value }).eq('id', currentUser.id);
+  if (error) console.warn('persistUserPref error', error);
 }
 
 async function deleteItemFromDb(id) {
