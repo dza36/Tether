@@ -2,55 +2,82 @@
 
 > Stay tethered to what matters.
 
-A lightweight recurring task + event tracker. Swipe right to complete, swipe left to snooze, hold to open a checklist.
+A household task and event tracker built as a PWA. Swipe to complete, swipe to snooze, hold to open a checklist. Shared in real time across all your devices.
 
-## Deploy to Azure Static Web Apps
+**Live at [get-tethered.app](https://get-tethered.app)**
 
-### Step 1 — Push to GitHub
-```bash
-git init
-git add .
-git commit -m "Tether v1 — initial release"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/tether.git
-git push -u origin main
-```
+---
 
-### Step 2 — Create Azure Static Web App
-1. Go to portal.azure.com
-2. Search "Static Web Apps" → Create
-3. Name: `tether`
-4. Region: Central US
-5. Plan: Free
-6. Source: GitHub → authorize → select your repo + `main` branch
-7. Build preset: Custom
-8. App location: `/`
-9. Output location: `/`
-10. Review + Create
+## What's live
 
-Azure auto-generates the GitHub Action. Your app is live in ~2 minutes.
+### Tasks
+- **Recurring types** — every N days/weeks/months/years, fixed weekdays, monthly by Nth weekday (e.g. 1st Monday)
+- **One-time tasks** — single due date, archived on completion
+- **Urgent flag** — sorts to top of Today, red dot indicator
+- **Checklist** — hold to expand, add/check/delete items, reset all
+- **Assignee** — tap avatar on row to assign to any household member
+- **Optional start time** — timed tasks sort chronologically within their tab
 
-### Step 3 — Custom domain (optional)
-In Azure Static Web Apps → Custom domains → add `tether.yourdomain.com`
-Then add a CNAME in Cloudflare pointing to your `.azurestaticapps.net` URL.
+### Events
+- **Create** with name, icon, date, optional start/end time, optional end date (multi-day)
+- **Attendees** — invite household contacts at creation or from the detail sheet
+- **RSVP** — Going / Tentative / Can't make it; owners skip RSVP on their own events
+- **Bring list** — owner requests items, guests claim or add their own
+- **Swipe right** to dismiss, **swipe left** to snooze
 
-## Features
-- Recurring tasks: interval (every N days/weeks/months/years) or fixed weekday
-- One-time events with countdown
-- Swipe right → complete (resets countdown)
-- Swipe left → snooze 1 day
-- Hold → checklist mode (add, check, delete items)
-- Data persists via localStorage
-- PWA ready (add to home screen)
-- Overdue items highlighted red
-- Sorts by urgency
+### Tabs
+| Tab | Shows |
+|-----|-------|
+| **Today** | Due today + overdue |
+| **This Week** | Rolling 7 days |
+| **This Month** | Rolling 30 days |
+
+Overdue items always surface in Today regardless of active tab.
+
+### Swipe gestures
+| Gesture | Action |
+|---------|--------|
+| Swipe right | Complete task / Dismiss event |
+| Swipe left | Snooze (bottom sheet, 1–N days) |
+| Hold | Expand checklist panel |
+
+### Household
+- Create a household, invite members by email
+- All household items visible to all members
+- In-app invite banner and accept/decline flow
+- Member avatars on task rows and event attendee lists
+
+### Social
+- Contacts list — accepted contacts can be invited to events
+- Groups — organize contacts for batch inviting
+
+### Account
+- Sign in via Google, Microsoft, or magic link email
+- Configurable background color (hex, persisted per device)
+- Real-time sync — changes on any device push to all connected clients instantly
+
+---
 
 ## Tech
-Plain HTML/CSS/JS. Zero dependencies. Zero build step.
+
+Plain HTML / CSS / JS. Zero dependencies. Zero build step.
+
+| Layer | Stack |
+|-------|-------|
+| Frontend | HTML + CSS + vanilla JS |
+| Backend | Supabase (Postgres + Auth + Realtime) |
+| Hosting | Azure Static Web Apps |
+| Deploy | GitHub Actions on push to `main` |
+| Domain | get-tethered.app (Cloudflare DNS) |
+
+---
+
+## Deploy
+
+Push to `main` — GitHub Actions builds and deploys to Azure Static Web Apps automatically. Version number is stamped at build time via `git rev-list --count HEAD`.
+
+---
 
 ## Roadmap
-- User accounts + cloud sync
-- Push notifications
-- Google Calendar / Apple Calendar integration
-- React Native app (iOS + Android)
-- Pro subscription ($2.99/mo or $19.99/yr)
+
+See [BACKLOG.md](BACKLOG.md).
