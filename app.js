@@ -18,6 +18,14 @@ function getDueDate(item) {
   if (item.type==='event'||item.type==='oneTime') return new Date((item.date||isoToday())+'T00:00:00');
   if (item.type==='weekday') return nextFromDays(item.weekdays||[1], item.lastDone===isoToday()?1:0);
   if (item.type==='monthly'||item.type==='yearly') return new Date((item.lastDone||isoToday())+'T00:00:00');
+  if (item.type==='annual') {
+    const base = new Date((item.lastDone||isoToday())+'T00:00:00');
+    const interval = item.yearInterval || 1;
+    const result = new Date(base);
+    result.setFullYear(result.getFullYear() + interval);
+    while (result < today) result.setFullYear(result.getFullYear() + interval);
+    return result;
+  }
   const l = new Date(item.lastDone+'T00:00:00');
   const d = new Date(l); d.setDate(d.getDate()+(item.days||0)); return d;
 }
@@ -107,12 +115,18 @@ function subFor(item) {
   }
   if (item.type==="weekday") return `Every ${(item.weekdays||[]).map(d=>wd[d]).join(", ")} · Next due ${fmtDate(getDueDate(item))}${timeStr}`;
   if (item.type==="yearly") return `Every year · ${fmtDate(getDueDate(item))}${timeStr}`;
+  if (item.type==="annual") {
+    const interval = item.yearInterval || 1;
+    const intervalStr = interval === 1 ? "Every year" : `Every ${interval} years`;
+    return `${intervalStr} · Next due ${fmtDate(getDueDate(item))}${timeStr}`;
+  }
   // event
   const due = getDueDate(item);
   return due.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",year:"numeric"})+timeStr;
 }
 function iconFor(item) {
   if (item.type === 'event') return item.eventIcon || '📅';
+  if (item.type === 'annual') return '<span class="type-icon">🗓</span>';
   if (item.isUrgent) return '<span class="type-dot dot-urgent"></span>';
   if (item.startTime) return '<span class="type-icon">🕐</span>';
   return '<span class="type-dot dot-task"></span>';
@@ -167,6 +181,15 @@ async function completeItem(id) {
     }
     item.lastDone = next.toISOString().slice(0,10);
     showToast('✓ Done — see you next month');
+    await persistItem(item);
+    recordCompletion(item, dueDate);
+  } else if (item.type==='annual') {
+    const l = new Date(item.lastDone+'T00:00:00');
+    const interval = item.yearInterval || 1;
+    l.setFullYear(l.getFullYear() + interval);
+    item.lastDone = l.toISOString().slice(0,10);
+    const yrsStr = interval === 1 ? 'next year' : `in ${interval} years`;
+    showToast(`✓ Done — see you ${yrsStr}`);
     await persistItem(item);
     recordCompletion(item, dueDate);
   } else if (item.type==='yearly') {
@@ -425,7 +448,7 @@ function editItem(id) {
   document.getElementById("fTaskTime").value=item.startTime||"";
   document.getElementById("fUrgent").checked=item.isUrgent||false;
 
-  const isRecurring = item.type==='interval'||item.type==='weekday'||item.type==='monthly'||item.type==='yearly';
+  const isRecurring = item.type==='interval'||item.type==='weekday'||item.type==='monthly'||item.type==='yearly'||item.type==='annual';
   document.getElementById("fRecurring").checked=isRecurring;
   document.getElementById("recurringSection").style.display=isRecurring?"":"none";
 
@@ -469,15 +492,22 @@ function editItem(id) {
     document.getElementById("monthPicker").style.display="none";
     document.getElementById("yearPicker").style.display="";
     document.getElementById("fDueDate").value="";
-    // Populate month select
     document.getElementById("fYearMonth").value=String(item.days||1);
-    // Populate day/weekday mode
     if(item.monthWeek!==null && item.monthWeek!==undefined){
       document.getElementById("fYearWeekday").checked=true;
     } else {
       document.getElementById("fYearDay").checked=true;
     }
     onYearPickerChange();
+  } else if(item.type==='annual'){
+    const due=getDueDate(item);
+    document.getElementById("fDueDate").value=due.toISOString().slice(0,10);
+    document.getElementById("fDueDateField").style.display="";
+    document.getElementById("fIncrement").value="year";
+    document.getElementById("fEveryNum").value=item.yearInterval||1;
+    document.getElementById("weekDayPicker").style.display="none";
+    document.getElementById("monthPicker").style.display="none";
+    document.getElementById("yearPicker").style.display="none";
   }
 
   onRecurrenceChange();
@@ -801,13 +831,11 @@ function onIncrementChange(){
   const weekInterval = parseInt(document.getElementById("fEveryNum")?.value)||1;
   document.getElementById("weekDayPicker").style.display = inc==="week" ? "" : "none";
   document.getElementById("monthPicker").style.display = inc==="month" ? "" : "none";
-  document.getElementById("yearPicker").style.display = inc==="year" ? "" : "none";
-  // Hide due date field and "every N" row for yearly — date is fully determined by month+day
+  document.getElementById("yearPicker").style.display = "none";
   const dueDateField = document.getElementById("fDueDateField");
-  if(dueDateField) dueDateField.style.display = inc==="year" ? "none" : "";
+  if(dueDateField) dueDateField.style.display = "";
   const everyRow = document.getElementById("fEveryNum")?.closest("div[style*='flex']");
-  if(everyRow) everyRow.style.display = inc==="year" ? "none" : "";
-  if(inc==="year"){ onYearPickerChange(); return; }
+  if(everyRow) everyRow.style.display = "";
   // If switching to week with interval > 1, enforce single day selection
   if(inc==="week" && weekInterval > 1 && selectedWeekdays.length > 1){
     selectedWeekdays = [selectedWeekdays[0]];
@@ -836,11 +864,14 @@ function onRecurrenceChange(){
     const label=isWeekday?document.getElementById("monthWeekdayLabel").textContent:document.getElementById("monthDayLabel").textContent;
     text=`Every ${num===1?"":num+" "}month${num>1?"s":""} · ${label}`;
   } else if(inc==="year"){
-    const isWeekday=document.getElementById("fYearWeekday")?.checked;
-    const label=isWeekday?document.getElementById("yearWeekdayLabel").textContent:document.getElementById("yearDayLabel").textContent;
-    const monthNames=["January","February","March","April","May","June","July","August","September","October","November","December"];
-    const m=parseInt(document.getElementById("fYearMonth")?.value||1)-1;
-    text=`Every year · ${monthNames[m]} ${label.replace(/^Day /,"")}`;
+    const yrs = num===1 ? "Every year" : `Every ${num} years`;
+    const dateVal = document.getElementById("fDueDate")?.value;
+    if(dateVal){
+      const d = new Date(dateVal+"T00:00:00");
+      text = `${yrs} · ${d.toLocaleDateString("en-US",{month:"long",day:"numeric"})}`;
+    } else {
+      text = yrs;
+    }
   }
   preview.textContent=text;
 }
@@ -904,8 +935,7 @@ function validateForm(){
   const inc=document.getElementById("fIncrement")?.value||"day";
   const recurring=document.getElementById("fRecurring")?.checked;
   const date=document.getElementById("fDueDate")?.value;
-  // Yearly doesn't use fDueDate — always valid if name filled
-  const dateOk = (recurring && inc==="year") ? true : !!date;
+  const dateOk = !!date;
   const valid=!!(name && dateOk);
   const btn=document.getElementById("btnSave");
   if(btn) btn.disabled=!valid;
@@ -965,34 +995,18 @@ async function saveItem(){
     }
     lastDone=dueDate;
   } else if(inc==="year"){
-    type="yearly";
-    const month=parseInt(document.getElementById("fYearMonth").value)||1;
-    days=month; // reuse days column for month (1-12)
-    const isWeekdayMode=document.getElementById("fYearWeekday")?.checked;
-    const year=today.getFullYear();
-    let occurrence;
-    if(isWeekdayMode){
-      // Nth weekday of month — read from yearWeekdayLabel which mirrors monthly logic
-      // Compute from current month+day selection
-      const dayNum=parseInt(document.getElementById("fYearDayNum").value)||1;
-      const tmpDate=new Date(year, month-1, dayNum);
-      monthWeekday=tmpDate.getDay(); monthWeek=Math.ceil(dayNum/7);
-      occurrence=new Date(year, month-1, 1);
-      let count=0, tries=0;
-      while(tries++<35){ if(occurrence.getDay()===monthWeekday&&++count===monthWeek) break; occurrence.setDate(occurrence.getDate()+1); }
-    } else {
-      monthDay=parseInt(document.getElementById("fYearDayNum").value)||1;
-      occurrence=new Date(year, month-1, monthDay);
-    }
-    // If this year's occurrence has already passed, push to next year
-    if(occurrence < today){ occurrence.setFullYear(year+1); }
-    lastDone=occurrence.toISOString().slice(0,10);
+    type="annual";
+    const anchor=new Date(dueDate+"T00:00:00");
+    const anchorMinus=new Date(anchor);
+    anchorMinus.setFullYear(anchorMinus.getFullYear()-num);
+    lastDone=anchorMinus.toISOString().slice(0,10);
   }
 
   const item={
     name, type, checklist:[], status:'active',
     days, lastDone, weekdays, weekInterval, monthDay, monthWeek, monthWeekday,
     date,
+    yearInterval: inc==="year" ? num : 1,
     startTime:document.getElementById("fTaskTime")?.value||null,
     isUrgent:document.getElementById("fUrgent")?.checked||false,
   };
