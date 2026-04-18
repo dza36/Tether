@@ -2120,6 +2120,24 @@ function initBgColor() {
   }
 }
 
+// ─── KEYBOARD-AWARE SHEETS ────────────────────────────────────────────────────
+(function initKeyboardAwareSheets() {
+  if (!window.visualViewport) return;
+
+  function onViewportResize() {
+    const offset = window.innerHeight - window.visualViewport.height;
+    document.documentElement.style.setProperty('--keyboard-offset', Math.max(0, offset) + 'px');
+  }
+  window.visualViewport.addEventListener('resize', onViewportResize);
+
+  const sheetSelector = '.modal,.snooze-sheet,.user-menu,.events-list-sheet,.social-sheet,.household-sheet,.assign-sheet,.event-detail-sheet';
+  document.addEventListener('focusin', (e) => {
+    if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement)) return;
+    if (!e.target.closest(sheetSelector)) return;
+    setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
+  });
+})();
+
 // ─── BOOT ─────────────────────────────────────────────────────────────────────
 initBgColor();
 updatePreview();

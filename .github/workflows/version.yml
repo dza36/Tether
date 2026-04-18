@@ -18,7 +18,7 @@ jobs:
 
       - name: Update version.js
         run: |
-          echo "const APP_VERSION = \"0.1.${{ steps.build.outputs.NUM }}\";" > version.js
+          echo "const APP_VERSION = \"0.2.${{ steps.build.outputs.NUM }}\";" > version.js
 
       - name: Commit version bump
         run: |
