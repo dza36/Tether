@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Install Tether</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --purple: #534AB7;
+      --purple-dark: #26215C;
+      --purple-light: #EEEDFE;
+      --purple-mid: #CECBF6;
+      --green: #1D9E75;
+      --bg: #F7F6FF;
+      --white: #ffffff;
+      --text: #26215C;
+      --sub: #7B78B8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* Hero */
+    .hero {
+      background: var(--purple-dark);
+      padding: 3rem 1.5rem 2.5rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 50% 0%, rgba(83,74,183,.6) 0%, transparent 70%);
+    }
+    .hero-anchor {
+      font-size: 52px;
+      display: block;
+      margin-bottom: .75rem;
+      position: relative;
+      filter: drop-shadow(0 4px 24px rgba(83,74,183,.5));
+    }
+    .hero-title {
+      font-size: 36px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -1px;
+      position: relative;
+      margin-bottom: .4rem;
+    }
+    .hero-sub {
+      font-size: 15px;
+      color: var(--purple-mid);
+      position: relative;
+      font-weight: 500;
+    }
+
+    /* Tab switcher */
+    .tab-bar {
+      display: flex;
+      gap: 0;
+      margin: 1.5rem 1.5rem 0;
+      background: var(--purple-light);
+      border-radius: 14px;
+      padding: 4px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 10px;
+      border-radius: 10px;
+      border: none;
+      background: transparent;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--sub);
+      cursor: pointer;
+      transition: all .2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .tab-btn.active {
+      background: var(--white);
+      color: var(--purple-dark);
+      box-shadow: 0 2px 8px rgba(38,33,92,.12);
+    }
+    .tab-icon { font-size: 18px; }
+
+    /* Panels */
+    .panel { display: none; padding: 1.5rem; }
+    .panel.active { display: block; }
+
+    /* Step card */
+    .step {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      background: var(--white);
+      border-radius: 16px;
+      padding: 1.1rem 1.1rem;
+      margin-bottom: .75rem;
+      border: 0.5px solid var(--purple-mid);
+      box-shadow: 0 2px 12px rgba(83,74,183,.06);
+      animation: fadeUp .35s ease both;
+    }
+    .step:nth-child(1) { animation-delay: .05s }
+    .step:nth-child(2) { animation-delay: .1s }
+    .step:nth-child(3) { animation-delay: .15s }
+    .step:nth-child(4) { animation-delay: .2s }
+    .step:nth-child(5) { animation-delay: .25s }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .step-num {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--purple-light);
+      color: var(--purple);
+      font-size: 14px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .step-body { flex: 1 }
+    .step-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 3px;
+    }
+    .step-desc {
+      font-size: 13px;
+      color: var(--sub);
+      line-height: 1.5;
+    }
+    .step-icon {
+      font-size: 22px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    /* Note box */
+    .note {
+      background: #FFF8E6;
+      border: 0.5px solid #F5D87A;
+      border-radius: 12px;
+      padding: .85rem 1rem;
+      font-size: 13px;
+      color: #7A5A00;
+      margin-bottom: .75rem;
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      line-height: 1.5;
+    }
+    .note-icon { flex-shrink: 0; font-size: 16px; margin-top: 1px; }
+
+    /* CTA */
+    .cta-wrap {
+      padding: 0 1.5rem 3rem;
+      text-align: center;
+    }
+    .cta-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--purple);
+      color: #fff;
+      font-family: inherit;
+      font-size: 16px;
+      font-weight: 700;
+      padding: 15px 32px;
+      border-radius: 14px;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      box-shadow: 0 4px 20px rgba(83,74,183,.35);
+      transition: transform .15s, box-shadow .15s;
+      width: 100%;
+      justify-content: center;
+      max-width: 360px;
+    }
+    .cta-btn:active { transform: scale(.98); box-shadow: 0 2px 10px rgba(83,74,183,.25); }
+    .cta-sub {
+      font-size: 12px;
+      color: var(--sub);
+      margin-top: .75rem;
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--sub);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: .75rem;
+      padding: 0 .25rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="hero">
+  <span class="hero-anchor">⚓</span>
+  <div class="hero-title">Install Tether</div>
+  <div class="hero-sub">Stay tethered to what matters</div>
+</div>
+
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('android', this)">
+    <span class="tab-icon">🤖</span> Android
+  </button>
+  <button class="tab-btn" onclick="switchTab('ios', this)">
+    <span class="tab-icon"></span> iPhone
+  </button>
+</div>
+
+<!-- Android Panel -->
+<div class="panel active" id="panel-android">
+  <div class="note">
+    <span class="note-icon">💡</span>
+    Tether installs directly from your browser — no App Store needed. It works just like a native app.
+  </div>
+
+  <div class="section-label">Steps</div>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <div class="step-title">Open in Chrome</div>
+      <div class="step-desc">Open the Tether link in Chrome on your Android device. It won't work from Samsung Internet or other browsers.</div>
+    </div>
+    <div class="step-icon">🌐</div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <div class="step-title">Tap the three dots menu</div>
+      <div class="step-desc">Tap the ⋮ menu in the top right corner of Chrome.</div>
+    </div>
+    <div class="step-icon">⋮</div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <div class="step-title">Tap "Add to Home screen"</div>
+      <div class="step-desc">Scroll down in the menu and tap "Add to Home screen." You may also see an install banner appear at the bottom of the screen automatically.</div>
+    </div>
+    <div class="step-icon">📲</div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-body">
+      <div class="step-title">Confirm the install</div>
+      <div class="step-desc">Tap "Add" when prompted. Tether will appear on your home screen like any other app.</div>
+    </div>
+    <div class="step-icon">✅</div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">5</div>
+    <div class="step-body">
+      <div class="step-title">Open from your home screen</div>
+      <div class="step-desc">Always open Tether from your home screen icon — not from Chrome. This gives you the full screen experience with no browser bar.</div>
+    </div>
+    <div class="step-icon">🏠</div>
+  </div>
+</div>
+
+<!-- iOS Panel -->
+<div class="panel" id="panel-ios">
+  <div class="note">
+    <span class="note-icon">⚠️</span>
+    You must use <strong>Safari</strong> on iPhone or iPad. Installing from Chrome or other browsers on iOS will not work.
+  </div>
+
+  <div class="section-label">Steps</div>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <div class="step-title">Open in Safari</div>
+      <div class="step-desc">Open the Tether link in Safari. If you're reading this in another browser, copy the link and paste it into Safari.</div>
+    </div>
+    <div class="step-icon">🧭</div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <div class="step-title">Tap the Share button</div>
+      <div class="step-desc">Tap the Share button at the bottom of the screen — it looks like a box with an arrow pointing up ↑</div>
+    </div>
+    <div class="step-icon">⬆️</div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <div class="step-title">Tap "Add to Home Screen"</div>
+      <div class="step-desc">Scroll through the share sheet and tap "Add to Home Screen." It may be a few rows down.</div>
+    </div>
+    <div class="step-icon">📲</div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-body">
+      <div class="step-title">Tap "Add"</div>
+      <div class="step-desc">Confirm the name and tap "Add" in the top right corner.</div>
+    </div>
+    <div class="step-icon">✅</div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">5</div>
+    <div class="step-body">
+      <div class="step-title">Open from your home screen</div>
+      <div class="step-desc">Always open Tether from the home screen icon — not from Safari. This gives you the full screen experience with no browser bar.</div>
+    </div>
+    <div class="step-icon">🏠</div>
+  </div>
+</div>
+
+<div class="cta-wrap">
+  <a class="cta-btn" href="https://mango-wave-0adccac1e.1.azurestaticapps.net">
+    ⚓ Open Tether
+  </a>
+  <div class="cta-sub">Open this link first, then follow the steps above</div>
+</div>
+
+<script>
+function switchTab(platform, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-' + platform).classList.add('active');
+}
+</script>
+</body>
+</html>
