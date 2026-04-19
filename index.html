@@ -563,10 +563,38 @@
       <button class="grocery-done-btn" onclick="completeGroceryTask()">✓ Done shopping</button>
       <div class="grocery-close" onclick="closeGroceryPanel()">✕</div>
     </div>
-    <div class="grocery-search-row">
-      <input type="search" id="grocerySearch" placeholder="Search or add items..." oninput="onGrocerySearch()" autocomplete="off"/>
-    </div>
     <div class="grocery-body" id="groceryBody"></div>
+    <div class="grocery-fab-row">
+      <button class="grocery-fab" onclick="openQuickAddSheet()">＋ Add Items</button>
+    </div>
+    <!-- Quick-add sub-sheet -->
+    <div class="grocery-sub-sheet" id="groceryQaSheet">
+      <div class="grocery-sub-handle"></div>
+      <div class="grocery-sub-header">
+        <div class="grocery-sub-title">Add Items</div>
+        <div class="grocery-sub-close" onclick="closeQuickAddSheet()">✕</div>
+      </div>
+      <div class="grocery-qa-search-row">
+        <input type="search" id="groceryQaSearch" placeholder="Search items..." oninput="onQaSearch()" autocomplete="off"/>
+      </div>
+      <div class="grocery-qa-body" id="groceryQaBody"></div>
+      <div class="grocery-qa-footer">
+        <button class="grocery-qa-action" id="groceryQaActionBtn" onclick="submitQuickAdd()" disabled>Add Items</button>
+      </div>
+      <!-- Confirm sub-sheet (nested inside qa sheet) -->
+      <div class="grocery-sub-sheet" id="groceryConfirmSheet">
+        <div class="grocery-sub-handle"></div>
+        <div class="grocery-sub-header">
+          <div class="grocery-sub-title">Confirm Changes</div>
+          <div class="grocery-sub-close" onclick="closeConfirmPanel()">✕</div>
+        </div>
+        <div class="grocery-confirm-body" id="groceryConfirmBody"></div>
+        <div class="grocery-confirm-footer">
+          <button class="grocery-edit-btn" onclick="closeConfirmPanel()">← Edit</button>
+          <button class="grocery-confirm-btn" onclick="applyDiff()">Confirm</button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 

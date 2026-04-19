@@ -3000,23 +3000,27 @@ async function obComplete() {
 let groceryTaskId = null;
 let groceryListItems = [];
 let groceryRealtimeChannel = null;
-let grocerySearchTimer = null;
+let groceryDebounce = null;
+let groceryQaSelected = new Map(); // name.toLowerCase() → catalog item data
+let groceryPendingDiff = null;
 
 function openGroceryPanel(taskId) {
   groceryTaskId = taskId;
   const task = items.find(i => i.id === taskId);
   document.getElementById('groceryTitle').textContent = task?.name || 'Grocery Run';
-  document.getElementById('grocerySearch').value = '';
   document.getElementById('groceryBg').classList.add('open');
   loadGroceryItems();
   subscribeGrocery(taskId);
 }
 
 function closeGroceryPanel() {
+  closeConfirmPanel();
+  closeQuickAddSheet();
   document.getElementById('groceryBg').classList.remove('open');
   unsubscribeGrocery();
   groceryTaskId = null;
   groceryListItems = [];
+  groceryQaSelected = new Map();
 }
 
 function bgClickGrocery(e) {
@@ -3031,15 +3035,15 @@ async function loadGroceryItems() {
     .order('created_at', { ascending: true });
   if (error) { showToast('Load error: ' + error.message); return; }
   groceryListItems = data || [];
-  renderGroceryPanel();
+  renderGroceryListView();
 }
 
 function subscribeGrocery(taskId) {
   unsubscribeGrocery();
   groceryRealtimeChannel = sb.channel('grocery-' + taskId)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'grocery_items', filter: `task_id=eq.${taskId}` }, () => {
-      clearTimeout(grocerySearchTimer);
-      grocerySearchTimer = setTimeout(loadGroceryItems, 200);
+      clearTimeout(groceryDebounce);
+      groceryDebounce = setTimeout(loadGroceryItems, 200);
     })
     .subscribe();
 }
@@ -3048,84 +3052,296 @@ function unsubscribeGrocery() {
   if (groceryRealtimeChannel) { sb.removeChannel(groceryRealtimeChannel); groceryRealtimeChannel = null; }
 }
 
-function onGrocerySearch() {
-  clearTimeout(grocerySearchTimer);
-  grocerySearchTimer = setTimeout(renderGroceryPanel, 150);
-}
-
-function renderGroceryPanel() {
+// ── List view ─────────────────────────────────────────────────────────────────
+function renderGroceryListView() {
   const body = document.getElementById('groceryBody');
   if (!body) return;
-  const q = (document.getElementById('grocerySearch')?.value || '').trim();
+  if (!groceryListItems.length) {
+    body.innerHTML = '<div class="grocery-empty">Your list is empty.<br>Tap ＋ Add Items to get started.</div>';
+    return;
+  }
+  const catalogItems = groceryListItems.filter(gi => !gi.is_custom || gi.dept !== 'misc');
+  const customItems = groceryListItems.filter(gi => gi.is_custom && gi.dept === 'misc');
+  const grouped = groupByDept(catalogItems);
   let html = '';
-
-  if (q) {
-    const results = searchGroceryItems(q, 8);
-    html += '<div class="grocery-section-label">Suggestions</div>';
-    if (results.length) {
-      html += '<div class="grocery-grid grocery-grid-search">' +
-        results.map(item => {
-          const already = groceryListItems.some(g => g.name.toLowerCase() === item.name.toLowerCase());
-          const dept = getDept(item.dept);
-          return `<div class="grocery-grid-item${already?' added':''}" onclick="addGroceryItem(${JSON.stringify(item.name)},${JSON.stringify(item.dept)},${item.defaultQty},${JSON.stringify(item.defaultUnit)})">
-            <span class="grocery-grid-emoji">${dept?.emoji||'🛒'}</span>
-            <span class="grocery-grid-name">${item.name}</span>
-          </div>`;
-        }).join('') + '</div>';
-    } else {
-      html += `<div class="grocery-custom-add" onclick="addGroceryItem(${JSON.stringify(q)},'misc',1,'count')">+ Add "<strong>${q}</strong>"</div>`;
-    }
-  } else {
-    const gridItems = getGridItems();
-    html += '<div class="grocery-section-label">Quick add</div>';
-    html += '<div class="grocery-grid">' +
-      gridItems.map(item => {
-        const already = groceryListItems.some(g => g.name.toLowerCase() === item.name.toLowerCase());
-        const dept = getDept(item.dept);
-        return `<div class="grocery-grid-item${already?' added':''}" onclick="addGroceryItem(${JSON.stringify(item.name)},${JSON.stringify(item.dept)},${item.defaultQty},${JSON.stringify(item.defaultUnit)})">
-          <span class="grocery-grid-emoji">${dept?.emoji||'🛒'}</span>
-          <span class="grocery-grid-name">${item.name}</span>
-        </div>`;
-      }).join('') + '</div>';
+  for (const group of grouped) {
+    html += `<div class="grocery-dept-header">${group.emoji} ${group.label}</div>`;
+    html += group.items.map(gi => groceryListItemHTML(gi)).join('');
   }
-
-  if (groceryListItems.length > 0) {
-    html += '<div class="grocery-section-label">Your list</div>';
-    const grouped = groupByDept(groceryListItems);
-    for (const dept of GROCERY_DEPARTMENTS) {
-      const deptItems = grouped[dept.key];
-      if (!deptItems || !deptItems.length) continue;
-      html += `<div class="grocery-dept-header">${dept.emoji} ${dept.label}</div>`;
-      html += deptItems.map(gi => groceryItemHTML(gi)).join('');
-    }
-    const knownKeys = new Set(GROCERY_DEPARTMENTS.map(d => d.key));
-    const misc = groceryListItems.filter(gi => !knownKeys.has(gi.dept));
-    if (misc.length) {
-      html += '<div class="grocery-dept-header">🛒 Other</div>';
-      html += misc.map(gi => groceryItemHTML(gi)).join('');
-    }
+  if (customItems.length) {
+    html += '<div class="grocery-dept-header">🛒 Custom</div>';
+    html += customItems.map(gi => groceryListItemHTML(gi)).join('');
   }
-
   body.innerHTML = html;
 }
 
-function groceryItemHTML(gi) {
-  return `<div class="grocery-item${gi.checked?' checked':''}">
-    <div class="grocery-item-check${gi.checked?' done':''}" onclick="toggleGroceryItem('${gi.id}')">
-      ${gi.checked?'<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>':''}
-    </div>
+function groceryListItemHTML(gi) {
+  const isWeight = gi.unit === 'weight';
+  const isVolume = gi.unit === 'volume';
+  const step = isWeight ? 0.5 : 1;
+  const qty = gi.qty || 1;
+  const emoji = gi.emoji || getDept(gi.dept)?.emoji || '🛒';
+  const checkSVG = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const sizePills = isVolume ? ['S','M','L','XL'].map(s =>
+    `<button class="grocery-size-pill${gi.size===s?' active':''}" onclick="setGrocerySize('${gi.id}','${s}')">${s}</button>`
+  ).join('') : '';
+  return `<div class="grocery-list-item${gi.checked?' checked':''}" id="gli-${gi.id}">
+    <div class="grocery-item-check${gi.checked?' done':''}" onclick="toggleGroceryItem('${gi.id}')">${gi.checked?checkSVG:''}</div>
+    <span class="grocery-item-emoji">${emoji}</span>
     <span class="grocery-item-name${gi.checked?' checked':''}">${gi.name}</span>
-    <div class="grocery-item-qty">
-      <button class="grocery-qty-btn" onclick="adjustGroceryQty('${gi.id}',-1)">−</button>
-      <span class="grocery-qty-val">${gi.qty||1}</span>
-      <button class="grocery-qty-btn" onclick="adjustGroceryQty('${gi.id}',1)">+</button>
+    <div class="grocery-item-controls">
+      <button class="grocery-unit-toggle" onclick="cycleGroceryUnit('${gi.id}','${gi.unit}')">${isWeight?'lbs':'qty'}</button>
+      <div class="grocery-item-qty">
+        <button class="grocery-qty-btn" onclick="adjustGroceryQty('${gi.id}',${isWeight?-0.5:-1})">−</button>
+        <input type="number" class="grocery-qty-input" id="gli-qty-${gi.id}" value="${qty}" step="${step}" min="${step}" onchange="editGroceryQtyDirect('${gi.id}',this.value)"/>
+        <button class="grocery-qty-btn" onclick="adjustGroceryQty('${gi.id}',${isWeight?0.5:1})">+</button>
+      </div>
+      ${isWeight ? '<span class="grocery-unit-label">lbs</span>' : ''}
+      ${sizePills ? `<div class="grocery-size-pills">${sizePills}</div>` : ''}
     </div>
     <button class="grocery-item-remove" onclick="removeGroceryItem('${gi.id}')">✕</button>
   </div>`;
 }
 
-async function addGroceryItem(name, dept, qty, unit) {
-  if (!groceryTaskId) return;
+// ── Quick-add sub-sheet ───────────────────────────────────────────────────────
+function openQuickAddSheet() {
+  groceryQaSelected = new Map();
+  for (const gi of groceryListItems) {
+    const catalogItem = GROCERY_ITEMS.find(ci => ci.name.toLowerCase() === gi.name.toLowerCase());
+    if (catalogItem) groceryQaSelected.set(gi.name.toLowerCase(), { ...catalogItem });
+  }
+  document.getElementById('groceryQaSearch').value = '';
+  document.getElementById('groceryQaSheet').classList.add('open');
+  renderQuickAddGrid();
+  renderQaActionButton();
+}
+
+function closeQuickAddSheet() {
+  closeConfirmPanel();
+  document.getElementById('groceryQaSheet')?.classList.remove('open');
+  groceryQaSelected = new Map();
+}
+
+function onQaSearch() {
+  clearTimeout(groceryDebounce);
+  groceryDebounce = setTimeout(renderQuickAddGrid, 150);
+}
+
+function renderQuickAddGrid() {
+  const body = document.getElementById('groceryQaBody');
+  if (!body) return;
+  const q = (document.getElementById('groceryQaSearch')?.value || '').trim();
+  const chips = q ? searchGroceryItems(q, 12) : getGridItems();
+  const deptSelectOptions = GROCERY_DEPARTMENTS.map(d => `<option value="${d.key}">${d.emoji} ${d.label}</option>`).join('');
+  let html = '';
+  if (chips.length) {
+    html += `<div class="grocery-qa-section-label">${q ? 'Results' : 'Quick Add'}</div>`;
+    html += '<div class="grocery-chip-grid">' + chips.map(item => groceryChipHTML(item)).join('') + '</div>';
+  }
+  if (q && !chips.length) {
+    html += `<div class="grocery-qa-section-label">Add Custom</div>
+      <div class="grocery-custom-section">
+        <div class="grocery-custom-add-row">
+          <input type="text" class="grocery-custom-input" id="groceryCustomName" value="${q.replace(/"/g,'&quot;')}" placeholder="Item name..."/>
+          <select class="grocery-custom-dept" id="groceryCustomDept">${deptSelectOptions}</select>
+          <button class="grocery-custom-add-btn" onclick="addCustomGroceryItem()">Add</button>
+        </div>
+      </div>`;
+  }
+  if (!q) {
+    html += `<div class="grocery-qa-section-label">Add Custom</div>
+      <div class="grocery-custom-section">
+        <div class="grocery-custom-add-row">
+          <input type="text" class="grocery-custom-input" id="groceryCustomName" placeholder="Item name..."/>
+          <select class="grocery-custom-dept" id="groceryCustomDept">${deptSelectOptions}</select>
+          <button class="grocery-custom-add-btn" onclick="addCustomGroceryItem()">Add</button>
+        </div>
+      </div>`;
+  }
+  body.innerHTML = html;
+}
+
+function groceryChipHTML(item) {
+  const key = item.name.toLowerCase();
+  const isSelected = groceryQaSelected.has(key);
+  return `<div class="grocery-chip${isSelected?' selected':''}" onclick="toggleQaChip(${JSON.stringify(item.name)},${JSON.stringify(item.dept)},${JSON.stringify(item.emoji)},${item.defaultQty},${JSON.stringify(item.defaultUnit)})">
+    ${isSelected ? '<span class="grocery-chip-check">✓</span>' : ''}
+    <span class="grocery-chip-emoji">${item.emoji}</span>
+    <span class="grocery-chip-name">${item.name}</span>
+  </div>`;
+}
+
+function toggleQaChip(name, dept, emoji, defaultQty, defaultUnit) {
+  const key = name.toLowerCase();
+  if (groceryQaSelected.has(key)) {
+    groceryQaSelected.delete(key);
+  } else {
+    groceryQaSelected.set(key, { name, dept, emoji, defaultQty, defaultUnit });
+  }
+  renderQuickAddGrid();
+  renderQaActionButton();
+}
+
+function computeDiff() {
+  const adding = [];
+  for (const [key, item] of groceryQaSelected) {
+    if (!groceryListItems.some(gi => gi.name.toLowerCase() === key)) adding.push(item);
+  }
+  const removing = groceryListItems.filter(gi => !gi.is_custom && !groceryQaSelected.has(gi.name.toLowerCase()));
+  return { adding, removing };
+}
+
+function renderQaActionButton() {
+  const btn = document.getElementById('groceryQaActionBtn');
+  if (!btn) return;
+  const diff = computeDiff();
+  const addCount = diff.adding.length;
+  const removeCount = diff.removing.length;
+  const total = addCount + removeCount;
+  if (total === 0) {
+    btn.disabled = true;
+    btn.textContent = 'Add Items';
+  } else {
+    btn.disabled = false;
+    const parts = [];
+    if (addCount) parts.push(`Add ${addCount}`);
+    if (removeCount) parts.push(`Remove ${removeCount}`);
+    btn.textContent = parts.join(', ') + (total === 1 ? ' Item' : ' Items');
+  }
+}
+
+async function submitQuickAdd() {
+  const diff = computeDiff();
+  if (diff.removing.length > 0) {
+    openConfirmPanel(diff);
+  } else {
+    await applyDiff(diff);
+    closeQuickAddSheet();
+  }
+}
+
+function openConfirmPanel(diff) {
+  groceryPendingDiff = diff;
+  let html = '';
+  if (diff.adding.length) {
+    html += '<div class="grocery-confirm-section-label adding">Adding</div><div class="grocery-confirm-pills">';
+    html += diff.adding.map(item => `<span class="grocery-confirm-pill adding">${item.emoji} ${item.name}</span>`).join('');
+    html += '</div>';
+  }
+  if (diff.removing.length) {
+    html += '<div class="grocery-confirm-section-label removing">Removing</div><div class="grocery-confirm-pills">';
+    html += diff.removing.map(gi => `<span class="grocery-confirm-pill removing">${gi.emoji || getDept(gi.dept)?.emoji || '🛒'} ${gi.name}</span>`).join('');
+    html += '</div>';
+  }
+  document.getElementById('groceryConfirmBody').innerHTML = html;
+  document.getElementById('groceryConfirmSheet').classList.add('open');
+}
+
+function closeConfirmPanel() {
+  document.getElementById('groceryConfirmSheet')?.classList.remove('open');
+  groceryPendingDiff = null;
+}
+
+async function applyDiff(diff) {
+  const d = diff || groceryPendingDiff;
+  if (!d) return;
+  const task = items.find(i => i.id === groceryTaskId);
+  const hhId = task?.householdId || currentHousehold?.id || null;
+  if (d.adding.length) {
+    const rows = d.adding.map(item => ({
+      task_id: groceryTaskId,
+      household_id: hhId,
+      user_id: currentUser.id,
+      name: item.name,
+      dept: item.dept,
+      qty: item.defaultQty || 1,
+      unit: item.defaultUnit || 'count',
+      checked: false,
+      added_by: currentUser.id,
+      is_custom: false,
+    }));
+    const { error } = await sb.from('grocery_items').insert(rows);
+    if (error) { showToast('Error: ' + error.message); return; }
+  }
+  if (d.removing.length) {
+    const ids = d.removing.map(gi => gi.id);
+    const { error } = await sb.from('grocery_items').delete().in('id', ids);
+    if (error) { showToast('Error: ' + error.message); return; }
+  }
+  await loadGroceryItems();
+}
+
+// ── List item controls ────────────────────────────────────────────────────────
+async function toggleGroceryItem(id) {
+  const gi = groceryListItems.find(g => g.id === id);
+  if (!gi) return;
+  const newVal = !gi.checked;
+  const { error } = await sb.from('grocery_items').update({ checked: newVal }).eq('id', id);
+  if (error) { showToast('Error: ' + error.message); return; }
+  gi.checked = newVal;
+  renderGroceryListView();
+}
+
+async function cycleGroceryUnit(id, currentUnit) {
+  const gi = groceryListItems.find(g => g.id === id);
+  if (!gi) return;
+  const newUnit = currentUnit === 'weight' ? 'count' : 'weight';
+  const { error } = await sb.from('grocery_items').update({ unit: newUnit }).eq('id', id);
+  if (error) { showToast('Error: ' + error.message); return; }
+  gi.unit = newUnit;
+  renderGroceryListView();
+}
+
+async function adjustGroceryQty(id, delta) {
+  const gi = groceryListItems.find(g => g.id === id);
+  if (!gi) return;
+  const isWeight = gi.unit === 'weight';
+  const min = isWeight ? 0.5 : 1;
+  const newQty = Math.max(min, +(((gi.qty || 1) + delta).toFixed(2)));
+  const { error } = await sb.from('grocery_items').update({ qty: newQty }).eq('id', id);
+  if (error) { showToast('Error: ' + error.message); return; }
+  gi.qty = newQty;
+  const input = document.getElementById('gli-qty-' + id);
+  if (input) input.value = newQty;
+}
+
+async function editGroceryQtyDirect(id, val) {
+  const gi = groceryListItems.find(g => g.id === id);
+  if (!gi) return;
+  const parsed = parseFloat(val);
+  if (isNaN(parsed) || parsed <= 0) return;
+  const newQty = +(parsed.toFixed(2));
+  const { error } = await sb.from('grocery_items').update({ qty: newQty }).eq('id', id);
+  if (error) { showToast('Error: ' + error.message); return; }
+  gi.qty = newQty;
+}
+
+async function setGrocerySize(id, size) {
+  const gi = groceryListItems.find(g => g.id === id);
+  if (!gi) return;
+  const newSize = gi.size === size ? null : size;
+  const { error } = await sb.from('grocery_items').update({ size: newSize }).eq('id', id);
+  if (error) { showToast('Error: ' + error.message); return; }
+  gi.size = newSize;
+  const row = document.getElementById('gli-' + id);
+  if (row) row.querySelectorAll('.grocery-size-pill').forEach(pill => {
+    pill.classList.toggle('active', pill.textContent === newSize);
+  });
+}
+
+async function removeGroceryItem(id) {
+  const { error } = await sb.from('grocery_items').delete().eq('id', id);
+  if (error) { showToast('Error: ' + error.message); return; }
+  groceryListItems = groceryListItems.filter(g => g.id !== id);
+  renderGroceryListView();
+}
+
+async function addCustomGroceryItem() {
+  const nameEl = document.getElementById('groceryCustomName');
+  const deptEl = document.getElementById('groceryCustomDept');
+  const name = nameEl?.value.trim();
+  if (!name) return;
+  const dept = deptEl?.value || 'misc';
   const already = groceryListItems.some(g => g.name.toLowerCase() === name.toLowerCase());
   if (already) { showToast(`${name} is already on the list`); return; }
   const task = items.find(i => i.id === groceryTaskId);
@@ -3133,40 +3349,14 @@ async function addGroceryItem(name, dept, qty, unit) {
     task_id: groceryTaskId,
     household_id: task?.householdId || currentHousehold?.id || null,
     user_id: currentUser.id,
-    name, dept, qty: qty || 1, unit: unit || 'count',
-    checked: false,
+    name, dept, qty: 1, unit: 'count', checked: false,
     added_by: currentUser.id,
+    is_custom: true,
   });
   if (error) { showToast('Error: ' + error.message); return; }
-  const search = document.getElementById('grocerySearch');
-  if (search) search.value = '';
+  if (nameEl) nameEl.value = '';
   await loadGroceryItems();
-}
-
-async function toggleGroceryItem(id) {
-  const gi = groceryListItems.find(g => g.id === id);
-  if (!gi) return;
-  const { error } = await sb.from('grocery_items').update({ checked: !gi.checked }).eq('id', id);
-  if (error) { showToast('Error: ' + error.message); return; }
-  gi.checked = !gi.checked;
-  renderGroceryPanel();
-}
-
-async function adjustGroceryQty(id, delta) {
-  const gi = groceryListItems.find(g => g.id === id);
-  if (!gi) return;
-  const newQty = Math.max(1, (gi.qty || 1) + delta);
-  const { error } = await sb.from('grocery_items').update({ qty: newQty }).eq('id', id);
-  if (error) { showToast('Error: ' + error.message); return; }
-  gi.qty = newQty;
-  renderGroceryPanel();
-}
-
-async function removeGroceryItem(id) {
-  const { error } = await sb.from('grocery_items').delete().eq('id', id);
-  if (error) { showToast('Error: ' + error.message); return; }
-  groceryListItems = groceryListItems.filter(g => g.id !== id);
-  renderGroceryPanel();
+  renderQaActionButton();
 }
 
 async function completeGroceryTask() {
