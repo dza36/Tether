@@ -1371,8 +1371,53 @@ function bgClickEventsList(e) {
   if (e.target === document.getElementById('eventsListBg')) closeEventsList();
 }
 
+let expandedEventListId = null;
+
+function toggleEventListItem(id) {
+  expandedEventListId = expandedEventListId === id ? null : id;
+  renderEventsList();
+}
+
+async function rsvpEventFromList(itemId, status) {
+  if (!myRsvpMap[itemId]) myRsvpMap[itemId] = {};
+  myRsvpMap[itemId].rsvp_status = status;
+  renderEventsList();
+  await rsvpEvent(itemId, status);
+}
+
+function renderEventListPanel(item, now) {
+  const isPast = item.status === 'dismissed' || getDueDate(item) < now;
+  const rsvp = myRsvpMap[item.id];
+  const isOwner = item.createdBy === currentUser.id;
+  const isInvited = !!rsvp && !isOwner;
+  let html = '<div class="evlist-panel">';
+
+  if (item.location) {
+    html += `<div class="evlist-panel-location">📍 ${item.location}</div>`;
+  }
+
+  if (!isPast && isInvited) {
+    const going = rsvp.rsvp_status === 'going';
+    const maybe = rsvp.rsvp_status === 'maybe';
+    const notGoing = rsvp.rsvp_status === 'not_going';
+    html += `<div class="evlist-panel-rsvp">
+      <button class="rsvp-btn accept${going?' active-accept':''}" onclick="rsvpEventFromList('${item.id}','going')">✓ Going</button>
+      <button class="rsvp-btn tentative${maybe?' active-tentative':''}" onclick="rsvpEventFromList('${item.id}','maybe')">~ Tentative</button>
+      <button class="rsvp-btn decline${notGoing?' active-decline':''}" onclick="rsvpEventFromList('${item.id}','not_going')">✕ Can't go</button>
+    </div>`;
+  }
+
+  html += '<div class="evlist-panel-actions">';
+  if (!isPast && isOwner) html += `<button class="evlist-panel-btn evlist-btn-edit" onclick="closeEventsList();editItem('${item.id}')">✏️ Edit</button>`;
+  html += `<button class="evlist-panel-btn evlist-btn-clone" onclick="closeEventsList();cloneEvent('${item.id}')">📋 Clone</button>`;
+  if (!isPast) html += `<button class="evlist-panel-btn evlist-btn-detail" onclick="openEventDetail('${item.id}')">Details ›</button>`;
+  html += '</div></div>';
+  return html;
+}
+
 function setEventsView(view) {
   eventsView = view;
+  expandedEventListId = null;
   ['future', 'pending', 'past'].forEach(v => {
     const btn = document.getElementById('eventsToggle' + v.charAt(0).toUpperCase() + v.slice(1));
     if (btn) btn.classList.toggle('active', v === view);
@@ -1443,13 +1488,19 @@ function renderEventsList() {
     const rsvpBadge = rsvp
       ? `<div class="events-list-rsvp ${rsvp.rsvp_status}">${{ pending: 'Invited', going: 'Going', maybe: 'Maybe', not_going: 'Declined' }[rsvp.rsvp_status] || ''}</div>`
       : '';
-    html += `<div class="events-list-row" onclick="openEventDetail('${item.id}')">
-      <div class="events-list-icon">${icon}</div>
-      <div class="events-list-info">
-        <div class="events-list-name">${item.name}</div>
-        <div class="events-list-meta">${dateStr}${timeStr}${locationStr}</div>
+    const isExpanded = expandedEventListId === item.id;
+    const isPast = item.status === 'dismissed' || getDueDate(item) < now;
+    html += `<div class="events-list-item">
+      <div class="events-list-row" onclick="toggleEventListItem('${item.id}')">
+        <div class="events-list-icon">${icon}</div>
+        <div class="events-list-info">
+          <div class="events-list-name">${item.name}</div>
+          <div class="events-list-meta">${dateStr}${timeStr}${locationStr}</div>
+        </div>
+        ${rsvpBadge}
+        <div class="events-list-chevron${isExpanded ? ' open' : ''}">›</div>
       </div>
-      ${rsvpBadge}
+      ${isExpanded ? renderEventListPanel(item, now) : ''}
     </div>`;
   });
 

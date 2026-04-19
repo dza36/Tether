@@ -226,6 +226,14 @@
   .events-list-rsvp.pending{background:#FEF9C3;color:#854D0E}
   .events-list-rsvp.maybe{background:#F0F9FF;color:#0C4A6E}
   .events-list-rsvp.not_going{background:#FEE2E2;color:#991B1B}
+  .events-list-chevron{font-size:18px;color:#AFA9EC;flex-shrink:0;transition:transform .2s;display:inline-block;line-height:1}
+  .events-list-chevron.open{transform:rotate(90deg)}
+  .evlist-panel{padding:.6rem .75rem .85rem;border-top:0.5px solid #EEEDFE}
+  .evlist-panel-location{font-size:12px;color:#AFA9EC;margin-bottom:.6rem}
+  .evlist-panel-rsvp{display:flex;gap:6px;margin-bottom:.6rem}
+  .evlist-panel-actions{display:flex;gap:6px;flex-wrap:wrap}
+  .evlist-panel-btn{padding:7px 12px;font-size:12px;font-weight:600;border-radius:10px;border:0.5px solid #CECBF6;cursor:pointer;background:#F7F6FF;color:#534AB7}
+  .evlist-btn-detail{background:transparent;color:#AFA9EC;border-color:transparent}
   .events-list-empty{text-align:center;padding:2.5rem 1rem;color:#AFA9EC;font-size:14px}
 
   .invite-banner{background:#534AB7;color:#fff;padding:.75rem 1rem;display:none;align-items:center;justify-content:space-between;gap:8px;margin:0 1rem .75rem;border-radius:12px}
@@ -580,6 +588,9 @@
     & .events-list-rsvp.maybe{background:#0C1E2A;color:#5BA3D0}
     & .events-list-rsvp.not_going{background:#2A1010;color:#E87070}
     & .events-list-empty{color:#6B65A8}
+    & .evlist-panel{border-color:#2E2A5E}
+    & .evlist-panel-btn{background:#1A1730;color:#7B72D4;border-color:#2E2A5E}
+    & .evlist-btn-detail{background:transparent;color:#6B65A8;border-color:transparent}
     & .household-bg{background:rgba(0,0,0,.75)}
     & .household-sheet{background:#1A1730;border-color:#2E2A5E}
     & .household-handle{background:#2E2A5E}
@@ -786,6 +797,9 @@ html[data-theme="dark"] {
   & .events-list-rsvp.maybe{background:#0C1E2A;color:#5BA3D0}
   & .events-list-rsvp.not_going{background:#2A1010;color:#E87070}
   & .events-list-empty{color:#6B65A8}
+  & .evlist-panel{border-color:#2E2A5E}
+  & .evlist-panel-btn{background:#1A1730;color:#7B72D4;border-color:#2E2A5E}
+  & .evlist-btn-detail{background:transparent;color:#6B65A8;border-color:transparent}
   & .household-bg{background:rgba(0,0,0,.75)}
   & .household-sheet{background:#1A1730;border-color:#2E2A5E}
   & .household-handle{background:#2E2A5E}
