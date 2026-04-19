@@ -3057,7 +3057,9 @@ function renderGroceryListView() {
   const body = document.getElementById('groceryBody');
   if (!body) return;
   const doneBtn = document.getElementById('groceryDoneBtn');
+  const fab = document.getElementById('groceryFab');
   if (doneBtn) doneBtn.style.display = groceryListItems.length ? '' : 'none';
+  if (fab) fab.textContent = groceryListItems.length ? '✎ Edit List' : '＋ Add Items';
   if (!groceryListItems.length) {
     body.innerHTML = '<div class="grocery-empty">Your list is empty.<br>Tap ＋ Add Items to get started.</div>';
     return;
@@ -3074,6 +3076,10 @@ function renderGroceryListView() {
     html += '<div class="grocery-dept-header">🛒 Custom</div>';
     html += customItems.map(gi => groceryListItemHTML(gi)).join('');
   }
+  html += `<div class="grocery-quick-add-row">
+    <input type="text" class="grocery-quick-input" id="groceryQuickInput" placeholder="Add an item..." onkeydown="if(event.key==='Enter')quickAddCustomItem()"/>
+    <button class="grocery-quick-btn" onclick="quickAddCustomItem()">Add</button>
+  </div>`;
   body.innerHTML = html;
 }
 
@@ -3082,14 +3088,15 @@ function groceryListItemHTML(gi) {
   const isVolume = gi.unit === 'volume';
   const step = isWeight ? 0.5 : 1;
   const qty = gi.qty || 1;
-  const emoji = gi.emoji || getDept(gi.dept)?.emoji || '🛒';
+  const catalogItem = GROCERY_ITEMS.find(ci => ci.name.toLowerCase() === gi.name.toLowerCase());
+  const emoji = catalogItem?.emoji || null;
   const checkSVG = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const sizePills = isVolume ? ['S','M','L','XL'].map(s =>
     `<button class="grocery-size-pill${gi.size===s?' active':''}" onclick="setGrocerySize('${gi.id}','${s}')">${s}</button>`
   ).join('') : '';
   return `<div class="grocery-list-item${gi.checked?' checked':''}" id="gli-${gi.id}">
     <div class="grocery-item-check${gi.checked?' done':''}" onclick="toggleGroceryItem('${gi.id}')">${gi.checked?checkSVG:''}</div>
-    <span class="grocery-item-emoji">${emoji}</span>
+    ${emoji ? `<span class="grocery-item-emoji">${emoji}</span>` : ''}
     <span class="grocery-item-name${gi.checked?' checked':''}">${gi.name}</span>
     <div class="grocery-item-controls">
       <button class="grocery-unit-toggle" onclick="cycleGroceryUnit('${gi.id}','${gi.unit}')">${isWeight?'lbs':'qty'}</button>
@@ -3280,7 +3287,7 @@ async function applyDiff(diff) {
 
 // ── List item controls ────────────────────────────────────────────────────────
 async function toggleGroceryItem(id) {
-  const gi = groceryListItems.find(g => g.id === id);
+  const gi = groceryListItems.find(g => g.id == id);
   if (!gi) return;
   const newVal = !gi.checked;
   const { error } = await sb.from('grocery_items').update({ checked: newVal }).eq('id', id);
@@ -3290,7 +3297,7 @@ async function toggleGroceryItem(id) {
 }
 
 async function cycleGroceryUnit(id, currentUnit) {
-  const gi = groceryListItems.find(g => g.id === id);
+  const gi = groceryListItems.find(g => g.id == id);
   if (!gi) return;
   const newUnit = currentUnit === 'weight' ? 'count' : 'weight';
   const { error } = await sb.from('grocery_items').update({ unit: newUnit }).eq('id', id);
@@ -3300,7 +3307,7 @@ async function cycleGroceryUnit(id, currentUnit) {
 }
 
 async function adjustGroceryQty(id, delta) {
-  const gi = groceryListItems.find(g => g.id === id);
+  const gi = groceryListItems.find(g => g.id == id);
   if (!gi) return;
   const isWeight = gi.unit === 'weight';
   const min = isWeight ? 0.5 : 1;
@@ -3313,7 +3320,7 @@ async function adjustGroceryQty(id, delta) {
 }
 
 async function editGroceryQtyDirect(id, val) {
-  const gi = groceryListItems.find(g => g.id === id);
+  const gi = groceryListItems.find(g => g.id == id);
   if (!gi) return;
   const parsed = parseFloat(val);
   if (isNaN(parsed) || parsed <= 0) return;
@@ -3324,7 +3331,7 @@ async function editGroceryQtyDirect(id, val) {
 }
 
 async function setGrocerySize(id, size) {
-  const gi = groceryListItems.find(g => g.id === id);
+  const gi = groceryListItems.find(g => g.id == id);
   if (!gi) return;
   const newSize = gi.size === size ? null : size;
   const { error } = await sb.from('grocery_items').update({ size: newSize }).eq('id', id);
@@ -3334,6 +3341,25 @@ async function setGrocerySize(id, size) {
   if (row) row.querySelectorAll('.grocery-size-pill').forEach(pill => {
     pill.classList.toggle('active', pill.textContent === newSize);
   });
+}
+
+async function quickAddCustomItem() {
+  const input = document.getElementById('groceryQuickInput');
+  const name = input?.value.trim();
+  if (!name) return;
+  const already = groceryListItems.some(g => g.name.toLowerCase() === name.toLowerCase());
+  if (already) { showToast(`${name} is already on the list`); return; }
+  const task = items.find(i => i.id === groceryTaskId);
+  const { error } = await sb.from('grocery_items').insert({
+    task_id: groceryTaskId,
+    household_id: task?.householdId || currentHousehold?.id || null,
+    name, dept: 'misc', qty: 1, unit: 'count', checked: false,
+    added_by: currentUser.id,
+    is_custom: true,
+  });
+  if (error) { showToast('Error: ' + error.message); return; }
+  if (input) input.value = '';
+  await loadGroceryItems();
 }
 
 async function removeGroceryItem(id) {

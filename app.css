@@ -144,6 +144,10 @@
   .grocery-size-pill.active{background:#534AB7;color:#fff;border-color:#534AB7}
   .grocery-item-remove{font-size:14px;color:#AFA9EC;cursor:pointer;padding:2px 4px;border-radius:6px;flex-shrink:0;background:none;border:none}
   .grocery-item-remove:active{color:#E24B4A}
+  .grocery-quick-add-row{display:flex;gap:8px;padding:.75rem 0 .5rem}
+  .grocery-quick-input{flex:1;min-width:0;padding:10px 12px;border-radius:12px;border:0.5px solid #CECBF6;background:#fff;font-size:14px;font-family:inherit;color:#26215C;outline:none}
+  .grocery-quick-btn{padding:10px 14px;border-radius:12px;border:none;background:#534AB7;color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
+  .grocery-quick-btn:active{background:#3F3691}
   /* Sub-sheets */
   .grocery-sub-sheet{position:absolute;inset:0;background:#F7F6FF;border-radius:20px 20px 0 0;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .3s ease;z-index:1}
   .grocery-sub-sheet.open{transform:translateY(0)}
@@ -839,6 +843,7 @@
     & .grocery-size-pill{background:#1A1730;border-color:#2E2A5E;color:#7B72D4}
     & .grocery-size-pill.active{background:#534AB7;color:#fff;border-color:#534AB7}
     & .grocery-item-remove{color:#6B65A8}
+    & .grocery-quick-input{background:#1E1A3C;border-color:#2E2A5E;color:#E8E5FF}
     & .grocery-sub-sheet{background:#1A1730}
     & .grocery-sub-handle{background:#2E2A5E}
     & .grocery-sub-title{color:#E8E5FF}
