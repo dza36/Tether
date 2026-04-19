@@ -681,7 +681,7 @@ function render() {
 
   if (sorted.length === 0) {
     if (tab === 'today') {
-      // Clean slate moment!
+      if (!celebrationShown) { celebrationShown = true; setTimeout(showCelebration, 120); }
       html = `<div class="clean-slate">
         <div class="slate-icon">⚓</div>
         <div class="slate-title">You're tethered.</div>
@@ -691,6 +691,7 @@ function render() {
       html = `<div class="empty-state"><div class="empty-icon">⚓</div><p>Nothing due ${tab === 'week' ? 'this week' : 'this month'}.<br>You're ahead of the game.</p></div>`;
     }
   } else {
+    if (tab === 'today') celebrationShown = false;
     if (overdue.length) { html += `<div class="section-label">Overdue</div>`; overdue.forEach(i => html += rowHTML(i, true)); }
     if (rest.length) { if (overdue.length) html += `<div class="section-label">Upcoming</div>`; rest.forEach(i => html += rowHTML(i, false)); }
   }
@@ -2197,6 +2198,93 @@ function renderAnnualContent() {
 async function toggleAnnualPref(key, value) {
   await persistUserPref(key, value);
   renderAnnualContent();
+}
+
+// ─── CELEBRATION ──────────────────────────────────────────────────────────────
+let celebrationShown = true; // true on init so cold-open to empty Today doesn't fire
+
+function showCelebration() {
+  if (document.getElementById('celebrationCanvas')) return;
+
+  const canvas = document.createElement('canvas');
+  canvas.id = 'celebrationCanvas';
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  canvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;z-index:500;pointer-events:none';
+
+  const label = document.createElement('div');
+  label.style.cssText = [
+    'position:fixed;inset:0;z-index:501;pointer-events:none',
+    'display:flex;flex-direction:column;align-items:center;justify-content:center',
+    'opacity:0;transition:opacity .4s ease',
+  ].join(';');
+  label.innerHTML = `
+    <div style="font-size:56px;line-height:1;margin-bottom:12px;filter:drop-shadow(0 2px 8px rgba(0,0,0,.3))">⚓</div>
+    <div style="font-size:26px;font-weight:700;color:#fff;text-shadow:0 2px 16px rgba(0,0,0,.5);letter-spacing:-.02em">You're tethered!</div>
+  `;
+
+  document.body.appendChild(canvas);
+  document.body.appendChild(label);
+  requestAnimationFrame(() => { label.style.opacity = '1'; });
+
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const COLORS = ['#534AB7','#7B72D4','#B8A9FF','#E8E5FF','#ffffff','#FFD700','#AFA9EC','#C4B0FF','#fff9c4'];
+  const particles = [];
+
+  function burst(x, y) {
+    for (let i = 0; i < 42; i++) {
+      const angle = (Math.PI * 2 * i) / 42 + (Math.random() - 0.5) * 0.4;
+      const speed = 2.5 + Math.random() * 5.5;
+      particles.push({
+        x, y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        color: COLORS[Math.floor(Math.random() * COLORS.length)],
+        alpha: 1,
+        radius: 1.5 + Math.random() * 3,
+        decay: 0.012 + Math.random() * 0.009,
+        gravity: 0.08 + Math.random() * 0.06,
+      });
+    }
+  }
+
+  [
+    [W * 0.5,  H * 0.22],
+    [W * 0.18, H * 0.38],
+    [W * 0.82, H * 0.33],
+    [W * 0.3,  H * 0.18],
+    [W * 0.7,  H * 0.28],
+    [W * 0.5,  H * 0.42],
+  ].forEach(([x, y], i) => setTimeout(() => burst(x, y), i * 190));
+
+  let raf;
+  function cleanup() {
+    cancelAnimationFrame(raf);
+    label.style.opacity = '0';
+    setTimeout(() => { canvas.remove(); label.remove(); }, 420);
+  }
+
+  function animate() {
+    ctx.clearRect(0, 0, W, H);
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx; p.y += p.vy;
+      p.vy += p.gravity; p.vx *= 0.98;
+      p.alpha -= p.decay;
+      if (p.alpha <= 0) { particles.splice(i, 1); continue; }
+      ctx.globalAlpha = p.alpha;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    if (particles.length > 0) { raf = requestAnimationFrame(animate); } else { cleanup(); }
+  }
+
+  setTimeout(() => { raf = requestAnimationFrame(animate); }, 0);
+  setTimeout(cleanup, 4200); // hard cap
 }
 
 // ─── THEME ────────────────────────────────────────────────────────────────────

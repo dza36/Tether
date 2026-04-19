@@ -4,14 +4,6 @@ Features and fixes agreed upon, not yet built. Roughly prioritized within each s
 
 ---
 
-## Bugs
-
-- **Stale data on phone lock** — `visibilitychange` listener re-runs `loadItems()` + `render()` when tab resumes. 5-line fix.
-- **Multi-device sync** — Supabase Realtime subscriptions on `tether_items` and `items`. Changes on one device push to all connected clients instantly.
-- **Event swipe visuals** — Events don't render the green/amber swipe background indicators that tasks show.
-
----
-
 ## Events
 
 - **Events list — 3-tab redesign** — Replace Future/Past toggle with three tabs:
@@ -26,8 +18,7 @@ Features and fixes agreed upon, not yet built. Roughly prioritized within each s
 
 ## Tasks
 
-- **Yearly recurrence** — For birthdays, anniversaries, annual reminders. Elevated priority.
-- **Celebration animation** — Confetti or pulse animation when the last Today item is completed, and when Today opens already empty.
+- **Celebration animation** — Fireworks canvas overlay with "⚓ All Clear" when the last Today item is completed. *(built — pending deploy test)*
 - **History UI** — Bar/pie chart per household member over 7 / 30 / 90 days. Data is accumulating in `tether_completions` now. Build when enough beta data exists.
 - **Urgent flag quick-toggle** — Single tap to toggle urgent on a task row or checklist panel without opening the edit modal.
 
