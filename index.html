@@ -15,6 +15,14 @@
   <link rel="manifest" href="manifest.json"/>
   <link rel="stylesheet" href="app.css"/>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://js.monitor.azure.com/scripts/b/ai.2.min.js"></script>
+  <script>
+    window.appInsights = new Microsoft.ApplicationInsights.ApplicationInsights({
+      config: { instrumentationKey: '187a78ee-be25-4376-b087-f57bf29b3e78', enableAutoRouteTracking: false, disableFetchTracking: false }
+    });
+    window.appInsights.loadAppInsights();
+    window.appInsights.trackPageView();
+  </script>
 </head>
 <body>
 

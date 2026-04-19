@@ -281,46 +281,81 @@ async function loadItems() {
 
 // ── Persist ───────────────────────────────────────────────────────────────────
 async function persistEvent(item) {
+  const op = item._dbId ? 'update' : 'insert';
   try {
     if (item._dbId) {
       const { error } = await sb.from('items')
         .update(eventToDbRow(item))
         .eq('id', item._dbId);
-      if (error) { console.error('persistEvent update error', error); showToast('Save error: ' + (error.message || JSON.stringify(error))); }
+      if (error) {
+        console.error('persistEvent update error', error);
+        aiError('persistEvent.update', error, { name: item.name });
+        showToast('Save error: ' + (error.message || JSON.stringify(error)));
+      } else {
+        aiTrack('persistEvent.success', { op, name: item.name });
+      }
     } else {
       const { data, error } = await sb.from('items')
         .insert(eventToDbRow(item))
         .select()
         .single();
-      if (error) { console.error('persistEvent insert error', error); showToast('Save error: ' + (error.message || JSON.stringify(error))); return; }
+      if (error) {
+        console.error('persistEvent insert error', error);
+        aiError('persistEvent.insert', error, { name: item.name });
+        showToast('Save error: ' + (error.message || JSON.stringify(error)));
+        return;
+      }
       item.id = data.id;
       item._dbId = data.id;
+      aiTrack('persistEvent.success', { op, name: item.name });
     }
   } catch(e) {
     console.error('persistEvent exception', e);
+    aiError('persistEvent.exception', e, { op, name: item.name });
     showToast('Save error: ' + e.message);
   }
 }
 
+function aiTrack(name, props) {
+  try { window.appInsights?.trackEvent({ name }, props); } catch(_) {}
+}
+function aiError(name, error, props) {
+  try { window.appInsights?.trackException({ exception: new Error(`${name}: ${error?.message || error}`) }, { ...props }); } catch(_) {}
+}
+
 async function persistItem(item) {
   if (item.type === 'event') return persistEvent(item);
+  const op = item._dbId ? 'update' : 'insert';
   try {
     if (item._dbId) {
       const { error } = await sb.from('tether_items')
         .update(itemToDbRow(item))
         .eq('id', item._dbId);
-      if (error) { console.error('persistItem update error', error); showToast('Save error: ' + (error.message || JSON.stringify(error))); }
+      if (error) {
+        console.error('persistItem update error', error);
+        aiError('persistItem.update', error, { name: item.name, type: item.type });
+        showToast('Save error: ' + (error.message || JSON.stringify(error)));
+      } else {
+        aiTrack('persistItem.success', { op, name: item.name, type: item.type });
+      }
     } else {
       const { data, error } = await sb.from('tether_items')
         .insert(itemToDbRow(item))
         .select()
         .single();
-      if (error) { console.error('persistItem insert error', error); showToast('Save error: ' + (error.message || JSON.stringify(error))); return; }
+      if (error) {
+        console.error('persistItem insert error', error);
+        aiError('persistItem.insert', error, { name: item.name, type: item.type });
+        showToast('Save error: ' + (error.message || JSON.stringify(error)));
+        return;
+      }
       item.id = data.id;
       item._dbId = data.id;
+      aiTrack('persistItem.success', { op, name: item.name, type: item.type });
     }
   } catch(e) {
     console.error('persistItem exception', e);
+    aiError('persistItem.exception', e, { op, name: item.name, type: item.type });
     showToast('Save error: ' + e.message);
   }
 }
@@ -336,6 +371,11 @@ async function deleteItemFromDb(id) {
   const item = items.find(i => i.id === id);
   const table = item?.type === 'event' ? 'items' : 'tether_items';
   const { error } = await sb.from(table).delete().eq('id', id);
-  if (error) showToast('Delete error: ' + error.message);
+  if (error) {
+    aiError('deleteItem', error, { name: item?.name, type: item?.type });
+    showToast('Delete error: ' + error.message);
+  } else {
+    aiTrack('deleteItem.success', { name: item?.name, type: item?.type });
+  }
 }
 
