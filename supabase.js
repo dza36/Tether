@@ -30,21 +30,37 @@ async function initAuth() {
 async function onSignedIn(user) {
   currentUser = user;
   updateAvatar(user);
-  const [, , prefResult] = await Promise.all([
+  const [, , prefResult, obResult] = await Promise.all([
     loadItems(),
     loadHousehold(),
-    sb.from('users').select('holidays_enabled, party_days_enabled').eq('id', user.id).single()
+    sb.from('users').select('holidays_enabled, party_days_enabled').eq('id', user.id).single(),
+    checkOnboarding()
   ]);
   if (prefResult?.data) {
     userPrefs.holidaysEnabled = prefResult.data.holidays_enabled || false;
     userPrefs.partyDaysEnabled = prefResult.data.party_days_enabled || false;
   }
-  await checkPendingInvites();
   document.getElementById('loadingScreen').classList.remove('open');
   document.getElementById('authScreen').classList.remove('open');
   document.getElementById('mainApp').style.display = '';
+  if (obResult) {
+    initOnboarding(obResult);
+    return;
+  }
+  await checkPendingInvites();
   render();
   setupRealtime();
+}
+
+async function checkOnboarding() {
+  const { data: user } = await sb.from('users')
+    .select('onboarded, display_name')
+    .eq('id', currentUser.id).single();
+  if (user?.onboarded) return null;
+  const { data: invites } = await sb.from('household_invites')
+    .select('id').eq('invited_user_id', currentUser.id)
+    .eq('status', 'pending').limit(1);
+  return { hasInvite: !!(invites && invites.length > 0), displayName: user?.display_name || '' };
 }
 
 function showAuth() {
