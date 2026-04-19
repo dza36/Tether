@@ -512,6 +512,9 @@
   .ob-btn-primary:active{background:#3D3491}
   .ob-btn-ghost{width:100%;padding:10px;border-radius:14px;border:none;background:none;color:#AFA9EC;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit}
   .ob-btn-ghost:active{color:#534AB7}
+  .ob-pills{display:flex;gap:8px;justify-content:center}
+  .ob-pill{padding:8px 20px;border-radius:20px;border:1px solid #CECBF6;background:none;color:#AFA9EC;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit}
+  .ob-pill:active{background:#F7F6FF;color:#534AB7}
   .ob-body{font-size:14px;color:#534AB7;line-height:1.55;text-align:center}
   .ob-fields{display:flex;flex-direction:column;gap:.65rem}
   .ob-field-row{display:flex;gap:8px;align-items:center}
@@ -722,6 +725,7 @@
     & .ob-input{background:#1E1A3C;border-color:#2E2A5E;color:#E8E5FF}
     & .ob-select{background:#1E1A3C;border-color:#2E2A5E;color:#E8E5FF}
     & .ob-body{color:#AFA9EC}
+    & .ob-pill{border-color:#2E2A5E;color:#6B65A8}
     & .ob-orient-row{color:#E8E5FF;background:#1E1A3C;border-color:transparent}
     & .ob-orient-row.selected{border-color:#534AB7;background:#2E2A5E}
     & .ob-orient-label{color:#E8E5FF}

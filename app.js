@@ -2606,18 +2606,16 @@ function renderChangelogSheet() {
 })();
 
 // ─── ONBOARDING ───────────────────────────────────────────────────────────────
-const OB_TOTAL = 6;
+const OB_TOTAL = 5;
 let obStep = 0;
 let obHasInvite = false;
 let obAnniversaries = [];
-let obHouseholdChoice = null; // 'alone' | 'share'
 let obHouseholdId = null;
 
-function initOnboarding({ hasInvite, displayName }) {
+function initOnboarding({ hasInvite }) {
   obStep = 0;
   obHasInvite = hasInvite;
   obAnniversaries = [];
-  obHouseholdChoice = null;
   obHouseholdId = null;
   document.getElementById('obOverlay').style.display = '';
   renderObScreen();
@@ -2635,20 +2633,19 @@ function renderObSteps() {
 
 function renderObScreen() {
   renderObSteps();
-  [renderObWelcome, renderObBirthday, renderObAnniversary, renderObOrientation, renderObHousehold, renderObFinish][obStep]?.();
-  // inject back button on all screens except welcome and finish
-  if (obStep > 0 && obStep < OB_TOTAL - 1) {
-    const card = document.getElementById('obCard');
-    const btn = document.createElement('button');
-    btn.className = 'ob-back';
-    btn.textContent = '←';
-    btn.onclick = obBack;
-    card.insertBefore(btn, card.firstChild);
-  }
+  [renderObWelcome, renderObBirthday, renderObAnniversary, renderObHousehold, renderObFinish][obStep]?.();
 }
 
 function obAdvance() { if (obStep < OB_TOTAL - 1) { obStep++; renderObScreen(); } }
 function obBack()    { if (obStep > 0) { obStep--; renderObScreen(); } }
+
+// shared pill row — baked into each screen that needs it
+function obNavPills(skipLabel, skipFn) {
+  return `<div class="ob-pills">
+    <button class="ob-pill" onclick="obBack()">← Back</button>
+    <button class="ob-pill" onclick="${skipFn}()">${skipLabel}</button>
+  </div>`;
+}
 
 function renderObWelcome() {
   const meta = currentUser.user_metadata || {};
@@ -2656,9 +2653,9 @@ function renderObWelcome() {
   document.getElementById('obCard').innerHTML = `
     <div class="ob-icon">⚓</div>
     <div class="ob-title">Welcome${first ? ', ' + first : ''}!</div>
-    <div class="ob-body">Tether helps you stay on top of the things that matter — tasks, events, and the people you share life with.<br><br>Let's get you set up.</div>
+    <div class="ob-body">Tether keeps you on top of the things that matter — tasks, events, and the people you share life with.<br><br>Let's get you set up.</div>
     <div class="ob-actions">
-      <button class="ob-btn-primary" onclick="obAdvance()">Let's go</button>
+      <button class="ob-btn-primary" onclick="obAdvance()">Let's go!</button>
     </div>
   `;
 }
@@ -2674,8 +2671,8 @@ function renderObBirthday() {
           <option value="">Month</option>
           ${months.map((m,i)=>`<option value="${String(i+1).padStart(2,'0')}">${m}</option>`).join('')}
         </select>
-        <input class="ob-input ob-input-sm" id="obBdDay" type="number" min="1" max="31" placeholder="Day">
-        <input class="ob-input ob-input-sm" id="obBdYear" type="number" min="1900" max="2024" placeholder="Year">
+        <input class="ob-input ob-input-sm" id="obBdDay" type="text" inputmode="numeric" placeholder="Day" maxlength="2">
+        <input class="ob-input ob-input-sm" id="obBdYear" type="text" inputmode="numeric" placeholder="Year" maxlength="4">
       </div>
       <label class="ob-toggle-row">
         <span>Show birth year to household</span>
@@ -2683,16 +2680,16 @@ function renderObBirthday() {
       </label>
     </div>
     <div class="ob-actions">
-      <button class="ob-btn-primary" onclick="obSaveBirthday()">Continue</button>
-      <button class="ob-btn-ghost" onclick="obAdvance()">Skip</button>
+      <button class="ob-btn-primary" onclick="obSaveBirthday()">Save & continue</button>
+      ${obNavPills('Skip', 'obAdvance')}
     </div>
   `;
 }
 
 async function obSaveBirthday() {
   const month = document.getElementById('obBdMonth').value;
-  const day   = document.getElementById('obBdDay').value;
-  const year  = document.getElementById('obBdYear').value;
+  const day   = document.getElementById('obBdDay').value.trim();
+  const year  = document.getElementById('obBdYear').value.trim();
   if (month && day && year) {
     const dateStr = `${year}-${month}-${String(parseInt(day)).padStart(2,'0')}`;
     const showYear = document.getElementById('obShowYear').checked;
@@ -2710,7 +2707,7 @@ function renderObAnniversary() {
     </div>`).join('');
   document.getElementById('obCard').innerHTML = `
     <div class="ob-title">Anniversaries</div>
-    <div class="ob-body">Add anniversaries and milestones — wedding, friendiversaries, whatever matters.</div>
+    <div class="ob-body">Add anniversaries and milestones — wedding, friendiversary, whatever matters to you.</div>
     ${listHtml ? `<div class="ob-aniv-list">${listHtml}</div>` : ''}
     <div class="ob-fields">
       <input class="ob-input" id="obAnivName" type="text" placeholder="Label (e.g. Wedding anniversary)">
@@ -2719,13 +2716,13 @@ function renderObAnniversary() {
           <option value="">Month</option>
           ${months.map((m,i)=>`<option value="${String(i+1).padStart(2,'0')}">${m}</option>`).join('')}
         </select>
-        <input class="ob-input ob-input-sm" id="obAnivDay" type="number" min="1" max="31" placeholder="Day">
-        <input class="ob-input ob-input-sm" id="obAnivYear" type="number" min="1900" max="2025" placeholder="Year">
+        <input class="ob-input ob-input-sm" id="obAnivDay" type="text" inputmode="numeric" placeholder="Day" maxlength="2">
+        <input class="ob-input ob-input-sm" id="obAnivYear" type="text" inputmode="numeric" placeholder="Year" maxlength="4">
       </div>
     </div>
     <div class="ob-actions">
       <button class="ob-btn-primary" onclick="obAddAnniversary()">Add${obAnniversaries.length ? ' another' : ''}</button>
-      <button class="ob-btn-ghost" onclick="obSaveAnniversaries()">${obAnniversaries.length ? 'Done' : 'Skip'}</button>
+      ${obNavPills(obAnniversaries.length ? 'Done' : 'Skip', 'obSaveAnniversaries')}
     </div>
   `;
 }
@@ -2733,8 +2730,8 @@ function renderObAnniversary() {
 function obAddAnniversary() {
   const name  = document.getElementById('obAnivName').value.trim();
   const month = document.getElementById('obAnivMonth').value;
-  const day   = document.getElementById('obAnivDay').value;
-  const year  = document.getElementById('obAnivYear').value;
+  const day   = document.getElementById('obAnivDay').value.trim();
+  const year  = document.getElementById('obAnivYear').value.trim();
   if (!month || !day) { showToast('Month and day are required'); return; }
   const dateStr = year
     ? `${year}-${month}-${String(parseInt(day)).padStart(2,'0')}`
@@ -2755,100 +2752,54 @@ async function obSaveAnniversaries() {
   obAdvance();
 }
 
-function renderObOrientation() {
-  document.getElementById('obCard').innerHTML = `
-    <div class="ob-title">Your setup</div>
-    <div class="ob-body">How do you use Tether?</div>
-    <div class="ob-orient-list">
-      <button class="ob-orient-row${obHouseholdChoice === 'alone' ? ' selected' : ''}" onclick="obPickOrientation('alone')">
-        <span class="ob-orient-icon">🏠</span>
-        <div>
-          <div class="ob-orient-label">Just me</div>
-          <div class="ob-orient-sub">I manage my own tasks and events</div>
-        </div>
-      </button>
-      <button class="ob-orient-row${obHouseholdChoice === 'share' ? ' selected' : ''}" onclick="obPickOrientation('share')">
-        <span class="ob-orient-icon">👨‍👩‍👧</span>
-        <div>
-          <div class="ob-orient-label">With others</div>
-          <div class="ob-orient-sub">I share tasks with a partner, family, or roommates</div>
-        </div>
-      </button>
-    </div>
-    <div class="ob-actions">
-      <button class="ob-btn-primary" id="obOrientNext" onclick="obOrientationNext()"${obHouseholdChoice ? '' : ' disabled'}>Continue</button>
-      <button class="ob-btn-ghost" onclick="obAdvance()">Skip</button>
-    </div>
-  `;
-}
-
-function obPickOrientation(choice) {
-  obHouseholdChoice = choice;
-  renderObOrientation();
-}
-
-function obOrientationNext() {
-  if (!obHouseholdChoice) return;
-  obAdvance();
-}
-
 function renderObHousehold() {
-  if (obHouseholdChoice === 'alone') {
-    obStep++;
-    renderObScreen();
-    return;
-  }
   if (obHasInvite) {
     document.getElementById('obCard').innerHTML = `
       <div class="ob-title">You have an invite!</div>
-      <div class="ob-body">Someone has already invited you to join their household. Accept after setup, or create your own.</div>
+      <div class="ob-body">Someone has already invited you to join their household. You'll be able to accept it as soon as you're in.</div>
       <div class="ob-actions">
-        <button class="ob-btn-primary" onclick="obAdvance()">I'll join theirs</button>
-        <button class="ob-btn-ghost" onclick="obShowCreateHousehold()">Create my own</button>
+        <button class="ob-btn-primary" onclick="obAdvance()">Got it</button>
+        ${obNavPills('Skip', 'obAdvance')}
       </div>
     `;
-  } else {
-    obShowHouseholdChoice();
+    return;
   }
-}
-
-function obShowHouseholdChoice() {
   document.getElementById('obCard').innerHTML = `
-    <div class="ob-title">Your household</div>
-    <div class="ob-body">Create a new household or join one that already exists.</div>
+    <div class="ob-title">Households</div>
+    <div class="ob-body">A Tether household keeps tasks and events in sync with the people you live with — a partner, family, or roommates.</div>
     <div class="ob-orient-list">
       <button class="ob-orient-row" onclick="obShowCreateHousehold()">
         <span class="ob-orient-icon">🏠</span>
         <div>
           <div class="ob-orient-label">Create a household</div>
-          <div class="ob-orient-sub">Set up a new household and invite your people</div>
+          <div class="ob-orient-sub">Set it up and invite your people</div>
         </div>
       </button>
       <button class="ob-orient-row" onclick="obShowJoinHousehold()">
         <span class="ob-orient-icon">🤝</span>
         <div>
           <div class="ob-orient-label">Join a household</div>
-          <div class="ob-orient-sub">Send a request to someone who already has one</div>
+          <div class="ob-orient-sub">Someone already has one set up</div>
         </div>
       </button>
     </div>
-    <div class="ob-actions">
-      <button class="ob-btn-ghost" onclick="obAdvance()">Skip for now</button>
-    </div>
+    ${obNavPills('Skip for now', 'obAdvance')}
   `;
 }
 
 function obShowCreateHousehold() {
   document.getElementById('obCard').innerHTML = `
     <div class="ob-title">Create a household</div>
-    <div class="ob-body">Give your household a name and optionally invite someone to get started.</div>
+    <div class="ob-body">Give it a name. You can invite people now or after setup.</div>
     <div class="ob-fields">
       <input class="ob-input" id="obHhName" type="text" placeholder="e.g. The Monette House" maxlength="40">
       <input class="ob-input" id="obHhInvite" type="email" placeholder="Invite by email (optional)">
     </div>
     <div class="ob-actions">
       <button class="ob-btn-primary" onclick="obCreateHouseholdFlow()">Create household</button>
-      <button class="ob-btn-ghost" onclick="obShowHouseholdChoice()">Back</button>
+      <div class="ob-pills">
+        <button class="ob-pill" onclick="renderObHousehold()">← Back</button>
+      </div>
     </div>
   `;
 }
@@ -2856,14 +2807,16 @@ function obShowCreateHousehold() {
 function obShowJoinHousehold() {
   document.getElementById('obCard').innerHTML = `
     <div class="ob-title">Join a household</div>
-    <div class="ob-body">Enter the email of someone already in the household. The owner will need to approve your request.</div>
+    <div class="ob-body">Enter the email of someone already in the household. The owner will approve your request.</div>
     <div class="ob-fields">
       <input class="ob-input" id="obJoinEmail" type="email" placeholder="Their email address">
     </div>
     <div id="obJoinStatus"></div>
     <div class="ob-actions">
       <button class="ob-btn-primary" onclick="obSendJoinRequest()">Send request</button>
-      <button class="ob-btn-ghost" onclick="obShowHouseholdChoice()">Back</button>
+      <div class="ob-pills">
+        <button class="ob-pill" onclick="renderObHousehold()">← Back</button>
+      </div>
     </div>
   `;
 }
