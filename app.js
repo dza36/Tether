@@ -143,7 +143,7 @@ function showToast(msg) {
 }
 
 // ─── ITEM ACTIONS ─────────────────────────────────────────────────────────────
-let tab="today", expandedId=null, itemType="interval", selectedWeekdays=[1];
+let tab="today", expandedId=null, itemType="interval", selectedWeekdays=[1], selectedTaskCategory='custom';
 
 async function completeItem(id) {
   const item = items.find(i=>i.id===id); if (!item) return;
@@ -774,6 +774,31 @@ function openChooser(){ document.getElementById("chooserBg").classList.add("open
 function closeChooser(){ document.getElementById("chooserBg").classList.remove("open"); }
 function bgClickChooser(e){ if(e.target===document.getElementById("chooserBg")) closeChooser(); }
 
+function selectTaskCategory(cat, el) {
+  selectedTaskCategory = cat;
+  document.querySelectorAll('.task-category-row .type-pill').forEach(p => p.classList.remove('active'));
+  if (el) el.classList.add('active');
+  showCategoryForm(cat);
+}
+
+function showCategoryForm(cat) {
+  const fields = document.getElementById('taskFormFields');
+  const placeholder = document.getElementById('categoryPlaceholder');
+  const label = document.getElementById('categoryPlaceholderLabel');
+  const btn = document.getElementById('btnSave');
+  if (cat === 'custom') {
+    fields.style.display = '';
+    placeholder.style.display = 'none';
+    validateForm();
+  } else {
+    fields.style.display = 'none';
+    placeholder.style.display = '';
+    const names = { grocery: '🛒 Grocery list', chores: '🧹 Chores' };
+    label.textContent = `${names[cat] || cat} — coming soon`;
+    btn.disabled = true;
+  }
+}
+
 function openTaskModal(){
   closeChooser();
   document.getElementById("fName").value="";
@@ -788,6 +813,7 @@ function openTaskModal(){
   document.getElementById("monthPicker").style.display="none";
   selectedWeekdays=[];
   document.querySelectorAll(".day-pill").forEach(p=>p.classList.remove("active"));
+  selectTaskCategory('custom', document.getElementById('catPillCustom'));
   onDueDateChange();
   validateForm();
   document.getElementById("taskModalBg").classList.add("open");

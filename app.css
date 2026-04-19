@@ -102,6 +102,9 @@
   .field label{font-size:11px;font-weight:700;color:#534AB7;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em}
   .field input,.field select{width:100%;padding:11px 14px;font-size:15px;border-radius:12px;border:0.5px solid #CECBF6;background:#F7F6FF;color:#26215C;font-family:inherit}
   .field input:focus,.field select:focus{outline:none;border-color:#534AB7}
+  .task-category-row{display:flex;gap:6px;margin-bottom:.75rem}
+  .task-category-row .type-pill{flex:1}
+  .category-placeholder{padding:2rem 1rem;text-align:center;font-size:14px;color:#AFA9EC;font-weight:500;border-radius:14px;border:0.5px dashed #CECBF6;margin-bottom:.75rem}
   .type-pills{display:flex;gap:6px}
   .type-pill{flex:1;padding:10px 4px;text-align:center;font-size:13px;font-weight:600;border-radius:12px;border:0.5px solid #CECBF6;color:#534AB7;cursor:pointer;background:transparent;transition:all .15s}
   .type-pill.active{background:#EEEDFE;border-color:#534AB7;color:#26215C}
