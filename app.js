@@ -425,6 +425,7 @@ function editItem(id) {
     document.getElementById("fEventStartTime").value=item.startTime||"";
     document.getElementById("fEventEndDate").value=item.endDate||"";
     document.getElementById("fEventEndTime").value=item.endTime||"";
+    document.getElementById("fEventLocation").value=item.location||"";
     document.getElementById("btnEventSave").disabled=false;
     document.getElementById("btnEventSave").textContent='Update Event';
     document.getElementById("btnEventSave").onclick=async function(){
@@ -432,6 +433,7 @@ function editItem(id) {
       item.date=document.getElementById("fEventStartDate").value;
       item.startTime=document.getElementById("fEventStartTime").value||null;
       item.endTime=document.getElementById("fEventEndTime").value||null;
+      item.location=document.getElementById("fEventLocation").value.trim()||null;
       closeEventModal();
       await persistItem(item);
       expandedId=null;
@@ -1034,6 +1036,7 @@ function openEventModal() {
   attendeeSearchCache = null;
   document.getElementById('eventModalTitle').textContent = 'New Event';
   document.getElementById('fEventName').value = '';
+  document.getElementById('fEventLocation').value = '';
   document.getElementById('fEventStartDate').value = isoToday();
   document.getElementById('fEventStartTime').value = '';
   document.getElementById('fEventEndDate').value = '';
@@ -1080,6 +1083,7 @@ async function saveEvent() {
     startTime: document.getElementById('fEventStartTime').value || null,
     endTime: document.getElementById('fEventEndTime').value || null,
     eventIcon: selectedEventIcon,
+    location: document.getElementById('fEventLocation').value.trim() || null,
     guestsCanInvite: document.getElementById('fGuestsCanInvite').checked,
     allowAdditionalItems: document.getElementById('fAllowAdditions').checked,
     isUrgent: false,
@@ -1275,7 +1279,22 @@ function openEventDetail(id) {
   const dateStr = item.date ? fmtDate(new Date(item.date + 'T00:00:00')) : '';
   const timeStr = item.startTime ? ` · ${fmtTime(item.startTime)}${item.endTime?' – '+fmtTime(item.endTime):''}` : '';
   const endDateStr = item.endDate && item.endDate !== item.date ? ` → ${fmtDate(new Date(item.endDate+'T00:00:00'))}` : '';
-  document.getElementById('eventDetailMeta').textContent = dateStr + endDateStr + timeStr;
+  const metaEl = document.getElementById('eventDetailMeta');
+  metaEl.textContent = dateStr + endDateStr + timeStr;
+  if (item.location) {
+    const locDiv = document.createElement('div');
+    locDiv.className = 'event-detail-location';
+    const locSpan = document.createElement('span');
+    locSpan.textContent = '📍 ' + item.location;
+    const mapLink = document.createElement('a');
+    mapLink.href = `https://maps.google.com/maps?q=${encodeURIComponent(item.location)}`;
+    mapLink.target = '_blank'; mapLink.rel = 'noopener';
+    mapLink.className = 'event-detail-map-btn';
+    mapLink.textContent = '🗺 Navigate';
+    locDiv.appendChild(locSpan);
+    locDiv.appendChild(mapLink);
+    metaEl.appendChild(locDiv);
+  }
   const isOwner = item.createdBy === currentUser.id;
   document.getElementById('eventDetailEditBtn').style.display = isOwner ? '' : 'none';
   document.getElementById('evpanel-detail').innerHTML = 'Loading…';
@@ -1289,6 +1308,42 @@ function closeEventDetail() {
 function bgClickEventDetail(e) { if (e.target === document.getElementById('eventDetailBg')) closeEventDetail(); }
 function editCurrentEvent() {
   if (eventDetailCurrentId) { closeEventDetail(); editItem(eventDetailCurrentId); }
+}
+
+async function cloneEvent(itemId) {
+  const item = items.find(i => i.id === itemId); if (!item) return;
+
+  const [guestsRes, bringRes] = await Promise.all([
+    sb.from('event_guests').select('user_id').eq('item_id', itemId).eq('is_owner', false),
+    sb.from('potluck_items').select('name').eq('item_id', itemId).order('created_at'),
+  ]);
+  const guestUserIds = (guestsRes.data || []).map(g => g.user_id).filter(id => id !== currentUser.id);
+  let guestProfiles = [];
+  if (guestUserIds.length > 0) {
+    const { data } = await sb.from('users').select('id, display_name, avatar_url, email').in('id', guestUserIds);
+    guestProfiles = data || [];
+  }
+
+  closeEventDetail();
+  openEventModal();
+  document.getElementById('eventModalTitle').textContent = 'Clone Event';
+  document.getElementById('fEventName').value = item.name;
+  document.getElementById('fEventLocation').value = item.location || '';
+  document.getElementById('fGuestsCanInvite').checked = item.guestsCanInvite ?? true;
+  document.getElementById('fAllowAdditions').checked = item.allowAdditionalItems ?? true;
+
+  const iconPill = document.querySelector(`.event-icon-pill[data-icon="${item.eventIcon || '📅'}"]`);
+  selectEventIcon(item.eventIcon || '📅', iconPill);
+
+  eventBringDraft = (bringRes.data || []).map(b => b.name);
+  eventAttendeeDraft = guestProfiles.map(p => ({
+    userId: p.id,
+    displayName: p.display_name || p.email?.split('@')[0] || 'Guest',
+    avatarUrl: p.avatar_url || null,
+  }));
+  updateAttendeeLabel();
+  updateBringLabel();
+  validateEventForm();
 }
 
 // ─── EVENTS LIST ─────────────────────────────────────────────────────────────
@@ -1380,6 +1435,7 @@ function renderEventsList() {
     const icon = item.eventIcon || '📅';
     const dateStr = item.date ? fmtDate(new Date(item.date + 'T00:00:00')) : '';
     const timeStr = item.startTime ? ` · ${fmtTime(item.startTime)}` : '';
+    const locationStr = item.location ? ` · 📍 ${item.location}` : '';
     const rsvp = myRsvpMap[item.id];
     const rsvpBadge = rsvp
       ? `<div class="events-list-rsvp ${rsvp.rsvp_status}">${{ pending: 'Invited', going: 'Going', maybe: 'Maybe', not_going: 'Declined' }[rsvp.rsvp_status] || ''}</div>`
@@ -1388,7 +1444,7 @@ function renderEventsList() {
       <div class="events-list-icon">${icon}</div>
       <div class="events-list-info">
         <div class="events-list-name">${item.name}</div>
-        <div class="events-list-meta">${dateStr}${timeStr}</div>
+        <div class="events-list-meta">${dateStr}${timeStr}${locationStr}</div>
       </div>
       ${rsvpBadge}
     </div>`;
@@ -1983,6 +2039,7 @@ async function loadEventPanel(itemId) {
   // Actions
   const actionsHTML = `<div class="event-actions">
     ${isOwner ? `<button class="event-action-btn event-action-edit" onclick="editItem('${itemId}')">✏️ Edit</button>` : ''}
+    <button class="event-action-btn event-action-clone" onclick="cloneEvent('${itemId}')">📋 Clone</button>
     ${isOwner ? `<button class="event-action-btn event-action-delete" onclick="deleteItem('${itemId}')">🗑 Delete</button>` : ''}
   </div>`;
 

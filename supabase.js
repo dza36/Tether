@@ -182,6 +182,7 @@ function dbRowToEvent(row) {
     allowAdditionalItems: row.allow_additional_items ?? true,
     altDueDate: row.snoozed_until || null,
     visibility: row.visibility || 'household',
+    location: row.location || null,
     checklist: [],
     isUrgent: false,
   };
@@ -203,6 +204,7 @@ function eventToDbRow(item) {
     allow_additional_items: item.allowAdditionalItems ?? true,
     snoozed_until: item.altDueDate || null,
     visibility: item.visibility || 'household',
+    location: item.location || null,
   };
 }
 

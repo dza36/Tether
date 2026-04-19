@@ -6,13 +6,10 @@ Features and fixes agreed upon, not yet built. Roughly prioritized within each s
 
 ## Events
 
-- **Events list — 3-tab redesign** — Replace Future/Past toggle with three tabs:
-  - *Future* — events you created + RSVPs where status is `going`. Show count.
-  - *Past* — past-date or dismissed events. Show count.
-  - *Pending* — future-dated invites regardless of snooze/dismiss/decline, always accessible to change RSVP. Show count.
+- ~~**Events list — 3-tab redesign**~~ — Already shipped: Future / Pending / Past with counts and RSVP badges.
 - **Clone event** — "Clone" button in event detail sheet (owner only). Pre-populates creation modal with same name, icon, bring list, and guest list. Pick new date and save.
 - **Recurring events** — For AA meetings, book clubs, weekly team lunch. Recurrence fields on `items`, pre-generated instances per occurrence (each needs own `event_guests` + `potluck_items`). Bring list inherited from template by default. Edit affects this occurrence or all future.
-- **Location field** — Optional location on events (and possibly tasks). Display in detail sheet and row subline.
+- **Location field** — Optional plain-text location on events. Display in detail sheet (with 🗺 button to launch native maps navigation) and event list row subline. *Future enhancement: Places API autocomplete via Edge Function proxy + address validation.*
 
 ---
 
