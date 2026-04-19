@@ -805,7 +805,7 @@ function showCategoryForm(cat) {
     groceryFields.style.display = '';
     document.getElementById('fGroceryDate').value = isoToday();
     if (!document.getElementById('fGroceryName').value) document.getElementById('fGroceryName').value = 'Grocery Run';
-    btn.textContent = 'Add Grocery Run';
+    btn.textContent = 'Save & Add Items';
     btn.onclick = saveGroceryTask;
     validateGroceryForm();
   } else {
@@ -830,12 +830,13 @@ async function saveGroceryTask() {
   btn.disabled = true; btn.textContent = 'Saving...';
   const item = { name, type: 'grocery', checklist: [], status: 'active', date, days: null, lastDone: null, weekdays: null, weekInterval: 1, monthDay: null, monthWeek: null, monthWeekday: null, yearInterval: 1, startTime: null, isUrgent: false };
   await persistItem(item);
-  btn.disabled = false; btn.textContent = 'Add Grocery Run';
+  btn.disabled = false; btn.textContent = 'Save & Add Items';
   if (item._dbId) {
     closeTaskModal();
     items.push(item);
-    showToast(`🛒 "${name}" added`);
     render();
+    openGroceryPanel(item._dbId);
+    setTimeout(() => openQuickAddSheet(), 350);
   }
 }
 
@@ -3003,6 +3004,7 @@ let groceryRealtimeChannel = null;
 let groceryDebounce = null;
 let groceryQaSelected = new Map(); // name.toLowerCase() → catalog item data
 let groceryPendingDiff = null;
+let grocerySubmitting = false;
 
 function openGroceryPanel(taskId) {
   groceryTaskId = taskId;
@@ -3226,10 +3228,13 @@ function renderQaActionButton() {
 }
 
 async function submitQuickAdd() {
+  if (grocerySubmitting) return;
   const diff = computeDiff();
   if (diff.removing.length > 0) {
     openConfirmPanel(diff);
   } else {
+    const btn = document.getElementById('groceryQaActionBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Adding...'; }
     await applyDiff(diff);
     closeQuickAddSheet();
   }
@@ -3258,8 +3263,12 @@ function closeConfirmPanel() {
 }
 
 async function applyDiff(diff) {
+  if (grocerySubmitting) return;
+  grocerySubmitting = true;
+  const confirmBtn = document.querySelector('#groceryConfirmSheet .grocery-confirm-btn');
+  if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = 'Applying...'; }
   const d = diff || groceryPendingDiff;
-  if (!d) return;
+  if (!d) { grocerySubmitting = false; return; }
   const task = items.find(i => i.id === groceryTaskId);
   const hhId = task?.householdId || currentHousehold?.id || null;
   if (d.adding.length) {
@@ -3275,14 +3284,15 @@ async function applyDiff(diff) {
       is_custom: false,
     }));
     const { error } = await sb.from('grocery_items').insert(rows);
-    if (error) { showToast('Error: ' + error.message); return; }
+    if (error) { grocerySubmitting = false; showToast('Error: ' + error.message); return; }
   }
   if (d.removing.length) {
     const ids = d.removing.map(gi => gi.id);
     const { error } = await sb.from('grocery_items').delete().in('id', ids);
-    if (error) { showToast('Error: ' + error.message); return; }
+    if (error) { grocerySubmitting = false; showToast('Error: ' + error.message); return; }
   }
   await loadGroceryItems();
+  grocerySubmitting = false;
   closeQuickAddSheet();
 }
 
