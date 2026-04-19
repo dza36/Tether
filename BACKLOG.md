@@ -6,16 +6,14 @@ Features and fixes agreed upon, not yet built. Roughly prioritized within each s
 
 ## Events
 
-- ~~**Events list — 3-tab redesign**~~ — Already shipped: Future / Pending / Past with counts and RSVP badges.
-- **Clone event** — "Clone" button in event detail sheet (owner only). Pre-populates creation modal with same name, icon, bring list, and guest list. Pick new date and save.
 - **Recurring events** — For AA meetings, book clubs, weekly team lunch. Recurrence fields on `items`, pre-generated instances per occurrence (each needs own `event_guests` + `potluck_items`). Bring list inherited from template by default. Edit affects this occurrence or all future.
-- **Location field** — Optional plain-text location on events. Display in detail sheet (with 🗺 button to launch native maps navigation) and event list row subline. *Future enhancement: Places API autocomplete via Edge Function proxy + address validation.*
+- **Location — Places API** — Current implementation is plain text. Future: autocomplete via Supabase Edge Function proxy + address validation. Already has 🗺 Navigate button launching Google Maps.
+- **Co-owners on events** — Creator can add co-owners who can edit/delete the event.
 
 ---
 
 ## Tasks
 
-- **Celebration animation** — Fireworks canvas overlay with "⚓ All Clear" when the last Today item is completed. *(built — pending deploy test)*
 - **History UI** — Bar/pie chart per household member over 7 / 30 / 90 days. Data is accumulating in `tether_completions` now. Build when enough beta data exists.
 - **Urgent flag quick-toggle** — Single tap to toggle urgent on a task row or checklist panel without opening the edit modal.
 
@@ -32,15 +30,15 @@ Features and fixes agreed upon, not yet built. Roughly prioritized within each s
 
 - **Onboarding** — First-run experience for new users. Explain swipe gestures, prompt first item. Light — not a 5-screen tutorial.
 - **Kids logins + parental controls** — Household sub-accounts for kids with restricted contacts.
-- **Co-owners on events** — Creator can add co-owners who can edit/delete the event.
 - **Avatar color picker** — For users without an OAuth profile photo: pick from ~8 curated colors, shown with initials.
 
 ---
 
 ## Infrastructure
 
-- **Push / email notifications** — Configurable per user. Needed for event invites, contact requests, RSVP updates. Platform TBD (Supabase Edge Functions + FCM / SendGrid likely).
-- **App file splitting** — `app.js` at ~1,900 lines, split around 3,000–4,000. Natural seams: `core.js` / `render.js` / `tasks.js` / `events.js` / `social.js` / `household.js`. No build step required — multiple `<script>` tags in order.
+- **Push / email notifications** — Configurable per user. Needed for event invites, contact requests, RSVP updates. Platform TBD (Supabase Edge Functions + FCM / SendGrid likely). Notifications placeholder already in profile menu.
+- **App file splitting** — `app.js` approaching 2,500+ lines, split around 3,000–4,000. Natural seams: `core.js` / `render.js` / `tasks.js` / `events.js` / `social.js` / `household.js`. No build step required — multiple `<script>` tags in order.
+- **Dev/UAT/Prod environments** — Separate Supabase projects per environment. Currently all dev goes directly to prod DB. Needed before broader beta.
 
 ---
 
@@ -52,3 +50,6 @@ Features and fixes agreed upon, not yet built. Roughly prioritized within each s
 3. Business / team version of Tether — v2.0 or beyond
 4. Sport-specific event icons — low priority, nice to have
 5. Founders page on website listing early beta users by name (opt-in)
+6. Holiday cross-reference on event creation ("Looks like this is near Thanksgiving — add a Thanksgiving event?")
+7. Party Every Day API integration (nationaldaycalendar.com or similar)
+8. Contact birthday → auto-Annual generation
