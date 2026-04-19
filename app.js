@@ -2747,7 +2747,8 @@ function obRemoveAnniversary(i) {
 
 async function obSaveAnniversaries() {
   if (obAnniversaries.length) {
-    await sb.from('users').update({ other_dates: obAnniversaries }).eq('id', currentUser.id);
+    const { error } = await sb.from('users').update({ other_dates: obAnniversaries }).eq('id', currentUser.id);
+    if (error) { showToast('Could not save: ' + error.message); return; }
   }
   obAdvance();
 }
