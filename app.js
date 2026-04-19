@@ -1329,6 +1329,9 @@ async function cloneEvent(itemId) {
   document.getElementById('eventModalTitle').textContent = 'Clone Event';
   document.getElementById('fEventName').value = item.name;
   document.getElementById('fEventLocation').value = item.location || '';
+  document.getElementById('fEventStartTime').value = item.startTime || '';
+  document.getElementById('fEventEndTime').value = item.endTime || '';
+  document.getElementById('fEventEndDate').value = item.endDate || '';
   document.getElementById('fGuestsCanInvite').checked = item.guestsCanInvite ?? true;
   document.getElementById('fAllowAdditions').checked = item.allowAdditionalItems ?? true;
 
@@ -2359,6 +2362,9 @@ function applyTheme(theme) {
   } else {
     html.removeAttribute('data-theme');
   }
+  // Re-assert --bg so theme changes never clobber the custom background
+  const savedBg = localStorage.getItem('tether-bg');
+  if (savedBg) html.style.setProperty('--bg', savedBg);
 }
 
 function setTheme(theme) {
