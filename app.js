@@ -3163,22 +3163,28 @@ function renderQuickAddGrid() {
   body.innerHTML = html;
 }
 
+function escAttr(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
 function groceryChipHTML(item) {
   const key = item.name.toLowerCase();
   const isSelected = groceryQaSelected.has(key);
-  return `<div class="grocery-chip${isSelected?' selected':''}" onclick="toggleQaChip(${JSON.stringify(item.name)},${JSON.stringify(item.dept)},${JSON.stringify(item.emoji)},${item.defaultQty},${JSON.stringify(item.defaultUnit)})">
+  return `<div class="grocery-chip${isSelected?' selected':''}" onclick="toggleQaChip(this)" data-name="${escAttr(item.name)}" data-dept="${escAttr(item.dept)}" data-emoji="${escAttr(item.emoji)}" data-qty="${item.defaultQty}" data-unit="${escAttr(item.defaultUnit)}">
     ${isSelected ? '<span class="grocery-chip-check">✓</span>' : ''}
     <span class="grocery-chip-emoji">${item.emoji}</span>
     <span class="grocery-chip-name">${item.name}</span>
   </div>`;
 }
 
-function toggleQaChip(name, dept, emoji, defaultQty, defaultUnit) {
+function toggleQaChip(el) {
+  const { name, dept, emoji, unit } = el.dataset;
+  const defaultQty = parseFloat(el.dataset.qty);
   const key = name.toLowerCase();
   if (groceryQaSelected.has(key)) {
     groceryQaSelected.delete(key);
   } else {
-    groceryQaSelected.set(key, { name, dept, emoji, defaultQty, defaultUnit });
+    groceryQaSelected.set(key, { name, dept, emoji, defaultQty, defaultUnit: unit });
   }
   renderQuickAddGrid();
   renderQaActionButton();
