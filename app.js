@@ -3056,6 +3056,8 @@ function unsubscribeGrocery() {
 function renderGroceryListView() {
   const body = document.getElementById('groceryBody');
   if (!body) return;
+  const doneBtn = document.getElementById('groceryDoneBtn');
+  if (doneBtn) doneBtn.style.display = groceryListItems.length ? '' : 'none';
   if (!groceryListItems.length) {
     body.innerHTML = '<div class="grocery-empty">Your list is empty.<br>Tap ＋ Add Items to get started.</div>';
     return;

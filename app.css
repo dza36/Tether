@@ -109,7 +109,7 @@
   /* Grocery panel */
   .grocery-bg{position:fixed;inset:0;z-index:160;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity .2s}
   .grocery-bg.open{opacity:1;pointer-events:auto}
-  .grocery-sheet{position:relative;overflow:hidden;width:100%;max-width:430px;margin:0 auto;background:#F7F6FF;border-radius:20px 20px 0 0;border:0.5px solid #CECBF6;border-bottom:none;max-height:88vh;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .25s ease}
+  .grocery-sheet{position:relative;overflow:hidden;width:100%;max-width:430px;margin:0 auto;background:#F7F6FF;border-radius:20px 20px 0 0;border:0.5px solid #CECBF6;border-bottom:none;height:88vh;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .25s ease}
   .grocery-bg.open .grocery-sheet{transform:translateY(0)}
   .grocery-handle{width:36px;height:4px;background:#CECBF6;border-radius:2px;margin:10px auto 0;flex-shrink:0}
   .grocery-header{display:flex;align-items:center;gap:8px;padding:.75rem 1rem .5rem;flex-shrink:0}
