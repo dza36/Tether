@@ -210,6 +210,18 @@
       <span id="categoryPlaceholderLabel"></span>
     </div>
 
+    <!-- Grocery task form (hidden by default) -->
+    <div id="groceryFormFields" style="display:none">
+      <div class="field">
+        <label>List name</label>
+        <input type="text" id="fGroceryName" placeholder="e.g. Weekly Grocery Run" oninput="validateGroceryForm()"/>
+      </div>
+      <div class="field">
+        <label>Shopping date</label>
+        <input type="date" id="fGroceryDate" oninput="validateGroceryForm()"/>
+      </div>
+    </div>
+
     <!-- Custom task form (hidden when grocery/chores selected) -->
     <div id="taskFormFields">
 
@@ -542,6 +554,22 @@
   </div>
 </div>
 
+<!-- Grocery panel -->
+<div class="grocery-bg" id="groceryBg" onclick="bgClickGrocery(event)">
+  <div class="grocery-sheet">
+    <div class="grocery-handle"></div>
+    <div class="grocery-header">
+      <div class="grocery-title" id="groceryTitle">Grocery Run</div>
+      <button class="grocery-done-btn" onclick="completeGroceryTask()">✓ Done shopping</button>
+      <div class="grocery-close" onclick="closeGroceryPanel()">✕</div>
+    </div>
+    <div class="grocery-search-row">
+      <input type="search" id="grocerySearch" placeholder="Search or add items..." oninput="onGrocerySearch()" autocomplete="off"/>
+    </div>
+    <div class="grocery-body" id="groceryBody"></div>
+  </div>
+</div>
+
 <!-- Onboarding overlay -->
 <div class="ob-overlay" id="obOverlay" style="display:none">
   <div class="ob-inner">
@@ -577,6 +605,7 @@
 <div class="toast" id="toast"></div>
 
 <script src="version.js"></script>
+<script src="grocery-data.js"></script>
 <script src="supabase.js"></script>
 <script src="app.js"></script>
 </body>

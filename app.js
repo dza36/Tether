@@ -15,7 +15,7 @@ function nextFromDays(wd, startI=0) {
 }
 
 function getDueDate(item) {
-  if (item.type==='event'||item.type==='oneTime') return new Date((item.date||isoToday())+'T00:00:00');
+  if (item.type==='event'||item.type==='oneTime'||item.type==='grocery') return new Date((item.date||isoToday())+'T00:00:00');
   if (item.type==='weekday') return nextFromDays(item.weekdays||[1], item.lastDone===isoToday()?1:0);
   if (item.type==='monthly'||item.type==='yearly') return new Date((item.lastDone||isoToday())+'T00:00:00');
   if (item.type==='annual') {
@@ -108,6 +108,10 @@ function fmtTime(t) {
 function subFor(item) {
   const wd=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
   const timeStr = item.startTime ? ` · ${fmtTime(item.startTime)}${item.endTime?' – '+fmtTime(item.endTime):''}` : '';
+  if (item.type==="grocery") {
+    const due = getDueDate(item);
+    return `Shopping ${fmtDate(due)}${timeStr} · tap to open list`;
+  }
   if (item.type==="interval") {
     const lastDone = new Date(item.lastDone+"T00:00:00");
     const nextDue = getDueDate(item);
@@ -125,6 +129,7 @@ function subFor(item) {
   return due.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",year:"numeric"})+timeStr;
 }
 function iconFor(item) {
+  if (item.type === 'grocery') return '🛒';
   if (item.type === 'event') return item.eventIcon || '📅';
   if (item.type === 'annual') return '<span class="type-icon">🗓</span>';
   if (item.isUrgent) return '<span class="type-dot dot-urgent"></span>';
@@ -369,10 +374,11 @@ async function doCompleteItem() {
 }
 
 function toggleExpand(id) {
+  const item = items.find(i=>i.id===id);
+  if (item?.type === 'grocery') { openGroceryPanel(id); return; }
   expandedId = expandedId===id ? null : id;
   render();
   if (expandedId === id) {
-    const item = items.find(i=>i.id===id);
     if (item?.type === 'event') loadEventPanel(id);
   }
 }
@@ -619,9 +625,10 @@ function clHTML(item) {
 function rowHTML(item, isOverdue) {
   const exp=expandedId===item.id;
   const isEvent = item.type === 'event';
+  const isGrocery = item.type === 'grocery';
   const avatarHTML = (currentHousehold && !isEvent) ? itemAvatarHTML(item.assignedTo || item.createdBy, item.id) : '';
-  const itemStyle = exp ? `position:relative;${isEvent?'cursor:pointer;':'border-bottom-left-radius:0;border-bottom-right-radius:0;'}` : `position:absolute;inset:0;cursor:${isEvent?'pointer':'grab'};`;
-  const itemClick = (isEvent || exp) ? `onclick="toggleExpand('${item.id}')"` : '';
+  const itemStyle = exp ? `position:relative;${isEvent?'cursor:pointer;':'border-bottom-left-radius:0;border-bottom-right-radius:0;'}` : `position:absolute;inset:0;cursor:${(isEvent||isGrocery)?'pointer':'grab'};`;
+  const itemClick = (isEvent || isGrocery || exp) ? `onclick="toggleExpand('${item.id}')"` : '';
   const itemClass = `item${isOverdue?' overdue':''}${exp?' held':''}${exp?'':' swipeable'}`;
   return `<div class="row-outer" id="outer-${item.id}">
     <div class="row-wrap${exp?' expanded':''}" id="wrap-${item.id}">
@@ -783,25 +790,59 @@ function selectTaskCategory(cat, el) {
 
 function showCategoryForm(cat) {
   const fields = document.getElementById('taskFormFields');
+  const groceryFields = document.getElementById('groceryFormFields');
   const placeholder = document.getElementById('categoryPlaceholder');
   const label = document.getElementById('categoryPlaceholderLabel');
   const btn = document.getElementById('btnSave');
+  fields.style.display = 'none';
+  groceryFields.style.display = 'none';
+  placeholder.style.display = 'none';
+  btn.onclick = saveItem;
   if (cat === 'custom') {
     fields.style.display = '';
-    placeholder.style.display = 'none';
     validateForm();
+  } else if (cat === 'grocery') {
+    groceryFields.style.display = '';
+    document.getElementById('fGroceryDate').value = isoToday();
+    if (!document.getElementById('fGroceryName').value) document.getElementById('fGroceryName').value = 'Grocery Run';
+    btn.textContent = 'Add Grocery Run';
+    btn.onclick = saveGroceryTask;
+    validateGroceryForm();
   } else {
-    fields.style.display = 'none';
     placeholder.style.display = '';
-    const names = { grocery: '🛒 Grocery list', chores: '🧹 Chores' };
+    const names = { chores: '🧹 Chores' };
     label.textContent = `${names[cat] || cat} — coming soon`;
     btn.disabled = true;
+  }
+}
+
+function validateGroceryForm() {
+  const name = document.getElementById('fGroceryName')?.value.trim();
+  const date = document.getElementById('fGroceryDate')?.value;
+  const btn = document.getElementById('btnSave');
+  if (btn) btn.disabled = !(name && date);
+}
+
+async function saveGroceryTask() {
+  const name = document.getElementById('fGroceryName').value.trim(); if (!name) return;
+  const date = document.getElementById('fGroceryDate').value; if (!date) return;
+  const btn = document.getElementById('btnSave');
+  btn.disabled = true; btn.textContent = 'Saving...';
+  const item = { name, type: 'grocery', checklist: [], status: 'active', date, days: null, lastDone: null, weekdays: null, weekInterval: 1, monthDay: null, monthWeek: null, monthWeekday: null, yearInterval: 1, startTime: null, isUrgent: false };
+  await persistItem(item);
+  btn.disabled = false; btn.textContent = 'Add Grocery Run';
+  if (item._dbId) {
+    closeTaskModal();
+    items.push(item);
+    showToast(`🛒 "${name}" added`);
+    render();
   }
 }
 
 function openTaskModal(){
   closeChooser();
   document.getElementById("fName").value="";
+  document.getElementById("fGroceryName").value="";
   document.getElementById("fDueDate").value=isoToday();
   document.getElementById("fTaskTime").value="";
   document.getElementById("fRecurring").checked=false;
@@ -813,6 +854,8 @@ function openTaskModal(){
   document.getElementById("monthPicker").style.display="none";
   selectedWeekdays=[];
   document.querySelectorAll(".day-pill").forEach(p=>p.classList.remove("active"));
+  document.getElementById("btnSave").textContent="Add Task";
+  document.getElementById("btnSave").onclick=saveItem;
   selectTaskCategory('custom', document.getElementById('catPillCustom'));
   onDueDateChange();
   validateForm();
@@ -1399,12 +1442,6 @@ async function cloneEvent(itemId) {
 
 // ─── EVENTS LIST ─────────────────────────────────────────────────────────────
 let eventsView = 'future'; // 'future' | 'pending' | 'past'
-
-function openEventDetail(id) {
-  // TODO: full event detail sheet — placeholder
-  const item = items.find(i => i.id === id);
-  if (item) showToast(`${item.eventIcon || '📅'} ${item.name}`);
-}
 
 function openEventsList() {
   setEventsView('future');
@@ -2645,7 +2682,7 @@ function renderChangelogSheet() {
   }
   window.visualViewport.addEventListener('resize', onViewportResize);
 
-  const sheetSelector = '.modal,.snooze-sheet,.user-menu,.events-list-sheet,.social-sheet,.household-sheet,.assign-sheet,.event-detail-sheet,.annual-sheet,.settings-sheet,.changelog-sheet';
+  const sheetSelector = '.modal,.snooze-sheet,.user-menu,.events-list-sheet,.social-sheet,.household-sheet,.assign-sheet,.event-detail-sheet,.annual-sheet,.settings-sheet,.changelog-sheet,.grocery-sheet';
   document.addEventListener('focusin', (e) => {
     if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement)) return;
     if (!e.target.closest(sheetSelector)) return;
@@ -2957,6 +2994,186 @@ async function obComplete() {
   render();
   setupRealtime();
   setTimeout(showCelebration, 150); // fires over the app, not the onboarding card
+}
+
+// ─── GROCERY PANEL ────────────────────────────────────────────────────────────
+let groceryTaskId = null;
+let groceryListItems = [];
+let groceryRealtimeChannel = null;
+let grocerySearchTimer = null;
+
+function openGroceryPanel(taskId) {
+  groceryTaskId = taskId;
+  const task = items.find(i => i.id === taskId);
+  document.getElementById('groceryTitle').textContent = task?.name || 'Grocery Run';
+  document.getElementById('grocerySearch').value = '';
+  document.getElementById('groceryBg').classList.add('open');
+  loadGroceryItems();
+  subscribeGrocery(taskId);
+}
+
+function closeGroceryPanel() {
+  document.getElementById('groceryBg').classList.remove('open');
+  unsubscribeGrocery();
+  groceryTaskId = null;
+  groceryListItems = [];
+}
+
+function bgClickGrocery(e) {
+  if (e.target === document.getElementById('groceryBg')) closeGroceryPanel();
+}
+
+async function loadGroceryItems() {
+  if (!groceryTaskId) return;
+  const { data, error } = await sb.from('grocery_items')
+    .select('*')
+    .eq('task_id', groceryTaskId)
+    .order('created_at', { ascending: true });
+  if (error) { showToast('Load error: ' + error.message); return; }
+  groceryListItems = data || [];
+  renderGroceryPanel();
+}
+
+function subscribeGrocery(taskId) {
+  unsubscribeGrocery();
+  groceryRealtimeChannel = sb.channel('grocery-' + taskId)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'grocery_items', filter: `task_id=eq.${taskId}` }, () => {
+      clearTimeout(grocerySearchTimer);
+      grocerySearchTimer = setTimeout(loadGroceryItems, 200);
+    })
+    .subscribe();
+}
+
+function unsubscribeGrocery() {
+  if (groceryRealtimeChannel) { sb.removeChannel(groceryRealtimeChannel); groceryRealtimeChannel = null; }
+}
+
+function onGrocerySearch() {
+  clearTimeout(grocerySearchTimer);
+  grocerySearchTimer = setTimeout(renderGroceryPanel, 150);
+}
+
+function renderGroceryPanel() {
+  const body = document.getElementById('groceryBody');
+  if (!body) return;
+  const q = (document.getElementById('grocerySearch')?.value || '').trim();
+  let html = '';
+
+  if (q) {
+    const results = searchGroceryItems(q, 8);
+    html += '<div class="grocery-section-label">Suggestions</div>';
+    if (results.length) {
+      html += '<div class="grocery-grid grocery-grid-search">' +
+        results.map(item => {
+          const already = groceryListItems.some(g => g.name.toLowerCase() === item.name.toLowerCase());
+          const dept = getDept(item.dept);
+          return `<div class="grocery-grid-item${already?' added':''}" onclick="addGroceryItem(${JSON.stringify(item.name)},${JSON.stringify(item.dept)},${item.defaultQty},${JSON.stringify(item.defaultUnit)})">
+            <span class="grocery-grid-emoji">${dept?.emoji||'🛒'}</span>
+            <span class="grocery-grid-name">${item.name}</span>
+          </div>`;
+        }).join('') + '</div>';
+    } else {
+      html += `<div class="grocery-custom-add" onclick="addGroceryItem(${JSON.stringify(q)},'misc',1,'count')">+ Add "<strong>${q}</strong>"</div>`;
+    }
+  } else {
+    const gridItems = getGridItems();
+    html += '<div class="grocery-section-label">Quick add</div>';
+    html += '<div class="grocery-grid">' +
+      gridItems.map(item => {
+        const already = groceryListItems.some(g => g.name.toLowerCase() === item.name.toLowerCase());
+        const dept = getDept(item.dept);
+        return `<div class="grocery-grid-item${already?' added':''}" onclick="addGroceryItem(${JSON.stringify(item.name)},${JSON.stringify(item.dept)},${item.defaultQty},${JSON.stringify(item.defaultUnit)})">
+          <span class="grocery-grid-emoji">${dept?.emoji||'🛒'}</span>
+          <span class="grocery-grid-name">${item.name}</span>
+        </div>`;
+      }).join('') + '</div>';
+  }
+
+  if (groceryListItems.length > 0) {
+    html += '<div class="grocery-section-label">Your list</div>';
+    const grouped = groupByDept(groceryListItems);
+    for (const dept of GROCERY_DEPARTMENTS) {
+      const deptItems = grouped[dept.key];
+      if (!deptItems || !deptItems.length) continue;
+      html += `<div class="grocery-dept-header">${dept.emoji} ${dept.label}</div>`;
+      html += deptItems.map(gi => groceryItemHTML(gi)).join('');
+    }
+    const knownKeys = new Set(GROCERY_DEPARTMENTS.map(d => d.key));
+    const misc = groceryListItems.filter(gi => !knownKeys.has(gi.dept));
+    if (misc.length) {
+      html += '<div class="grocery-dept-header">🛒 Other</div>';
+      html += misc.map(gi => groceryItemHTML(gi)).join('');
+    }
+  }
+
+  body.innerHTML = html;
+}
+
+function groceryItemHTML(gi) {
+  return `<div class="grocery-item${gi.checked?' checked':''}">
+    <div class="grocery-item-check${gi.checked?' done':''}" onclick="toggleGroceryItem('${gi.id}')">
+      ${gi.checked?'<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>':''}
+    </div>
+    <span class="grocery-item-name${gi.checked?' checked':''}">${gi.name}</span>
+    <div class="grocery-item-qty">
+      <button class="grocery-qty-btn" onclick="adjustGroceryQty('${gi.id}',-1)">−</button>
+      <span class="grocery-qty-val">${gi.qty||1}</span>
+      <button class="grocery-qty-btn" onclick="adjustGroceryQty('${gi.id}',1)">+</button>
+    </div>
+    <button class="grocery-item-remove" onclick="removeGroceryItem('${gi.id}')">✕</button>
+  </div>`;
+}
+
+async function addGroceryItem(name, dept, qty, unit) {
+  if (!groceryTaskId) return;
+  const already = groceryListItems.some(g => g.name.toLowerCase() === name.toLowerCase());
+  if (already) { showToast(`${name} is already on the list`); return; }
+  const task = items.find(i => i.id === groceryTaskId);
+  const { error } = await sb.from('grocery_items').insert({
+    task_id: groceryTaskId,
+    household_id: task?.householdId || currentHousehold?.id || null,
+    user_id: currentUser.id,
+    name, dept, qty: qty || 1, unit: unit || 'count',
+    checked: false,
+    added_by: currentUser.id,
+  });
+  if (error) { showToast('Error: ' + error.message); return; }
+  const search = document.getElementById('grocerySearch');
+  if (search) search.value = '';
+  await loadGroceryItems();
+}
+
+async function toggleGroceryItem(id) {
+  const gi = groceryListItems.find(g => g.id === id);
+  if (!gi) return;
+  const { error } = await sb.from('grocery_items').update({ checked: !gi.checked }).eq('id', id);
+  if (error) { showToast('Error: ' + error.message); return; }
+  gi.checked = !gi.checked;
+  renderGroceryPanel();
+}
+
+async function adjustGroceryQty(id, delta) {
+  const gi = groceryListItems.find(g => g.id === id);
+  if (!gi) return;
+  const newQty = Math.max(1, (gi.qty || 1) + delta);
+  const { error } = await sb.from('grocery_items').update({ qty: newQty }).eq('id', id);
+  if (error) { showToast('Error: ' + error.message); return; }
+  gi.qty = newQty;
+  renderGroceryPanel();
+}
+
+async function removeGroceryItem(id) {
+  const { error } = await sb.from('grocery_items').delete().eq('id', id);
+  if (error) { showToast('Error: ' + error.message); return; }
+  groceryListItems = groceryListItems.filter(g => g.id !== id);
+  renderGroceryPanel();
+}
+
+async function completeGroceryTask() {
+  if (!groceryTaskId) return;
+  const id = groceryTaskId;
+  closeGroceryPanel();
+  await completeItem(id);
 }
 
 // ─── BOOT ─────────────────────────────────────────────────────────────────────
