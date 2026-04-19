@@ -2600,6 +2600,15 @@ function renderObSteps() {
 function renderObScreen() {
   renderObSteps();
   [renderObWelcome, renderObBirthday, renderObAnniversary, renderObOrientation, renderObHousehold, renderObFinish][obStep]?.();
+  // inject back button on all screens except welcome and finish
+  if (obStep > 0 && obStep < OB_TOTAL - 1) {
+    const card = document.getElementById('obCard');
+    const btn = document.createElement('button');
+    btn.className = 'ob-back';
+    btn.textContent = '←';
+    btn.onclick = obBack;
+    card.insertBefore(btn, card.firstChild);
+  }
 }
 
 function obAdvance() { if (obStep < OB_TOTAL - 1) { obStep++; renderObScreen(); } }
@@ -2756,15 +2765,41 @@ function renderObHousehold() {
   if (obHasInvite) {
     document.getElementById('obCard').innerHTML = `
       <div class="ob-title">You have an invite!</div>
-      <div class="ob-body">Someone has already invited you to join their household. You can accept it after setup, or create your own.</div>
+      <div class="ob-body">Someone has already invited you to join their household. Accept after setup, or create your own.</div>
       <div class="ob-actions">
         <button class="ob-btn-primary" onclick="obAdvance()">I'll join theirs</button>
         <button class="ob-btn-ghost" onclick="obShowCreateHousehold()">Create my own</button>
       </div>
     `;
   } else {
-    obShowCreateHousehold();
+    obShowHouseholdChoice();
   }
+}
+
+function obShowHouseholdChoice() {
+  document.getElementById('obCard').innerHTML = `
+    <div class="ob-title">Your household</div>
+    <div class="ob-body">Create a new household or join one that already exists.</div>
+    <div class="ob-orient-list">
+      <button class="ob-orient-row" onclick="obShowCreateHousehold()">
+        <span class="ob-orient-icon">🏠</span>
+        <div>
+          <div class="ob-orient-label">Create a household</div>
+          <div class="ob-orient-sub">Set up a new household and invite your people</div>
+        </div>
+      </button>
+      <button class="ob-orient-row" onclick="obShowJoinHousehold()">
+        <span class="ob-orient-icon">🤝</span>
+        <div>
+          <div class="ob-orient-label">Join a household</div>
+          <div class="ob-orient-sub">Send a request to someone who already has one</div>
+        </div>
+      </button>
+    </div>
+    <div class="ob-actions">
+      <button class="ob-btn-ghost" onclick="obAdvance()">Skip for now</button>
+    </div>
+  `;
 }
 
 function obShowCreateHousehold() {
@@ -2777,7 +2812,65 @@ function obShowCreateHousehold() {
     </div>
     <div class="ob-actions">
       <button class="ob-btn-primary" onclick="obCreateHouseholdFlow()">Create household</button>
-      <button class="ob-btn-ghost" onclick="obAdvance()">Skip for now</button>
+      <button class="ob-btn-ghost" onclick="obShowHouseholdChoice()">Back</button>
+    </div>
+  `;
+}
+
+function obShowJoinHousehold() {
+  document.getElementById('obCard').innerHTML = `
+    <div class="ob-title">Join a household</div>
+    <div class="ob-body">Enter the email of someone already in the household. The owner will need to approve your request.</div>
+    <div class="ob-fields">
+      <input class="ob-input" id="obJoinEmail" type="email" placeholder="Their email address">
+    </div>
+    <div id="obJoinStatus"></div>
+    <div class="ob-actions">
+      <button class="ob-btn-primary" onclick="obSendJoinRequest()">Send request</button>
+      <button class="ob-btn-ghost" onclick="obShowHouseholdChoice()">Back</button>
+    </div>
+  `;
+}
+
+async function obSendJoinRequest() {
+  const email = document.getElementById('obJoinEmail')?.value.trim();
+  if (!email) { showToast('Enter an email address'); return; }
+  const statusEl = document.getElementById('obJoinStatus');
+  if (statusEl) statusEl.textContent = 'Looking up…';
+  // find the user
+  const { data: targetUser } = await sb.from('users').select('id, display_name').eq('email', email).single();
+  if (!targetUser) {
+    if (statusEl) statusEl.textContent = '';
+    showToast('No Tether account found for that email');
+    return;
+  }
+  // find their household
+  const { data: membership } = await sb.from('household_members')
+    .select('household_id, households(name, created_by)').eq('user_id', targetUser.id).limit(1).single();
+  if (!membership) {
+    if (statusEl) statusEl.textContent = '';
+    showToast('That person isn\'t in a household yet');
+    return;
+  }
+  const hhId = membership.household_id;
+  const hhName = membership.households?.name || 'their household';
+  const creatorId = membership.households?.created_by;
+  const approverId = creatorId || targetUser.id;
+  // create join request as a pending invite initiated by the household owner on our behalf
+  const { error } = await sb.from('household_invites').insert({
+    household_id: hhId,
+    invited_user_id: currentUser.id,
+    invited_by: approverId,
+    status: 'pending'
+  });
+  if (error) { showToast('Could not send request'); if (statusEl) statusEl.textContent = ''; return; }
+  const approverName = creatorId ? (membership.households?.created_by ? 'the owner' : targetUser.display_name || 'them') : (targetUser.display_name || 'them');
+  document.getElementById('obCard').innerHTML = `
+    <div class="ob-icon">📬</div>
+    <div class="ob-title">Request sent!</div>
+    <div class="ob-body">Your request to join <strong>${hhName}</strong> has been sent. The owner will need to approve it before you're added.</div>
+    <div class="ob-actions">
+      <button class="ob-btn-primary" onclick="obAdvance()">Continue</button>
     </div>
   `;
 }
@@ -2815,7 +2908,6 @@ function renderObFinish() {
       <button class="ob-btn-primary" onclick="obComplete()">Open Tether</button>
     </div>
   `;
-  setTimeout(showCelebration, 400);
 }
 
 async function obComplete() {
@@ -2825,6 +2917,7 @@ async function obComplete() {
   await checkPendingInvites();
   render();
   setupRealtime();
+  setTimeout(showCelebration, 150); // fires over the app, not the onboarding card
 }
 
 // ─── BOOT ─────────────────────────────────────────────────────────────────────
