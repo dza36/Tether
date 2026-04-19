@@ -3259,7 +3259,6 @@ async function applyDiff(diff) {
     const rows = d.adding.map(item => ({
       task_id: groceryTaskId,
       household_id: hhId,
-      user_id: currentUser.id,
       name: item.name,
       dept: item.dept,
       qty: item.defaultQty || 1,
@@ -3356,7 +3355,6 @@ async function addCustomGroceryItem() {
   const { error } = await sb.from('grocery_items').insert({
     task_id: groceryTaskId,
     household_id: task?.householdId || currentHousehold?.id || null,
-    user_id: currentUser.id,
     name, dept, qty: 1, unit: 'count', checked: false,
     added_by: currentUser.id,
     is_custom: true,

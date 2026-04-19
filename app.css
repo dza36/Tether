@@ -263,7 +263,7 @@
   .bg-color-input:focus{border-color:#534AB7}
 
   /* Toast */
-  .toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%) translateY(100px);background:#26215C;border-radius:14px;padding:12px 20px;font-size:14px;font-weight:600;color:#EEEDFE;transition:transform .3s ease;z-index:400;white-space:nowrap;box-shadow:0 4px 20px rgba(38,33,92,.25)}
+  .toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%) translateY(100px);background:#26215C;border-radius:14px;padding:12px 20px;font-size:14px;font-weight:600;color:#EEEDFE;transition:transform .3s ease;z-index:400;white-space:normal;max-width:calc(100vw - 48px);text-align:center;box-shadow:0 4px 20px rgba(38,33,92,.25)}
   .toast.show{transform:translateX(-50%) translateY(0)}
 
   /* Loading */
