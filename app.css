@@ -291,6 +291,11 @@
   .pending-invite-row:last-child{border-bottom:none}
   .pending-invite-email{font-size:13px;color:#26215C;flex:1}
   .pending-invite-tag{font-size:10px;color:#AFA9EC;background:#F7F6FF;padding:2px 7px;border-radius:8px;border:0.5px solid #CECBF6}
+  .hh-jr-btn{padding:4px 10px;border-radius:8px;border:none;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+  .hh-jr-accept{background:#534AB7;color:#fff}
+  .hh-jr-accept:active{background:#3D3491}
+  .hh-jr-decline{background:#F7F6FF;color:#AFA9EC;border:0.5px solid #CECBF6}
+  .hh-jr-decline:active{background:#EEEDFE}
   .btn-create-household{width:100%;padding:14px;font-size:15px;font-weight:700;border-radius:14px;border:none;background:#534AB7;color:#fff;cursor:pointer}
   .btn-create-household:active{transform:scale(.98)}
   .create-form input{width:100%;padding:13px 14px;font-size:15px;border-radius:12px;border:0.5px solid #CECBF6;background:#F7F6FF;color:#26215C;font-family:inherit;margin-bottom:10px}
@@ -643,6 +648,7 @@
     & .invite-input-row input{background:#1E1A3C;border-color:#2E2A5E;color:#E8E5FF}
     & .pending-invite-email{color:#E8E5FF}
     & .pending-invite-tag{background:#1E1A3C;border-color:#2E2A5E;color:#6B65A8}
+    & .hh-jr-decline{background:#1E1A3C;color:#6B65A8;border-color:#2E2A5E}
     & .create-form input{background:#1E1A3C;border-color:#2E2A5E;color:#E8E5FF}
     & .household-sub{color:#6B65A8}
     & .social-bg{background:rgba(0,0,0,.75)}

@@ -1768,6 +1768,7 @@ async function checkPendingInvites() {
     .select('*, households(name)')
     .eq('invited_user_id', currentUser.id)
     .eq('status', 'pending')
+    .eq('request_type', 'invite')
     .limit(1);
 
   if (invites && invites.length > 0) {
@@ -1906,7 +1907,6 @@ async function renderHouseholdContent() {
   const el = document.getElementById('householdContent');
 
   if (!currentHousehold) {
-    // No household yet — show create form
     el.innerHTML = `
       <div class="household-title">Your Household</div>
       <div class="household-sub">Create a household to share tasks and events with your family. Everyone in your household sees everything.</div>
@@ -1918,11 +1918,19 @@ async function renderHouseholdContent() {
     return;
   }
 
-  // Load pending outbound invites
-  const { data: pendingInvites } = await sb.from('household_invites')
-    .select('invited_email, status')
-    .eq('household_id', currentHousehold.id)
-    .eq('status', 'pending');
+  // Load pending outbound invites and join requests in parallel
+  const [{ data: pendingInvites }, { data: joinRequests }] = await Promise.all([
+    sb.from('household_invites')
+      .select('invited_email, status')
+      .eq('household_id', currentHousehold.id)
+      .eq('status', 'pending')
+      .eq('request_type', 'invite'),
+    sb.from('household_invites')
+      .select('id, invited_user_id, users!household_invites_invited_user_id_fkey(display_name, email)')
+      .eq('household_id', currentHousehold.id)
+      .eq('status', 'pending')
+      .eq('request_type', 'join_request')
+  ]);
 
   const membersHTML = householdMembers.map(m => {
     const isYou = m.user_id === currentUser.id;
@@ -1935,7 +1943,7 @@ async function renderHouseholdContent() {
     </div>`;
   }).join('');
 
-  const pendingHTML = pendingInvites && pendingInvites.length > 0
+  const pendingInviteHTML = pendingInvites?.length
     ? pendingInvites.map(i => `
         <div class="pending-invite-row">
           <div class="pending-invite-email">${i.invited_email}</div>
@@ -1943,17 +1951,45 @@ async function renderHouseholdContent() {
         </div>`).join('')
     : '';
 
+  const joinRequestHTML = joinRequests?.length
+    ? joinRequests.map(r => {
+        const name = r.users?.display_name || r.users?.email || 'Someone';
+        return `
+        <div class="pending-invite-row">
+          <div class="pending-invite-email">${name} wants to join</div>
+          <div style="display:flex;gap:6px">
+            <button class="hh-jr-btn hh-jr-accept" onclick="approveJoinRequest('${r.id}','${r.invited_user_id}')">Accept</button>
+            <button class="hh-jr-btn hh-jr-decline" onclick="declineJoinRequest('${r.id}')">Decline</button>
+          </div>
+        </div>`;
+      }).join('')
+    : '';
+
   el.innerHTML = `
     <div class="household-title">${currentHousehold.name}</div>
+    ${joinRequestHTML ? `<div class="household-section-title">Join Requests</div><div>${joinRequestHTML}</div>` : ''}
     <div class="household-section-title">Members (${householdMembers.length})</div>
     <div class="member-list">${membersHTML}</div>
-    ${pendingHTML ? `<div class="household-section-title">Pending Invites</div><div>${pendingHTML}</div>` : ''}
+    ${pendingInviteHTML ? `<div class="household-section-title">Pending Invites</div><div>${pendingInviteHTML}</div>` : ''}
     <hr style="border:none;border-top:0.5px solid #EEEDFE;margin:1rem 0"/>
     <div class="household-section-title">Invite Someone</div>
     <div class="invite-input-row">
       <input type="email" id="inviteEmailInput" placeholder="their@email.com" autocomplete="off"/>
       <button onclick="handleSendInvite()">Send</button>
     </div>`;
+}
+
+async function approveJoinRequest(inviteId, userId) {
+  await sb.from('household_invites').update({ status: 'accepted' }).eq('id', inviteId);
+  await sb.from('household_members').insert({ household_id: currentHousehold.id, user_id: userId, role: 'member' });
+  showToast('Member added!');
+  renderHouseholdContent();
+}
+
+async function declineJoinRequest(inviteId) {
+  await sb.from('household_invites').update({ status: 'declined' }).eq('id', inviteId);
+  showToast('Request declined');
+  renderHouseholdContent();
 }
 
 function handleCreateHousehold() {
@@ -2861,7 +2897,8 @@ async function obSendJoinRequest() {
     household_id: hhId,
     invited_user_id: currentUser.id,
     invited_by: approverId,
-    status: 'pending'
+    status: 'pending',
+    request_type: 'join_request'
   });
   if (error) { showToast('Could not send request'); if (statusEl) statusEl.textContent = ''; return; }
   const approverName = creatorId ? (membership.households?.created_by ? 'the owner' : targetUser.display_name || 'them') : (targetUser.display_name || 'them');
