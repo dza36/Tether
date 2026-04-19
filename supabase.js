@@ -23,7 +23,7 @@ async function initAuth() {
   }
   sb.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_OUT') { showAuth(); return; }
-    if (session?.user) await onSignedIn(session.user);
+    if (event === 'SIGNED_IN' && session?.user) await onSignedIn(session.user);
   });
 }
 

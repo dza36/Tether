@@ -3410,8 +3410,11 @@ async function completeGroceryTask() {
 }
 
 // ─── VISIBILITY ───────────────────────────────────────────────────────────────
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && groceryTaskId) loadGroceryItems();
+document.addEventListener('visibilitychange', async () => {
+  if (document.hidden || !currentUser) return;
+  await loadItems();
+  render();
+  if (groceryTaskId) loadGroceryItems();
 });
 
 // ─── BOOT ─────────────────────────────────────────────────────────────────────
