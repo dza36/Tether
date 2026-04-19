@@ -794,7 +794,7 @@ function openTaskModal(){
   setTimeout(()=>document.getElementById("fName").focus(),300);
 }
 function closeTaskModal(){ document.getElementById("taskModalBg").classList.remove("open"); }
-function bgClickTask(e){ if(e.target===document.getElementById("taskModalBg")) closeTaskModal(); }
+function bgClickTask(e){ /* require X to close — background click ignored to prevent accidental data loss */ }
 function closeModal(){ closeTaskModal(); }
 function bgClick(e){ bgClickTask(e); }
 
@@ -1014,11 +1014,14 @@ async function saveItem(){
     isUrgent:document.getElementById("fUrgent")?.checked||false,
   };
 
-  closeTaskModal();
   await persistItem(item);
-  if(item._dbId){items.push(item);showToast(`⚓ "${name}" added`);}
   btnSave.disabled=false; btnSave.textContent="Add Task";
-  render();
+  if(item._dbId){
+    closeTaskModal();
+    items.push(item);
+    showToast(`⚓ "${name}" added`);
+    render();
+  }
 }
 
 let selectedEventIcon = '📅';
@@ -1050,7 +1053,7 @@ function openEventModal() {
   setTimeout(() => document.getElementById('fEventName').focus(), 300);
 }
 function closeEventModal() { document.getElementById('eventModalBg').classList.remove('open'); }
-function bgClickEventModal(e) { if (e.target === document.getElementById('eventModalBg')) closeEventModal(); }
+function bgClickEventModal(e) { /* require X to close — background click ignored to prevent accidental data loss */ }
 function selectEventIcon(icon, el) {
   selectedEventIcon = icon;
   document.querySelectorAll('.event-icon-pill').forEach(p => p.classList.remove('active'));
@@ -1088,32 +1091,29 @@ async function saveEvent() {
     allowAdditionalItems: document.getElementById('fAllowAdditions').checked,
     isUrgent: false,
   };
-  closeEventModal();
   await persistItem(item);
-  if (!item._dbId) { btn.disabled = false; btn.textContent = 'Add Event'; return; }
+  btn.disabled = false; btn.textContent = 'Add Event';
+  if (!item._dbId) return;
 
-  // Save attendees
-  if (eventAttendeeDraft.length) {
-    await Promise.all(eventAttendeeDraft.map(a =>
+  // Save attendees and bring items in parallel
+  await Promise.all([
+    ...eventAttendeeDraft.map(a =>
       sb.from('event_guests').insert({
         item_id: item._dbId, user_id: a.userId,
         invited_by: currentUser.id, is_owner: false,
       })
-    ));
-  }
-  // Save bring items
-  if (eventBringDraft.length) {
-    await Promise.all(eventBringDraft.map(text =>
+    ),
+    ...eventBringDraft.map(text =>
       sb.from('potluck_items').insert({
         item_id: item._dbId, name: text,
         added_by: currentUser.id, is_request: true,
       })
-    ));
-  }
+    ),
+  ]);
 
+  closeEventModal();
   items.push(item);
   showToast(`${selectedEventIcon} "${name}" added`);
-  btn.disabled = false; btn.textContent = 'Add Event';
   render();
 }
 
