@@ -1044,6 +1044,7 @@ function openEventModal() {
   document.getElementById('fEventStartTime').value = '';
   document.getElementById('fEventEndDate').value = '';
   document.getElementById('fEventEndTime').value = '';
+  document.getElementById('fInviteHousehold').checked = true;
   document.getElementById('fGuestsCanInvite').checked = true;
   document.getElementById('fAllowAdditions').checked = true;
   document.querySelectorAll('.event-icon-pill').forEach(p => p.classList.toggle('active', p.dataset.icon === '📅'));
@@ -1079,6 +1080,7 @@ async function saveEvent() {
   const name = document.getElementById('fEventName').value.trim(); if (!name) return;
   const btn = document.getElementById('btnEventSave');
   btn.disabled = true; btn.textContent = 'Saving...';
+  const inviteHousehold = document.getElementById('fInviteHousehold')?.checked ?? true;
   const item = {
     name, type: 'event', checklist: [], status: 'active',
     date: document.getElementById('fEventStartDate').value,
@@ -1095,14 +1097,34 @@ async function saveEvent() {
   btn.disabled = false; btn.textContent = 'Add Event';
   if (!item._dbId) return;
 
-  // Save attendees and bring items in parallel
+  // Build guest list: creator (is_owner) + manually added + household members if checked
+  const householdGuests = inviteHousehold
+    ? (householdMembers || []).filter(m => m.user_id !== currentUser.id)
+    : [];
+  const manualIds = new Set(eventAttendeeDraft.map(a => a.userId));
+  const householdToAdd = householdGuests.filter(m => !manualIds.has(m.user_id));
+
   await Promise.all([
+    // Creator as owner guest (so they appear in attendee list and can claim bring items)
+    sb.from('event_guests').insert({
+      item_id: item._dbId, user_id: currentUser.id,
+      invited_by: currentUser.id, is_owner: true,
+    }),
+    // Manually added attendees
     ...eventAttendeeDraft.map(a =>
       sb.from('event_guests').insert({
         item_id: item._dbId, user_id: a.userId,
         invited_by: currentUser.id, is_owner: false,
       })
     ),
+    // Household members (if checkbox checked)
+    ...householdToAdd.map(m =>
+      sb.from('event_guests').insert({
+        item_id: item._dbId, user_id: m.user_id,
+        invited_by: currentUser.id, is_owner: false,
+      })
+    ),
+    // Bring list items
     ...eventBringDraft.map(text =>
       sb.from('potluck_items').insert({
         item_id: item._dbId, name: text,

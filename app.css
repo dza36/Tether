@@ -382,6 +382,7 @@
   .event-card-icon{font-size:18px;flex-shrink:0}
   .event-card-label{font-size:14px;font-weight:600;color:#26215C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .event-card-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
+  .event-card-sub{display:flex;justify-content:flex-end;padding:.4rem 1rem .6rem;margin-top:-.5rem;margin-bottom:.75rem}
   .event-card-toggle-label{font-size:11px;color:#AFA9EC;font-weight:500}
   /* Toggle switch */
   .toggle-switch{position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0}
