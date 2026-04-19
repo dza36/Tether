@@ -3283,6 +3283,7 @@ async function applyDiff(diff) {
     if (error) { showToast('Error: ' + error.message); return; }
   }
   await loadGroceryItems();
+  closeQuickAddSheet();
 }
 
 // ── List item controls ────────────────────────────────────────────────────────
@@ -3397,6 +3398,11 @@ async function completeGroceryTask() {
   closeGroceryPanel();
   await completeItem(id);
 }
+
+// ─── VISIBILITY ───────────────────────────────────────────────────────────────
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && groceryTaskId) loadGroceryItems();
+});
 
 // ─── BOOT ─────────────────────────────────────────────────────────────────────
 initTheme();
