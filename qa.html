@@ -4,185 +4,307 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Tether QA</title>
+<!--
+  SQL MIGRATION — run once in Supabase SQL editor before using this page:
+
+  CREATE TABLE qa_runs (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    run_at timestamptz DEFAULT now(),
+    submitted_by uuid REFERENCES users(id),
+    label text,
+    results jsonb
+  );
+  ALTER TABLE qa_runs ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY "qa_runs_access" ON qa_runs FOR ALL USING (
+    EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND subscription_tier IN ('creator','employee'))
+  );
+-->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: system-ui, sans-serif; background: #0f0e17; color: #e8e6f0; padding: 24px 16px 60px; max-width: 720px; margin: 0 auto; }
-  h1 { font-size: 1.4rem; font-weight: 700; margin-bottom: 4px; color: #c4beff; }
-  .subtitle { font-size: .8rem; color: #7c77a0; margin-bottom: 24px; }
-  .progress-bar-wrap { background: #1e1b2e; border-radius: 8px; height: 8px; margin-bottom: 24px; overflow: hidden; }
-  .progress-bar { height: 100%; background: #6c63ff; border-radius: 8px; transition: width .3s; }
-  .progress-label { font-size: .75rem; color: #7c77a0; margin-top: 6px; margin-bottom: 24px; }
+  body { font-family: system-ui, sans-serif; background: #0f0e17; color: #e8e6f0; padding: 24px 16px 80px; max-width: 720px; margin: 0 auto; }
+  #gate { display: flex; align-items: center; justify-content: center; min-height: 60vh; text-align: center; color: #7c77a0; font-size: .9rem; }
+  #app { display: none; }
+  .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  h1 { font-size: 1.4rem; font-weight: 700; color: #c4beff; }
+  .top a { font-size: .8rem; color: #6c63ff; text-decoration: none; }
+  .top a:hover { text-decoration: underline; }
+  .platform-row { display: flex; gap: 8px; margin: 14px 0 10px; }
+  .btn-platform { flex: 1; border: 2px solid #2e2a45; border-radius: 10px; padding: 9px 0; background: #1e1b2e; color: #7c77a0; font-size: .84rem; font-weight: 600; cursor: pointer; transition: all .15s; }
+  .btn-platform:hover { border-color: #6c63ff; color: #c4beff; }
+  .btn-platform.active { border-color: #6c63ff; background: #2d2860; color: #c4beff; }
+  .run-label { width: 100%; margin: 0 0 10px; padding: 10px 14px; background: #1e1b2e; border: 1px solid #2e2a45; border-radius: 10px; color: #e8e6f0; font-size: .9rem; outline: none; }
+  .run-label:focus { border-color: #6c63ff; }
+  .progress-bar-wrap { background: #1e1b2e; border-radius: 8px; height: 8px; overflow: hidden; }
+  .progress-bar { height: 100%; border-radius: 8px; transition: width .3s; background: linear-gradient(90deg, #6c63ff, #a78bfa); }
+  .progress-label { font-size: .75rem; color: #7c77a0; margin: 6px 0 20px; }
   section { margin-bottom: 28px; }
-  h2 { font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #6c63ff; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #1e1b2e; }
-  label { display: flex; align-items: flex-start; gap: 10px; padding: 9px 12px; border-radius: 8px; cursor: pointer; transition: background .15s; font-size: .88rem; line-height: 1.4; }
-  label:hover { background: #1a1726; }
-  label.checked { color: #4d4870; text-decoration: line-through; }
-  input[type=checkbox] { appearance: none; width: 18px; height: 18px; min-width: 18px; border: 2px solid #4d4870; border-radius: 5px; cursor: pointer; margin-top: 1px; transition: background .15s, border-color .15s; }
-  input[type=checkbox]:checked { background: #6c63ff; border-color: #6c63ff; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 12 10' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 5l3.5 3.5L11 1' stroke='white' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-size: 70%; background-repeat: no-repeat; background-position: center; }
-  .actions { display: flex; gap: 10px; margin-bottom: 20px; }
-  button { border: none; border-radius: 8px; padding: 8px 16px; font-size: .82rem; font-weight: 600; cursor: pointer; }
-  .btn-reset { background: #1e1b2e; color: #7c77a0; }
+  h2 { font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #6c63ff; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #1e1b2e; }
+  .test-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; transition: background .15s; }
+  .test-row:hover { background: #1a1726; }
+  .test-label { flex: 1; font-size: .86rem; line-height: 1.4; }
+  .test-label.pass { color: #4ade80; }
+  .test-label.fail { color: #f87171; }
+  .btn-pass, .btn-fail { border: none; border-radius: 6px; padding: 5px 13px; font-size: .78rem; font-weight: 600; cursor: pointer; transition: opacity .15s, transform .1s; }
+  .btn-pass { background: #1a2e22; color: #4ade80; }
+  .btn-fail { background: #2e1a1a; color: #f87171; }
+  .btn-pass.active { background: #4ade80; color: #0a1f12; }
+  .btn-fail.active { background: #f87171; color: #2e0a0a; }
+  .btn-pass:hover, .btn-fail:hover { opacity: .85; }
+  .bottom { position: fixed; bottom: 0; left: 0; right: 0; background: #0f0e17; border-top: 1px solid #1e1b2e; padding: 14px 16px; display: flex; gap: 10px; justify-content: center; }
+  .btn-submit { background: #6c63ff; color: #fff; border: none; border-radius: 10px; padding: 12px 32px; font-size: .95rem; font-weight: 700; cursor: pointer; transition: opacity .2s; }
+  .btn-submit:disabled { opacity: .35; cursor: default; }
+  .btn-submit:not(:disabled):hover { opacity: .85; }
+  .btn-reset { background: #1e1b2e; color: #7c77a0; border: none; border-radius: 10px; padding: 12px 20px; font-size: .88rem; font-weight: 600; cursor: pointer; }
   .btn-reset:hover { background: #2a2540; }
+  .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #4ade80; color: #0a1f12; padding: 10px 20px; border-radius: 10px; font-weight: 700; font-size: .88rem; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 99; }
+  .toast.show { opacity: 1; }
 </style>
 </head>
 <body>
 
-<h1>Tether QA Checklist</h1>
-<p class="subtitle">Clears automatically when you close this tab.</p>
+<div id="gate">Checking access…</div>
 
-<div class="progress-bar-wrap"><div class="progress-bar" id="bar"></div></div>
-<div class="progress-label" id="progressLabel">0 / 0 complete</div>
+<div id="app">
+  <div class="top">
+    <h1>Tether QA</h1>
+    <a href="/qa-runs.html">View Past Runs →</a>
+  </div>
+  <div class="platform-row">
+    <button class="btn-platform" data-p="iOS">iOS</button>
+    <button class="btn-platform" data-p="Android">Android</button>
+    <button class="btn-platform" data-p="macOS">macOS</button>
+    <button class="btn-platform" data-p="Windows">Windows</button>
+  </div>
+  <input class="run-label" id="runLabel" type="text" placeholder="Run label (e.g. iPhone 15 — v1.3 — Danny)"/>
+  <div class="progress-bar-wrap"><div class="progress-bar" id="bar" style="width:0%"></div></div>
+  <div class="progress-label" id="progressLabel">0 evaluated</div>
 
-<div class="actions">
-  <button class="btn-reset" onclick="resetAll()">Clear All</button>
+  <!-- AUTH -->
+  <section>
+    <h2>Auth</h2>
+    <div class="test-row" data-id="auth-1"><span class="test-label">Google OAuth sign-in completes and lands on app</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="auth-2"><span class="test-label">Lock screen → unlock → checkboxes respond and writes persist</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="auth-3"><span class="test-label">Sign out → auth screen shown, no app state visible</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="auth-4"><span class="test-label">Reassurance copy appears between OAuth buttons and "or use email" divider</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+  </section>
+
+  <!-- TASKS -->
+  <section>
+    <h2>Tasks — Core</h2>
+    <div class="test-row" data-id="task-1"><span class="test-label">Create interval task — appears on Today tab with correct due badge</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="task-2"><span class="test-label">Create weekday task — appears on correct day</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="task-3"><span class="test-label">Create one-time task — appears on Today or Upcoming correctly</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="task-4"><span class="test-label">Swipe right → task completes, toast shown, task recurs correctly</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="task-5"><span class="test-label">Swipe right on task with checklist → confirm sheet appears</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="task-6"><span class="test-label">Swipe left → snooze sheet appears, snooze persists after refresh</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="task-7"><span class="test-label">Swipe dismiss — item gone from UI and gone after refresh (not reverting)</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="task-8"><span class="test-label">Edit task → changes saved, reflected immediately</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="task-9"><span class="test-label">Delete task → removed, does not reappear on refresh</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="task-10"><span class="test-label">Overdue badge shown for past-due tasks</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="task-11"><span class="test-label">Upcoming tab shows future tasks in correct order</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+  </section>
+
+  <!-- CHECKLIST -->
+  <section>
+    <h2>Tasks — Checklist</h2>
+    <div class="test-row" data-id="cl-1"><span class="test-label">Expand task → checklist items shown</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="cl-2"><span class="test-label">Check checklist item → persists after collapse/reopen</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="cl-3"><span class="test-label">Add checklist item inline → appears immediately</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="cl-4"><span class="test-label">Delete checklist item → removed, no revert on refresh</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="cl-5"><span class="test-label">Complete task with all checklist items checked → no confirm sheet</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="cl-6"><span class="test-label">Complete task with unchecked items → confirm sheet appears</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+  </section>
+
+  <!-- EVENTS -->
+  <section>
+    <h2>Events</h2>
+    <div class="test-row" data-id="ev-1"><span class="test-label">Create event — appears on Events tab</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="ev-2"><span class="test-label">Event detail sheet opens on tap</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="ev-3"><span class="test-label">Edit event → changes saved</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="ev-4"><span class="test-label">Delete event → removed after confirm</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="ev-5"><span class="test-label">Bring list — add item, appears on list</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="ev-6"><span class="test-label">Bring list — claim item as "bringing"</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="ev-7"><span class="test-label">Navigate button launches Google Maps with event address</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="ev-8"><span class="test-label">Past events hidden / archived correctly</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+  </section>
+
+  <!-- GROCERY -->
+  <section>
+    <h2>Grocery</h2>
+    <div class="test-row" data-id="gr-1"><span class="test-label">Create grocery task → "Save &amp; Add Items" opens panel then quick-add sheet</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="gr-2"><span class="test-label">Chip grid loads, tapping chip selects/deselects correctly</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="gr-3"><span class="test-label">Confirm adds selected chips to list, sheet closes</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="gr-4"><span class="test-label">Items grouped by department on list view</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="gr-5"><span class="test-label">Emoji shown correctly per item (not dept fallback)</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="gr-6"><span class="test-label">FAB shows "＋ Add Items" when list empty, "✎ Edit List" when items present</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="gr-7"><span class="test-label">Qty +/– works: integer steps for count, 0.5 steps for weight items</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="gr-8"><span class="test-label">Direct-entry qty input updates correctly without scroll reset</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="gr-9"><span class="test-label">Size pills (S/M/L/XL) appear for volume items, tap-same deselects</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="gr-10"><span class="test-label">Inline custom add from list view (Enter or Add button) — appears in misc dept</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="gr-11"><span class="test-label">Custom add from Add Items sheet (name + dept select) — appears correctly</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="gr-12"><span class="test-label">Check off item on list → stays checked, not reset on reopen</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="gr-13"><span class="test-label">Reopening Add Items pre-selects chips already on list</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="gr-14"><span class="test-label">Removing items via Add Items → confirm panel shown when removals detected</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="gr-15"><span class="test-label">Fast path (no removals) skips confirm panel</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="gr-16"><span class="test-label">"Done Shopping" hidden when list empty, visible when items present</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="gr-17"><span class="test-label">"Done Shopping" completes the grocery task</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="gr-18"><span class="test-label">Double-tap confirm/add does not create duplicate inserts</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="gr-19"><span class="test-label">Unlock phone → grocery panel still shows correct list (no stale state)</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+  </section>
+
+  <!-- HOUSEHOLD -->
+  <section>
+    <h2>Household</h2>
+    <div class="test-row" data-id="hh-1"><span class="test-label">Household sheet opens from profile menu</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="hh-2"><span class="test-label">Create household — name saved, user shown as member</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="hh-3"><span class="test-label">Invite flow — invite sent (can verify in DB if needed)</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="hh-4"><span class="test-label">Assigned-to avatar shown on task rows in household context</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+  </section>
+
+  <!-- ONBOARDING -->
+  <section>
+    <h2>Onboarding</h2>
+    <div class="test-row" data-id="ob-1"><span class="test-label">New email sign-up → onboarding flow triggers</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="ob-2"><span class="test-label">Onboarding completes → lands on main app</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="ob-3"><span class="test-label">Returning user (onboarded=true) → onboarding skipped</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+  </section>
+
+  <!-- UI -->
+  <section>
+    <h2>UI / General</h2>
+    <div class="test-row" data-id="ui-1"><span class="test-label">Today / Upcoming / Events tabs switch correctly</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="ui-2"><span class="test-label">Background color picker saves and persists on reload</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="ui-3"><span class="test-label">Toast messages display and auto-dismiss</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="ui-4"><span class="test-label">Keyboard does not obscure input fields in sheets (scrolls into view)</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="ui-5"><span class="test-label">App works in PWA installed mode (add to home screen)</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+    <div class="test-row" data-id="ui-6"><span class="test-label">No console errors on normal flow</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
+  </section>
+
+  <div style="height:60px"></div>
 </div>
 
-<!-- ─── AUTH ──────────────────────────────────────────────────────────────── -->
-<section>
-  <h2>Auth</h2>
-  <label><input type="checkbox" data-id="auth-1"/> Google OAuth sign-in completes and lands on app</label>
-  <label><input type="checkbox" data-id="auth-2"/> Lock screen → unlock → checkboxes respond and writes persist</label>
-  <label><input type="checkbox" data-id="auth-3"/> Sign out → auth screen shown, no app state visible</label>
-  <label><input type="checkbox" data-id="auth-4"/> Reassurance copy appears between OAuth buttons and "or use email" divider</label>
-</section>
+<div class="bottom" id="bottomBar" style="display:none">
+  <button class="btn-reset" onclick="resetAll()">Clear</button>
+  <button class="btn-submit" id="btnSubmit" disabled onclick="submitRun()">Submit Run</button>
+</div>
 
-<!-- ─── TASKS ─────────────────────────────────────────────────────────────── -->
-<section>
-  <h2>Tasks — Core</h2>
-  <label><input type="checkbox" data-id="task-1"/> Create interval task — appears on Today tab with correct due badge</label>
-  <label><input type="checkbox" data-id="task-2"/> Create weekday task — appears on correct day</label>
-  <label><input type="checkbox" data-id="task-3"/> Create one-time task — appears on Today or Upcoming correctly</label>
-  <label><input type="checkbox" data-id="task-4"/> Swipe right → task completes, toast shown, task moves / recurs correctly</label>
-  <label><input type="checkbox" data-id="task-5"/> Swipe right on task with checklist → confirm sheet appears</label>
-  <label><input type="checkbox" data-id="task-6"/> Swipe left → snooze sheet appears, snooze persists after refresh</label>
-  <label><input type="checkbox" data-id="task-7"/> Swipe dismiss — item gone from UI and gone after refresh (not reverting)</label>
-  <label><input type="checkbox" data-id="task-8"/> Edit task → changes saved, reflected immediately</label>
-  <label><input type="checkbox" data-id="task-9"/> Delete task → removed, does not reappear on refresh</label>
-  <label><input type="checkbox" data-id="task-10"/> Overdue badge shown for past-due tasks</label>
-  <label><input type="checkbox" data-id="task-11"/> Upcoming tab shows future tasks in correct order</label>
-</section>
-
-<!-- ─── CHECKLIST ─────────────────────────────────────────────────────────── -->
-<section>
-  <h2>Tasks — Checklist</h2>
-  <label><input type="checkbox" data-id="cl-1"/> Expand task → checklist items shown</label>
-  <label><input type="checkbox" data-id="cl-2"/> Check checklist item → persists after collapse/reopen</label>
-  <label><input type="checkbox" data-id="cl-3"/> Add checklist item inline → appears immediately</label>
-  <label><input type="checkbox" data-id="cl-4"/> Delete checklist item → removed, no revert on refresh</label>
-  <label><input type="checkbox" data-id="cl-5"/> Complete task with all checklist items checked → no confirm sheet</label>
-  <label><input type="checkbox" data-id="cl-6"/> Complete task with unchecked items → confirm sheet appears</label>
-</section>
-
-<!-- ─── EVENTS ────────────────────────────────────────────────────────────── -->
-<section>
-  <h2>Events</h2>
-  <label><input type="checkbox" data-id="ev-1"/> Create event — appears on Events tab</label>
-  <label><input type="checkbox" data-id="ev-2"/> Event detail sheet opens on tap</label>
-  <label><input type="checkbox" data-id="ev-3"/> Edit event → changes saved</label>
-  <label><input type="checkbox" data-id="ev-4"/> Delete event → removed after confirm</label>
-  <label><input type="checkbox" data-id="ev-5"/> Bring list — add item, appears on list</label>
-  <label><input type="checkbox" data-id="ev-6"/> Bring list — claim item as "bringing"</label>
-  <label><input type="checkbox" data-id="ev-7"/> Navigate button launches Google Maps with event address</label>
-  <label><input type="checkbox" data-id="ev-8"/> Past events hidden / archived correctly</label>
-</section>
-
-<!-- ─── GROCERY ───────────────────────────────────────────────────────────── -->
-<section>
-  <h2>Grocery</h2>
-  <label><input type="checkbox" data-id="gr-1"/> Create grocery task → "Save &amp; Add Items" opens panel then quick-add sheet</label>
-  <label><input type="checkbox" data-id="gr-2"/> Chip grid loads, tapping chip selects/deselects correctly</label>
-  <label><input type="checkbox" data-id="gr-3"/> Confirm adds selected chips to list, sheet closes</label>
-  <label><input type="checkbox" data-id="gr-4"/> Items grouped by department on list view</label>
-  <label><input type="checkbox" data-id="gr-5"/> Emoji shown correctly per item (not dept fallback)</label>
-  <label><input type="checkbox" data-id="gr-6"/> FAB shows "＋ Add Items" when list empty, "✎ Edit List" when items present</label>
-  <label><input type="checkbox" data-id="gr-7"/> Qty +/– works: integer steps for count, 0.5 steps for weight items</label>
-  <label><input type="checkbox" data-id="gr-8"/> Direct-entry qty input updates correctly without scroll reset</label>
-  <label><input type="checkbox" data-id="gr-9"/> Size pills (S/M/L/XL) appear for volume items, tap-same deselects</label>
-  <label><input type="checkbox" data-id="gr-10"/> Inline custom add from list view (Enter or Add button) — appears in misc dept</label>
-  <label><input type="checkbox" data-id="gr-11"/> Custom add from Add Items sheet (name + dept select) — appears correctly</label>
-  <label><input type="checkbox" data-id="gr-12"/> Check off item on list → stays checked, not reset on reopen</label>
-  <label><input type="checkbox" data-id="gr-13"/> Reopening Add Items pre-selects chips already on list</label>
-  <label><input type="checkbox" data-id="gr-14"/> Removing items via Add Items → confirm panel shown when removals detected</label>
-  <label><input type="checkbox" data-id="gr-15"/> Fast path (no removals) skips confirm panel</label>
-  <label><input type="checkbox" data-id="gr-16"/> "Done Shopping" button hidden when list empty, visible when items present</label>
-  <label><input type="checkbox" data-id="gr-17"/> "Done Shopping" completes the grocery task</label>
-  <label><input type="checkbox" data-id="gr-18"/> Double-tap confirm/add does not create duplicate inserts</label>
-  <label><input type="checkbox" data-id="gr-19"/> Unlock phone → grocery panel still shows correct list (no stale state)</label>
-</section>
-
-<!-- ─── HOUSEHOLD ─────────────────────────────────────────────────────────── -->
-<section>
-  <h2>Household</h2>
-  <label><input type="checkbox" data-id="hh-1"/> Household sheet opens from profile menu</label>
-  <label><input type="checkbox" data-id="hh-2"/> Create household — name saved, user shown as member</label>
-  <label><input type="checkbox" data-id="hh-3"/> Invite flow — invite sent (can verify in DB if needed)</label>
-  <label><input type="checkbox" data-id="hh-4"/> Assigned-to avatar shown on task rows in household context</label>
-</section>
-
-<!-- ─── ONBOARDING ────────────────────────────────────────────────────────── -->
-<section>
-  <h2>Onboarding</h2>
-  <label><input type="checkbox" data-id="ob-1"/> New email sign-up → onboarding flow triggers</label>
-  <label><input type="checkbox" data-id="ob-2"/> Onboarding completes → lands on main app</label>
-  <label><input type="checkbox" data-id="ob-3"/> Returning user (onboarded=true) → onboarding skipped</label>
-</section>
-
-<!-- ─── UI / GENERAL ──────────────────────────────────────────────────────── -->
-<section>
-  <h2>UI / General</h2>
-  <label><input type="checkbox" data-id="ui-1"/> Today / Upcoming / Events tabs switch correctly</label>
-  <label><input type="checkbox" data-id="ui-2"/> Background color picker saves and persists on reload</label>
-  <label><input type="checkbox" data-id="ui-3"/> Toast messages display and auto-dismiss</label>
-  <label><input type="checkbox" data-id="ui-4"/> Keyboard does not obscure input fields in sheets (scrolls into view)</label>
-  <label><input type="checkbox" data-id="ui-5"/> App works in PWA installed mode (add to home screen)</label>
-  <label><input type="checkbox" data-id="ui-6"/> No console errors on normal flow</label>
-</section>
+<div class="toast" id="toast"></div>
 
 <script>
-  const STORE_KEY = 'tether-qa-session';
+  const SUPABASE_URL  = 'https://gnudccfibmslzotaaerr.supabase.co';
+  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdudWRjY2ZpYm1zbHpvdGFhZXJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NjE2ODAsImV4cCI6MjA5MTIzNzY4MH0.H0l8uLg4PmQWqosYdzjUwa4q0Xe-5ErtNR2XtUbW5OM';
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-  function getState() {
-    try { return JSON.parse(sessionStorage.getItem(STORE_KEY) || '{}'); } catch { return {}; }
-  }
+  const results = {};
+  let currentUserId = null;
+  let selectedPlatform = null;
 
-  function saveState(state) {
-    sessionStorage.setItem(STORE_KEY, JSON.stringify(state));
-  }
-
-  function updateProgress() {
-    const all = document.querySelectorAll('input[type=checkbox]');
-    const checked = document.querySelectorAll('input[type=checkbox]:checked');
-    const pct = all.length ? (checked.length / all.length) * 100 : 0;
-    document.getElementById('bar').style.width = pct + '%';
-    document.getElementById('progressLabel').textContent = `${checked.length} / ${all.length} complete`;
-  }
-
-  function resetAll() {
-    sessionStorage.removeItem(STORE_KEY);
-    document.querySelectorAll('input[type=checkbox]').forEach(cb => {
-      cb.checked = false;
-      cb.closest('label').classList.remove('checked');
+  async function init() {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session?.user) {
+      document.getElementById('gate').innerHTML = 'Please <a href="/" style="color:#6c63ff">sign in to Tether</a> first.';
+      return;
+    }
+    const { data: user } = await sb.from('users').select('subscription_tier').eq('id', session.user.id).single();
+    if (!user || !['creator','employee'].includes(user.subscription_tier)) {
+      document.getElementById('gate').textContent = 'Access denied. Creator or Employee account required.';
+      return;
+    }
+    currentUserId = session.user.id;
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('bottomBar').style.display = 'flex';
+    initButtons();
+    document.querySelectorAll('.btn-platform').forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectedPlatform = selectedPlatform === btn.dataset.p ? null : btn.dataset.p;
+        document.querySelectorAll('.btn-platform').forEach(b => b.classList.toggle('active', b.dataset.p === selectedPlatform));
+      });
     });
+  }
+
+  function initButtons() {
+    document.querySelectorAll('.test-row').forEach(row => {
+      const id = row.dataset.id;
+      const label = row.querySelector('.test-label').textContent;
+      const btnPass = row.querySelector('.btn-pass');
+      const btnFail = row.querySelector('.btn-fail');
+
+      btnPass.addEventListener('click', () => setResult(id, label, 'pass', btnPass, btnFail, row));
+      btnFail.addEventListener('click', () => setResult(id, label, 'fail', btnFail, btnPass, row));
+    });
+  }
+
+  function setResult(id, label, result, activeBtn, otherBtn, row) {
+    if (results[id]?.result === result) {
+      delete results[id];
+      activeBtn.classList.remove('active');
+      row.querySelector('.test-label').className = 'test-label';
+    } else {
+      results[id] = { label, result };
+      activeBtn.classList.add('active');
+      otherBtn.classList.remove('active');
+      row.querySelector('.test-label').className = 'test-label ' + result;
+    }
     updateProgress();
   }
 
-  // Restore session state
-  const state = getState();
-  document.querySelectorAll('input[type=checkbox]').forEach(cb => {
-    if (state[cb.dataset.id]) {
-      cb.checked = true;
-      cb.closest('label').classList.add('checked');
-    }
-    cb.addEventListener('change', () => {
-      const s = getState();
-      if (cb.checked) { s[cb.dataset.id] = true; cb.closest('label').classList.add('checked'); }
-      else { delete s[cb.dataset.id]; cb.closest('label').classList.remove('checked'); }
-      saveState(s);
-      updateProgress();
-    });
-  });
+  function updateProgress() {
+    const total = document.querySelectorAll('.test-row').length;
+    const evaluated = Object.keys(results).length;
+    const passed = Object.values(results).filter(r => r.result === 'pass').length;
+    const failed = Object.values(results).filter(r => r.result === 'fail').length;
+    const pct = total ? (evaluated / total) * 100 : 0;
+    document.getElementById('bar').style.width = pct + '%';
+    document.getElementById('progressLabel').textContent =
+      evaluated === 0 ? '0 evaluated'
+      : `${evaluated} / ${total} evaluated — ${passed} pass, ${failed} fail`;
+    document.getElementById('btnSubmit').disabled = evaluated === 0;
+  }
 
-  updateProgress();
+  function resetAll() {
+    Object.keys(results).forEach(k => delete results[k]);
+    document.querySelectorAll('.btn-pass, .btn-fail').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.test-label').forEach(l => l.className = 'test-label');
+    document.getElementById('runLabel').value = '';
+    selectedPlatform = null;
+    document.querySelectorAll('.btn-platform').forEach(b => b.classList.remove('active'));
+    updateProgress();
+  }
+
+  async function submitRun() {
+    const btn = document.getElementById('btnSubmit');
+    btn.disabled = true;
+    btn.textContent = 'Submitting…';
+    const labelInput = document.getElementById('runLabel').value.trim();
+    const platformPrefix = selectedPlatform ? `[${selectedPlatform}] ` : '';
+    const label = (platformPrefix + (labelInput || 'Unlabeled run')).trim();
+    const { error } = await sb.from('qa_runs').insert({
+      submitted_by: currentUserId,
+      label,
+      results
+    });
+    if (error) {
+      showToast('Error: ' + error.message, true);
+      btn.disabled = false;
+      btn.textContent = 'Submit Run';
+    } else {
+      showToast('Run submitted!');
+      setTimeout(() => window.location.href = '/qa-runs.html', 1200);
+    }
+  }
+
+  function showToast(msg, isError) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.background = isError ? '#f87171' : '#4ade80';
+    t.style.color = isError ? '#2e0a0a' : '#0a1f12';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  init();
 </script>
 </body>
 </html>
