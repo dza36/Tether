@@ -2334,13 +2334,6 @@ async function confirmAssign(userId) {
   render();
 }
 
-// ─── VISIBILITY REFRESH ───────────────────────────────────────────────────────
-document.addEventListener('visibilitychange', async () => {
-  if (document.visibilityState === 'visible' && currentUser) {
-    await loadItems();
-    render();
-  }
-});
 
 // ─── BACKGROUND COLOR ─────────────────────────────────────────────────────────
 function applyBgColor(hex) {
@@ -3412,6 +3405,8 @@ async function completeGroceryTask() {
 // ─── VISIBILITY ───────────────────────────────────────────────────────────────
 document.addEventListener('visibilitychange', async () => {
   if (document.hidden || !currentUser) return;
+  const { data: { session } } = await sb.auth.getSession();
+  if (session?.user) currentUser = session.user;
   await loadItems();
   render();
   if (groceryTaskId) loadGroceryItems();
