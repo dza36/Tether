@@ -93,9 +93,9 @@
       const untested = TOTAL_TESTS - tested;
       const date = new Date(run.run_at).toLocaleString(undefined, { month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit' });
 
-      const detailRows = Object.entries(results).map(([id, { label, result }]) =>
+      const detailRows = Object.entries(results).map(([id, { label, result, note }]) =>
         `<div class="detail-row">
-          <span class="detail-label">${escHtml(label)}</span>
+          <span class="detail-label">${escHtml(label)}${note ? `<br><span style="font-size:.78rem;color:#f87171;margin-top:3px;display:block">${escHtml(note)}</span>` : ''}</span>
           <span class="detail-badge ${result}">${result}</span>
         </div>`
       ).join('');
