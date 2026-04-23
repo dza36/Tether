@@ -368,6 +368,33 @@ async function persistUserPref(key, value) {
   if (error) console.warn('persistUserPref error', error);
 }
 
+// ─── CHORE ITEMS ──────────────────────────────────────────────────────────────
+async function loadChoreItems(taskId) {
+  const { data, error } = await sb.from('chore_items').select('*').eq('task_id', taskId).order('created_at', { ascending: true });
+  if (error) { showToast('Load error: ' + error.message); return []; }
+  return data || [];
+}
+
+async function insertChoreItems(taskId, names, householdId) {
+  const rows = names.map(name => ({ task_id: taskId, household_id: householdId || null, name, done: false, added_by: currentUser.id }));
+  const { error } = await sb.from('chore_items').insert(rows);
+  if (error) showToast('Save error: ' + error.message);
+}
+
+async function deleteChoreItems(ids) {
+  const { error } = await sb.from('chore_items').delete().in('id', ids);
+  if (error) showToast('Delete error: ' + error.message);
+}
+
+async function toggleChoreItemDone(id, done) {
+  const { error } = await sb.from('chore_items').update({ done }).eq('id', id);
+  if (error) showToast('Update error: ' + error.message);
+}
+
+async function resetChoreItems(taskId) {
+  await sb.from('chore_items').update({ done: false }).eq('task_id', taskId);
+}
+
 async function deleteItemFromDb(id) {
   const item = items.find(i => i.id === id);
   const table = item?.type === 'event' ? 'items' : 'tether_items';

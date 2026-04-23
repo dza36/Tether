@@ -15,6 +15,11 @@ function nextFromDays(wd, startI=0) {
 }
 
 function getDueDate(item) {
+  if (item.type==='chore') {
+    if (item.weekdays?.length) return nextFromDays(item.weekdays, item.lastDone===isoToday()?1:0);
+    const l = new Date((item.lastDone||isoToday())+'T00:00:00');
+    const d = new Date(l); d.setDate(d.getDate()+(item.days||7)); return d;
+  }
   if (item.type==='event'||item.type==='oneTime'||item.type==='grocery') return new Date((item.date||isoToday())+'T00:00:00');
   if (item.type==='weekday') return nextFromDays(item.weekdays||[1], item.lastDone===isoToday()?1:0);
   if (item.type==='monthly'||item.type==='yearly') return new Date((item.lastDone||isoToday())+'T00:00:00');
@@ -80,6 +85,14 @@ function fmtInterval(days) {
 
 function badgeFor(item) {
   if (isSnoozed(item)) return `<span class="badge snoozed">Snoozed · ${item.altDueDate}</span>`;
+  if (item.type === 'chore') {
+    const d = daysUntil(item);
+    const count = item._choreTotal;
+    const done = item._choreDone || 0;
+    if (d <= 0) return `<span class="badge soon">Due today</span>`;
+    if (count > 0) return `<span class="badge progress">${done}/${count}</span>`;
+    return `<span class="badge ok">in ${d}d</span>`;
+  }
   const cl = item.checklist||[];
   if (cl.length>0 && expandedId===item.id) {
     const done=cl.filter(c=>c.done).length;
@@ -108,6 +121,11 @@ function fmtTime(t) {
 function subFor(item) {
   const wd=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
   const timeStr = item.startTime ? ` · ${fmtTime(item.startTime)}${item.endTime?' – '+fmtTime(item.endTime):''}` : '';
+  if (item.type==="chore") {
+    const due = getDueDate(item);
+    if (item.weekdays?.length) return `Every ${(item.weekdays||[]).map(d=>wd[d]).join(", ")} · Next due ${fmtDate(due)}`;
+    return `${fmtInterval(item.days)} · Next due ${fmtDate(due)}`;
+  }
   if (item.type==="grocery") {
     const due = getDueDate(item);
     return `Shopping ${fmtDate(due)}${timeStr} · tap to open list`;
@@ -129,6 +147,7 @@ function subFor(item) {
   return due.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",year:"numeric"})+timeStr;
 }
 function iconFor(item) {
+  if (item.type === 'chore') return '🧹';
   if (item.type === 'grocery') return '🛒';
   if (item.type === 'event') return item.eventIcon || '📅';
   if (item.type === 'annual') return '<span class="type-icon">🗓</span>';
@@ -157,6 +176,29 @@ async function completeItem(id) {
 
   // Capture due date before mutating lastDone
   const dueDate = getDueDate(item).toISOString().slice(0,10);
+
+  if (item.type==='chore') {
+    if (item.weekdays?.length) {
+      item.lastDone = dueDate;
+      const nextDay = nextFromDays(item.weekdays, 1);
+      const daysAway = Math.round((nextDay - today) / 86400000);
+      const dayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][nextDay.getDay()];
+      const seeYou = daysAway===1?'tomorrow':daysAway<=6?dayName:`in ${daysAway} days`;
+      showToast(`✓ All done — see you ${seeYou}`);
+    } else {
+      item.lastDone = isoToday();
+      showToast('✓ All done — ' + fmtInterval(item.days).toLowerCase().replace('every ','back in '));
+    }
+    await resetChoreItems(item._dbId || item.id);
+    item._choreTotal = choreListItems.length;
+    item._choreDone = 0;
+    choreListItems = choreListItems.map(ci => ({...ci, done: false}));
+    await persistItem(item);
+    recordCompletion(item, dueDate);
+    if (expandedId===id) expandedId=null;
+    setTimeout(render, 50);
+    return;
+  }
 
   if (item.type==='interval') {
     item.lastDone = isoToday();
@@ -305,6 +347,7 @@ function hasUncheckedItems(item) {
 }
 
 function needsCompleteConfirm(item) {
+  if (item.type === 'chore') return false;
   if (hasUncheckedItems(item)) return true;
   const d = daysUntil(item);
   if (d > 0) return true;
@@ -380,6 +423,7 @@ function toggleExpand(id) {
   render();
   if (expandedId === id) {
     if (item?.type === 'event') loadEventPanel(id);
+    else if (item?.type === 'chore') loadAndRenderChorePanel(id);
   }
 }
 
@@ -626,14 +670,21 @@ function rowHTML(item, isOverdue) {
   const exp=expandedId===item.id;
   const isEvent = item.type === 'event';
   const isGrocery = item.type === 'grocery';
+  const isChore = item.type === 'chore';
   const avatarHTML = (currentHousehold && !isEvent) ? itemAvatarHTML(item.assignedTo || item.createdBy, item.id) : '';
-  const itemStyle = exp ? `position:relative;${isEvent?'cursor:pointer;':'border-bottom-left-radius:0;border-bottom-right-radius:0;'}` : `position:absolute;inset:0;cursor:${(isEvent||isGrocery)?'pointer':'grab'};`;
+  const itemStyle = exp ? `position:relative;${(isEvent||isChore)?'cursor:pointer;':'border-bottom-left-radius:0;border-bottom-right-radius:0;'}` : `position:absolute;inset:0;cursor:${(isEvent||isGrocery)?'pointer':'grab'};`;
   const itemClick = (isEvent || isGrocery || exp) ? `onclick="toggleExpand('${item.id}')"` : '';
   const itemClass = `item${isOverdue?' overdue':''}${exp?' held':''}${exp?'':' swipeable'}`;
+  let expandedPanel = '';
+  if (exp) {
+    if (isEvent) expandedPanel = `<div class="event-panel" id="evpanel-${item.id}">Loading...</div>`;
+    else if (isChore) expandedPanel = `<div class="chore-panel" id="chorepanel-${item.id}"><div style="color:#AFA9EC;font-size:13px;padding:.5rem 0">Loading...</div></div>`;
+    else expandedPanel = `<div class="checklist-panel" id="clpanel-${item.id}">${clHTML(item)}</div>`;
+  }
   return `<div class="row-outer" id="outer-${item.id}">
     <div class="row-wrap${exp?' expanded':''}" id="wrap-${item.id}">
       ${!exp?`<div class="row-bg">
-        <div class="bg-complete"><span class="bg-label" id="lc-${item.id}">${isEvent?'👋 Dismiss':'✓ Complete'}</span></div>
+        <div class="bg-complete"><span class="bg-label" id="lc-${item.id}">${isEvent?'👋 Dismiss':'✓ All done'}</span></div>
         <div class="bg-snooze"><span class="bg-label" id="ls-${item.id}">⏱ Snooze</span></div>
       </div>`:''}
       <div class="${itemClass}" id="item-${item.id}" data-id="${item.id}" style="${itemStyle}" ${itemClick}>
@@ -645,7 +696,7 @@ function rowHTML(item, isOverdue) {
         ${avatarHTML}
         ${badgeFor(item)}
       </div>
-      ${exp?(isEvent?`<div class="event-panel" id="evpanel-${item.id}">Loading...</div>`:`<div class="checklist-panel" id="clpanel-${item.id}">${clHTML(item)}</div>`):''}
+      ${expandedPanel}
     </div>
   </div>`;
 }
@@ -791,12 +842,11 @@ function selectTaskCategory(cat, el) {
 function showCategoryForm(cat) {
   const fields = document.getElementById('taskFormFields');
   const groceryFields = document.getElementById('groceryFormFields');
-  const placeholder = document.getElementById('categoryPlaceholder');
-  const label = document.getElementById('categoryPlaceholderLabel');
+  const choreFields = document.getElementById('choreFormFields');
   const btn = document.getElementById('btnSave');
   fields.style.display = 'none';
   groceryFields.style.display = 'none';
-  placeholder.style.display = 'none';
+  choreFields.style.display = 'none';
   btn.onclick = saveItem;
   if (cat === 'custom') {
     fields.style.display = '';
@@ -808,11 +858,17 @@ function showCategoryForm(cat) {
     btn.textContent = 'Save & Add Items';
     btn.onclick = saveGroceryTask;
     validateGroceryForm();
-  } else {
-    placeholder.style.display = '';
-    const names = { chores: '🧹 Chores' };
-    label.textContent = `${names[cat] || cat} — coming soon`;
-    btn.disabled = true;
+  } else if (cat === 'chores') {
+    choreFields.style.display = '';
+    if (!document.getElementById('fChoreName').value) document.getElementById('fChoreName').value = 'House Chores';
+    document.getElementById('fChoreCadence').value = '7';
+    document.getElementById('choreDayPicker').style.display = 'none';
+    selectedChoreWeekdays = [];
+    document.querySelectorAll('#choreDaysGrid .day-pill').forEach(p => p.classList.remove('active'));
+    renderChoreAssigneeRow();
+    btn.textContent = 'Save & Add Items';
+    btn.onclick = saveChoreTask;
+    validateChoreForm();
   }
 }
 
@@ -837,6 +893,77 @@ async function saveGroceryTask() {
     render();
     openGroceryPanel(item._dbId);
     setTimeout(() => openQuickAddSheet(), 350);
+  }
+}
+
+// ─── CHORE FORM ───────────────────────────────────────────────────────────────
+function validateChoreForm() {
+  const name = document.getElementById('fChoreName')?.value.trim();
+  const cadence = document.getElementById('fChoreCadence')?.value;
+  const weekdayOk = cadence !== 'weekday' || selectedChoreWeekdays.length > 0;
+  const btn = document.getElementById('btnSave');
+  if (btn) btn.disabled = !(name && weekdayOk);
+}
+
+function renderChoreAssigneeRow() {
+  const field = document.getElementById('choreAssigneeField');
+  const row = document.getElementById('choreAssigneeRow');
+  if (!householdMembers?.length) { field.style.display = 'none'; return; }
+  field.style.display = '';
+  row.innerHTML = householdMembers.map(m => {
+    const initials = getInitials(m.display_name || m.email);
+    const avatar = m.avatar_url ? `<img src="${m.avatar_url}" alt="${initials}"/>` : `<div class="ca-initials">${initials}</div>`;
+    const name = (m.display_name?.split(' ')[0] || m.email.split('@')[0]);
+    const active = choreFormAssigneeId === m.user_id ? ' active' : '';
+    return `<button class="chore-assignee-pill${active}" onclick="selectChoreAssignee('${m.user_id}',this)">${avatar}<span class="ca-name">${name}</span></button>`;
+  }).join('');
+}
+
+function selectChoreAssignee(userId, el) {
+  choreFormAssigneeId = choreFormAssigneeId === userId ? null : userId;
+  document.querySelectorAll('.chore-assignee-pill').forEach(p => p.classList.remove('active'));
+  if (choreFormAssigneeId) el.classList.add('active');
+}
+
+function onChoreCadenceChange() {
+  const val = document.getElementById('fChoreCadence').value;
+  document.getElementById('choreDayPicker').style.display = val === 'weekday' ? '' : 'none';
+  selectedChoreWeekdays = [];
+  document.querySelectorAll('#choreDaysGrid .day-pill').forEach(p => p.classList.remove('active'));
+  validateChoreForm();
+}
+
+function toggleChoreDay(day, el) {
+  const idx = selectedChoreWeekdays.indexOf(day);
+  if (idx >= 0) { selectedChoreWeekdays.splice(idx, 1); el.classList.remove('active'); }
+  else { selectedChoreWeekdays.push(day); el.classList.add('active'); }
+  validateChoreForm();
+}
+
+async function saveChoreTask() {
+  const name = document.getElementById('fChoreName').value.trim(); if (!name) return;
+  const cadenceVal = document.getElementById('fChoreCadence').value;
+  const btn = document.getElementById('btnSave');
+  btn.disabled = true; btn.textContent = 'Saving...';
+  const isWeekday = cadenceVal === 'weekday';
+  const item = {
+    name, type: 'chore', status: 'active', checklist: [],
+    days: isWeekday ? null : parseInt(cadenceVal),
+    weekdays: isWeekday ? [...selectedChoreWeekdays].sort((a,b)=>a-b) : null,
+    lastDone: isoToday(), weekInterval: 1,
+    monthDay: null, monthWeek: null, monthWeekday: null, yearInterval: 1,
+    date: null, dueDate: null, altDueDate: null,
+    startTime: null, endTime: null, isUrgent: false, eventIcon: null,
+    assignedTo: choreFormAssigneeId || null,
+  };
+  await persistItem(item);
+  btn.disabled = false; btn.textContent = 'Save & Add Items';
+  if (item._dbId) {
+    closeTaskModal();
+    items.push(item);
+    render();
+    choreFormAssigneeId = null;
+    setTimeout(() => openChoreEditSheet(item._dbId, 'add'), 350);
   }
 }
 
@@ -2990,6 +3117,30 @@ async function obComplete() {
   setTimeout(showCelebration, 150); // fires over the app, not the onboarding card
 }
 
+// ─── CHORE CATALOG ────────────────────────────────────────────────────────────
+const CHORE_ROOMS = [
+  {name:'Kitchen',emoji:'🍳'},{name:'Living Room',emoji:'🛋️'},{name:'Bathroom',emoji:'🚿'},
+  {name:'Bedroom',emoji:'🛏️'},{name:'Dining Room',emoji:'🍽️'},{name:'Garage / Den',emoji:'🏠'},
+];
+const CHORE_INDOOR = [
+  {name:'Dishes',emoji:'🍽️'},{name:'Unload Dishwasher',emoji:'🫧'},{name:'Wipe Counters',emoji:'🧽'},
+  {name:'Take Out Trash',emoji:'🗑️'},{name:'Vacuum',emoji:'🧹'},{name:'Dust',emoji:'🪣'},
+  {name:'Sweep / Mop',emoji:'🫧'},{name:'Make Bed',emoji:'🛏️'},{name:'Change Sheets',emoji:'🛌'},
+  {name:'Fold Laundry',emoji:'👕'},{name:'Put Away Laundry',emoji:'👔'},{name:'Tidy Up',emoji:'📦'},
+];
+const CHORE_OUTDOOR = [
+  {name:'Mow Lawn',emoji:'🌿'},{name:'Rake Leaves',emoji:'🍂'},{name:'Shovel Snow',emoji:'❄️'},
+  {name:'Water Plants',emoji:'🌱'},{name:'Take Out Bins',emoji:'🗑️'},
+];
+
+// ─── CHORE STATE ──────────────────────────────────────────────────────────────
+let choreTaskId = null;
+let choreListItems = [];
+let choreEditSelected = new Set();
+let choreEditMode = 'add';
+let choreFormAssigneeId = null;
+let selectedChoreWeekdays = [];
+
 // ─── GROCERY PANEL ────────────────────────────────────────────────────────────
 let groceryTaskId = null;
 let groceryListItems = [];
@@ -3400,6 +3551,186 @@ async function completeGroceryTask() {
   const id = groceryTaskId;
   closeGroceryPanel();
   await completeItem(id);
+}
+
+// ─── CHORE PANEL (inline) ─────────────────────────────────────────────────────
+async function loadAndRenderChorePanel(taskId) {
+  const el = document.getElementById(`chorepanel-${taskId}`);
+  if (!el) return;
+  choreListItems = await loadChoreItems(taskId);
+  const item = items.find(i => i.id == taskId);
+  if (item) { item._choreTotal = choreListItems.length; item._choreDone = choreListItems.filter(c=>c.done).length; }
+  el.innerHTML = renderChorePanelHTML(taskId);
+}
+
+function renderChorePanelHTML(taskId) {
+  const done = choreListItems.filter(c=>c.done).length;
+  const total = choreListItems.length;
+  if (!total) return `<div style="color:#AFA9EC;font-size:13px;padding:.25rem 0">No items yet.</div>
+    <div class="chore-panel-actions">
+      <button class="chore-edit-list-btn" onclick="openChoreEditSheet(${taskId},'add')">＋ Add Items</button>
+    </div>`;
+  const rows = choreListItems.map(ci => `
+    <div class="chore-cl-item">
+      <div class="chore-cl-check${ci.done?' done':''}" data-ci="${ci.id}" onclick="toggleChoreItem(${ci.id},${!ci.done},${taskId})">
+        ${ci.done?`<svg width="11" height="11" viewBox="0 0 11 11" fill="none"><polyline points="1.5,5.5 4.5,8.5 9.5,2.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`:''}
+      </div>
+      <span class="chore-cl-name${ci.done?' done':''}">${ci.name}</span>
+    </div>`).join('');
+  return `<div class="chore-panel-header"><span class="chore-panel-title">Chore List</span><span class="chore-panel-progress">${done}/${total} done</span></div>
+    ${rows}
+    <div class="chore-panel-actions">
+      <button class="chore-all-done-btn" onclick="completeChoreTask(${taskId})">✓ All Done</button>
+      <button class="chore-edit-list-btn" onclick="openChoreEditSheet(${taskId},'edit')">✎ Edit List</button>
+    </div>`;
+}
+
+async function toggleChoreItem(choreItemId, done, taskId) {
+  const ci = choreListItems.find(c => c.id == choreItemId);
+  if (!ci) return;
+  ci.done = done;
+  await toggleChoreItemDone(choreItemId, done);
+  const item = items.find(i => i.id == taskId);
+  if (item) { item._choreDone = choreListItems.filter(c=>c.done).length; renderBadge(taskId); }
+  const el = document.getElementById(`chorepanel-${taskId}`);
+  if (el) el.innerHTML = renderChorePanelHTML(taskId);
+  if (choreListItems.length && choreListItems.every(c=>c.done)) {
+    setTimeout(() => { if (confirm('All items done! Mark this chore list complete?')) completeChoreTask(taskId); }, 200);
+  }
+}
+
+async function completeChoreTask(taskId) {
+  if (expandedId == taskId) expandedId = null;
+  await completeItem(taskId);
+}
+
+// ─── CHORE EDIT SHEET ─────────────────────────────────────────────────────────
+async function openChoreEditSheet(taskId, mode = 'add') {
+  choreTaskId = taskId;
+  choreEditMode = mode;
+  choreEditSelected = new Set();
+  if (mode === 'edit') {
+    choreListItems = await loadChoreItems(taskId);
+    choreListItems.forEach(ci => choreEditSelected.add(ci.name));
+  }
+  const task = items.find(i => i.id == taskId);
+  document.getElementById('choreEditTitle').textContent = mode === 'edit' ? 'Edit List' : 'Add Items';
+  renderChoreEditBody();
+  updateChoreEditCTA();
+  document.getElementById('choreEditBg').classList.add('open');
+}
+
+function closeChoreEditSheet() {
+  document.getElementById('choreEditBg').classList.remove('open');
+  document.getElementById('choreConfirmSheet').classList.remove('open');
+  choreTaskId = null; choreListItems = []; choreEditSelected = new Set();
+}
+
+function bgClickChoreEdit(e) {
+  if (e.target === document.getElementById('choreEditBg')) closeChoreEditSheet();
+}
+
+function closeChoreConfirmSheet() {
+  document.getElementById('choreConfirmSheet').classList.remove('open');
+}
+
+function renderChoreEditBody() {
+  const el = document.getElementById('choreEditBody');
+  const sel = choreEditSelected;
+  function pill(item, isRoom) {
+    const active = sel.has(item.name) ? ' selected' : '';
+    const cls = isRoom ? 'chore-pill chore-room-pill' : 'chore-pill';
+    return `<button class="${cls}${active}" onclick="toggleChoreEditItem(this,'${item.name.replace(/'/g,"\\'")}')">
+      <span class="chore-pill-emoji">${item.emoji}</span>
+      <span class="${isRoom?'chore-room-label':'chore-pill-name'}">${item.name}</span>
+    </button>`;
+  }
+  el.innerHTML = `
+    <div class="chore-section-label">Rooms</div>
+    <div class="chore-room-grid">${CHORE_ROOMS.map(r=>pill(r,true)).join('')}</div>
+    <div class="chore-section-label">Indoor Chores</div>
+    <div class="chore-item-grid">${CHORE_INDOOR.map(r=>pill(r,false)).join('')}</div>
+    <div class="chore-section-label">Outdoor Chores</div>
+    <div class="chore-item-grid">${CHORE_OUTDOOR.map(r=>pill(r,false)).join('')}</div>
+    <div class="chore-section-label">Custom</div>
+    <div class="chore-custom-row">
+      <input class="chore-custom-input" id="choreCustomInput" type="text" placeholder="Add a chore…" onkeydown="if(event.key==='Enter')addCustomChore()"/>
+      <button class="chore-custom-btn" onclick="addCustomChore()">Add</button>
+    </div>`;
+}
+
+function toggleChoreEditItem(el, name) {
+  if (choreEditSelected.has(name)) { choreEditSelected.delete(name); el.classList.remove('selected'); }
+  else { choreEditSelected.add(name); el.classList.add('selected'); }
+  updateChoreEditCTA();
+}
+
+function addCustomChore() {
+  const inp = document.getElementById('choreCustomInput');
+  const name = inp?.value.trim(); if (!name) return;
+  choreEditSelected.add(name);
+  inp.value = '';
+  renderChoreEditBody();
+  updateChoreEditCTA();
+}
+
+function updateChoreEditCTA() {
+  const btn = document.getElementById('choreEditActionBtn');
+  if (choreEditMode === 'add') {
+    const count = choreEditSelected.size;
+    btn.disabled = count === 0;
+    btn.textContent = count === 0 ? 'Add Items' : `Add ${count} Item${count!==1?'s':''}`;
+  } else {
+    const existing = new Set(choreListItems.map(ci => ci.name));
+    const adding = [...choreEditSelected].filter(n => !existing.has(n));
+    const removing = choreListItems.filter(ci => !choreEditSelected.has(ci.name));
+    const count = adding.length + removing.length;
+    btn.disabled = count === 0;
+    if (count === 0) btn.textContent = 'No Changes';
+    else if (adding.length && removing.length) btn.textContent = `Add ${adding.length}, Remove ${removing.length} Items`;
+    else if (adding.length) btn.textContent = `Add ${adding.length} Item${adding.length!==1?'s':''}`;
+    else btn.textContent = `Remove ${removing.length} Item${removing.length!==1?'s':''}`;
+  }
+}
+
+async function applyChoreItems() {
+  if (!choreTaskId) return;
+  if (choreEditMode === 'edit') {
+    const existing = new Set(choreListItems.map(ci => ci.name));
+    const adding = [...choreEditSelected].filter(n => !existing.has(n));
+    const removing = choreListItems.filter(ci => !choreEditSelected.has(ci.name));
+    if (removing.length) {
+      const confirmBody = document.getElementById('choreConfirmBody');
+      confirmBody.innerHTML = (adding.length ? `<div class="grocery-confirm-section-label adding">Adding</div><div class="grocery-confirm-pills">${adding.map(n=>`<span class="grocery-confirm-pill adding">${n}</span>`).join('')}</div>` : '')
+        + (removing.length ? `<div class="grocery-confirm-section-label removing">Removing</div><div class="grocery-confirm-pills">${removing.map(ci=>`<span class="grocery-confirm-pill removing">${ci.name}</span>`).join('')}</div>` : '');
+      document.getElementById('choreConfirmSheet').classList.add('open');
+      return;
+    }
+    await confirmChoreApply();
+  } else {
+    await confirmChoreApply();
+  }
+}
+
+async function confirmChoreApply() {
+  closeChoreConfirmSheet();
+  const hhId = currentHousehold?.id || null;
+  if (choreEditMode === 'edit') {
+    const existing = new Set(choreListItems.map(ci => ci.name));
+    const adding = [...choreEditSelected].filter(n => !existing.has(n));
+    const removingIds = choreListItems.filter(ci => !choreEditSelected.has(ci.name)).map(ci => ci.id);
+    if (removingIds.length) await deleteChoreItems(removingIds);
+    if (adding.length) await insertChoreItems(choreTaskId, adding, hhId);
+  } else {
+    const names = [...choreEditSelected];
+    if (names.length) await insertChoreItems(choreTaskId, names, hhId);
+  }
+  choreListItems = await loadChoreItems(choreTaskId);
+  const item = items.find(i => i.id == choreTaskId);
+  if (item) { item._choreTotal = choreListItems.length; item._choreDone = choreListItems.filter(c=>c.done).length; }
+  closeChoreEditSheet();
+  render();
+  if (expandedId == choreTaskId) loadAndRenderChorePanel(choreTaskId);
 }
 
 // ─── VISIBILITY ───────────────────────────────────────────────────────────────

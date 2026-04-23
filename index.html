@@ -208,9 +208,40 @@
       <div class="type-pill" id="catPillChores" onclick="selectTaskCategory('chores',this)">🧹 Chores</div>
     </div>
 
-    <!-- Coming soon placeholder (hidden by default) -->
-    <div id="categoryPlaceholder" style="display:none" class="category-placeholder">
-      <span id="categoryPlaceholderLabel"></span>
+    <!-- Chore task form (hidden by default) -->
+    <div id="choreFormFields" style="display:none">
+      <div class="field">
+        <label>List name</label>
+        <input type="text" id="fChoreName" placeholder="e.g. Weekly House Chores" oninput="validateChoreForm()"/>
+      </div>
+      <div class="field" id="choreAssigneeField" style="display:none">
+        <label>Assign to</label>
+        <div id="choreAssigneeRow" class="chore-assignee-row"></div>
+      </div>
+      <div class="field">
+        <label>How often</label>
+        <select id="fChoreCadence" style="width:100%;padding:10px 14px;font-size:15px;border-radius:12px;border:0.5px solid #CECBF6;background:#F7F6FF;color:#26215C;font-family:inherit" onchange="onChoreCadenceChange()">
+          <option value="1">Daily</option>
+          <option value="2">Every 2 days</option>
+          <option value="3">Every 3 days</option>
+          <option value="7" selected>Weekly</option>
+          <option value="14">Every 2 weeks</option>
+          <option value="30">Monthly</option>
+          <option value="weekday">Specific days of week…</option>
+        </select>
+      </div>
+      <div id="choreDayPicker" style="display:none" class="field">
+        <label>On</label>
+        <div class="days-grid" id="choreDaysGrid">
+          <div class="day-pill" data-cday="0" onclick="toggleChoreDay(0,this)">Su</div>
+          <div class="day-pill" data-cday="1" onclick="toggleChoreDay(1,this)">Mo</div>
+          <div class="day-pill" data-cday="2" onclick="toggleChoreDay(2,this)">Tu</div>
+          <div class="day-pill" data-cday="3" onclick="toggleChoreDay(3,this)">We</div>
+          <div class="day-pill" data-cday="4" onclick="toggleChoreDay(4,this)">Th</div>
+          <div class="day-pill" data-cday="5" onclick="toggleChoreDay(5,this)">Fr</div>
+          <div class="day-pill" data-cday="6" onclick="toggleChoreDay(6,this)">Sa</div>
+        </div>
+      </div>
     </div>
 
     <!-- Grocery task form (hidden by default) -->
@@ -596,6 +627,34 @@
           <button class="grocery-edit-btn" onclick="closeConfirmPanel()">← Edit</button>
           <button class="grocery-confirm-btn" onclick="applyDiff()">Confirm</button>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Chore edit sheet -->
+<div class="chore-edit-bg" id="choreEditBg" onclick="bgClickChoreEdit(event)">
+  <div class="chore-edit-sheet">
+    <div class="grocery-handle"></div>
+    <div class="grocery-sub-header">
+      <div class="grocery-sub-title" id="choreEditTitle">Add Items</div>
+      <div class="grocery-sub-close" onclick="closeChoreEditSheet()">✕</div>
+    </div>
+    <div class="chore-edit-body" id="choreEditBody"></div>
+    <div class="grocery-qa-footer">
+      <button class="grocery-qa-action" id="choreEditActionBtn" onclick="applyChoreItems()" disabled>Add Items</button>
+    </div>
+    <!-- Confirm sub-sheet -->
+    <div class="grocery-sub-sheet" id="choreConfirmSheet">
+      <div class="grocery-sub-handle"></div>
+      <div class="grocery-sub-header">
+        <div class="grocery-sub-title">Confirm Changes</div>
+        <div class="grocery-sub-close" onclick="closeChoreConfirmSheet()">✕</div>
+      </div>
+      <div class="grocery-confirm-body" id="choreConfirmBody"></div>
+      <div class="grocery-confirm-footer">
+        <button class="grocery-edit-btn" onclick="closeChoreConfirmSheet()">← Edit</button>
+        <button class="grocery-confirm-btn" onclick="confirmChoreApply()">Confirm</button>
       </div>
     </div>
   </div>
