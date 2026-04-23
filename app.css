@@ -106,6 +106,15 @@
   .task-category-row .type-pill{flex:1}
   .category-placeholder{padding:2rem 1rem;text-align:center;font-size:14px;color:#AFA9EC;font-weight:500;border-radius:14px;border:0.5px dashed #CECBF6;margin-bottom:.75rem}
 
+  /* Cadence pills */
+  .cadence-pills{display:flex;gap:8px;flex-wrap:wrap}
+  .cadence-pill{padding:8px 16px;font-size:13px;font-weight:600;border-radius:10px;border:0.5px solid #CECBF6;color:#534AB7;background:#F7F6FF;cursor:pointer;transition:background .12s,border-color .12s;font-family:inherit}
+  .cadence-pill.active{background:#534AB7;color:#fff;border-color:#534AB7}
+  .month-quick-pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+  .month-day-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+  .month-day-cell{padding:8px 2px;text-align:center;font-size:11px;font-weight:700;border-radius:10px;border:0.5px solid #CECBF6;color:#534AB7;cursor:pointer;background:transparent}
+  .month-day-cell.active{background:#EEEDFE;border-color:#534AB7;color:#26215C}
+
   /* Chore form */
   .chore-assignee-row{display:flex;gap:8px;flex-wrap:wrap}
   .chore-assignee-pill{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 10px;border-radius:12px;border:0.5px solid #CECBF6;background:#F7F6FF;cursor:pointer;font-size:11px;color:#534AB7;font-family:inherit;transition:background .12s}
@@ -919,6 +928,10 @@
     & .chore-assignee-pill{background:#1E1A3C;border-color:#2E2A5E;color:#7B72D4}
     & .chore-assignee-pill.active{background:#534AB7;color:#fff;border-color:#534AB7}
     & .ca-initials{background:#2E2A5E;color:#7B72D4}
+    & .cadence-pill{background:#1E1A3C;border-color:#2E2A5E;color:#7B72D4}
+    & .cadence-pill.active{background:#534AB7;color:#fff;border-color:#534AB7}
+    & .month-day-cell{border-color:#2E2A5E;color:#7B72D4}
+    & .month-day-cell.active{background:#1E1A3C;border-color:#534AB7;color:#E8E5FF}
     & .settings-bg{background:rgba(0,0,0,.75)}
     & .settings-sheet{background:#1A1730;border-color:#2E2A5E}
     & .settings-handle{background:#2E2A5E}
@@ -1206,4 +1219,8 @@ html[data-theme="dark"] {
   & .chore-assignee-pill{background:#1E1A3C;border-color:#2E2A5E;color:#7B72D4}
   & .chore-assignee-pill.active{background:#534AB7;color:#fff;border-color:#534AB7}
   & .ca-initials{background:#2E2A5E;color:#7B72D4}
+  & .cadence-pill{background:#1E1A3C;border-color:#2E2A5E;color:#7B72D4}
+  & .cadence-pill.active{background:#534AB7;color:#fff;border-color:#534AB7}
+  & .month-day-cell{border-color:#2E2A5E;color:#7B72D4}
+  & .month-day-cell.active{background:#1E1A3C;border-color:#534AB7;color:#E8E5FF}
 }

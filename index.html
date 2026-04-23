@@ -220,27 +220,35 @@
       </div>
       <div class="field">
         <label>How often</label>
-        <select id="fChoreCadence" style="width:100%;padding:10px 14px;font-size:15px;border-radius:12px;border:0.5px solid #CECBF6;background:#F7F6FF;color:#26215C;font-family:inherit" onchange="onChoreCadenceChange()">
-          <option value="1">Daily</option>
-          <option value="2">Every 2 days</option>
-          <option value="3">Every 3 days</option>
-          <option value="7" selected>Weekly</option>
-          <option value="14">Every 2 weeks</option>
-          <option value="30">Monthly</option>
-          <option value="weekday">Specific days of week…</option>
-        </select>
+        <div class="cadence-pills">
+          <div class="cadence-pill" id="cpDaily" onclick="selectChoreCadence('daily')">Daily</div>
+          <div class="cadence-pill active" id="cpWeekly" onclick="selectChoreCadence('weekly')">Weekly</div>
+          <div class="cadence-pill" id="cpMonthly" onclick="selectChoreCadence('monthly')">Monthly</div>
+        </div>
       </div>
-      <div id="choreDayPicker" style="display:none" class="field">
+      <!-- Weekly sub-picker -->
+      <div id="choreWeeklyPicker" class="field">
         <label>On</label>
         <div class="days-grid" id="choreDaysGrid">
-          <div class="day-pill" data-cday="0" onclick="toggleChoreDay(0,this)">Su</div>
-          <div class="day-pill" data-cday="1" onclick="toggleChoreDay(1,this)">Mo</div>
-          <div class="day-pill" data-cday="2" onclick="toggleChoreDay(2,this)">Tu</div>
-          <div class="day-pill" data-cday="3" onclick="toggleChoreDay(3,this)">We</div>
-          <div class="day-pill" data-cday="4" onclick="toggleChoreDay(4,this)">Th</div>
-          <div class="day-pill" data-cday="5" onclick="toggleChoreDay(5,this)">Fr</div>
-          <div class="day-pill" data-cday="6" onclick="toggleChoreDay(6,this)">Sa</div>
+          <div class="day-pill" data-cday="0" onclick="toggleChoreWeekDay(this)">Su</div>
+          <div class="day-pill" data-cday="1" onclick="toggleChoreWeekDay(this)">Mo</div>
+          <div class="day-pill" data-cday="2" onclick="toggleChoreWeekDay(this)">Tu</div>
+          <div class="day-pill" data-cday="3" onclick="toggleChoreWeekDay(this)">We</div>
+          <div class="day-pill" data-cday="4" onclick="toggleChoreWeekDay(this)">Th</div>
+          <div class="day-pill" data-cday="5" onclick="toggleChoreWeekDay(this)">Fr</div>
+          <div class="day-pill" data-cday="6" onclick="toggleChoreWeekDay(this)">Sa</div>
         </div>
+      </div>
+      <!-- Monthly sub-picker -->
+      <div id="choreMonthlyPicker" class="field" style="display:none">
+        <label>On</label>
+        <div class="month-quick-pills">
+          <div class="cadence-pill" id="mqFirst" onclick="toggleChoreMonthQuick(1)">1st</div>
+          <div class="cadence-pill" id="mqFifteenth" onclick="toggleChoreMonthQuick(15)">15th</div>
+          <div class="cadence-pill" id="mqLast" onclick="toggleChoreMonthQuick(31)">Last</div>
+          <div class="cadence-pill" id="mqCustom" onclick="toggleChoreMonthCustom()">Custom…</div>
+        </div>
+        <div id="choreMonthGrid" style="display:none;margin-top:10px"></div>
       </div>
     </div>
 

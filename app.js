@@ -14,9 +14,30 @@ function nextFromDays(wd, startI=0) {
   return d;
 }
 
+function daysInMonth(year, month) { return new Date(year, month + 1, 0).getDate(); }
+
+function nextMonthlyDay(monthDays, afterDateStr) {
+  const after = new Date(afterDateStr + 'T00:00:00');
+  const sorted = [...monthDays].sort((a, b) => a - b);
+  // Try same month first
+  for (const md of sorted) {
+    const dim = daysInMonth(after.getFullYear(), after.getMonth());
+    const actualDay = md === 31 ? dim : Math.min(md, dim);
+    const candidate = new Date(after.getFullYear(), after.getMonth(), actualDay);
+    if (candidate > after) return candidate;
+  }
+  // Next month
+  let yr = after.getFullYear(), mo = after.getMonth() + 1;
+  if (mo > 11) { mo = 0; yr++; }
+  const dim = daysInMonth(yr, mo);
+  const md = sorted[0];
+  return new Date(yr, mo, md === 31 ? dim : Math.min(md, dim));
+}
+
 function getDueDate(item) {
   if (item.type==='chore') {
     if (item.weekdays?.length) return nextFromDays(item.weekdays, item.lastDone===isoToday()?1:0);
+    if (item.monthDays?.length) return nextMonthlyDay(item.monthDays, item.lastDone || isoToday());
     const l = new Date((item.lastDone||isoToday())+'T00:00:00');
     const d = new Date(l); d.setDate(d.getDate()+(item.days||7)); return d;
   }
@@ -118,12 +139,21 @@ function fmtTime(t) {
   const hr = parseInt(h);
   return `${hr>12?hr-12:hr||12}:${m} ${hr>=12?'PM':'AM'}`;
 }
+function ordinal(n) {
+  if (n === 31) return 'Last';
+  const s = ['th','st','nd','rd'];
+  const v = n % 100;
+  return n + (s[(v-20)%10] || s[v] || s[0]);
+}
+
 function subFor(item) {
   const wd=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
   const timeStr = item.startTime ? ` · ${fmtTime(item.startTime)}${item.endTime?' – '+fmtTime(item.endTime):''}` : '';
   if (item.type==="chore") {
     const due = getDueDate(item);
     if (item.weekdays?.length) return `Every ${(item.weekdays||[]).map(d=>wd[d]).join(", ")} · Next due ${fmtDate(due)}`;
+    if (item.monthDays?.length) return `Monthly (${item.monthDays.map(ordinal).join(', ')}) · Next due ${fmtDate(due)}`;
+    if (item.days === 1) return `Daily · Next due ${fmtDate(due)}`;
     return `${fmtInterval(item.days)} · Next due ${fmtDate(due)}`;
   }
   if (item.type==="grocery") {
@@ -185,6 +215,11 @@ async function completeItem(id) {
       const dayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][nextDay.getDay()];
       const seeYou = daysAway===1?'tomorrow':daysAway<=6?dayName:`in ${daysAway} days`;
       showToast(`✓ All done — see you ${seeYou}`);
+    } else if (item.monthDays?.length) {
+      item.lastDone = dueDate;
+      const next = nextMonthlyDay(item.monthDays, dueDate);
+      const daysAway = Math.round((next - today) / 86400000);
+      showToast(`✓ All done — back in ${daysAway} day${daysAway===1?'':'s'}`);
     } else {
       item.lastDone = isoToday();
       showToast('✓ All done — ' + fmtInterval(item.days).toLowerCase().replace('every ','back in '));
@@ -861,10 +896,15 @@ function showCategoryForm(cat) {
   } else if (cat === 'chores') {
     choreFields.style.display = '';
     if (!document.getElementById('fChoreName').value) document.getElementById('fChoreName').value = 'House Chores';
-    document.getElementById('fChoreCadence').value = '7';
-    document.getElementById('choreDayPicker').style.display = 'none';
     selectedChoreWeekdays = [];
+    selectedChoreCadence = 'weekly';
+    choreMonthDays = [];
     document.querySelectorAll('#choreDaysGrid .day-pill').forEach(p => p.classList.remove('active'));
+    document.getElementById('choreWeeklyPicker').style.display = '';
+    document.getElementById('choreMonthlyPicker').style.display = 'none';
+    document.getElementById('choreMonthGrid').style.display = 'none';
+    document.querySelectorAll('.cadence-pill').forEach(p => p.classList.remove('active'));
+    document.getElementById('cpWeekly').classList.add('active');
     renderChoreAssigneeRow();
     btn.textContent = 'Save & Add Items';
     btn.onclick = saveChoreTask;
@@ -899,10 +939,10 @@ async function saveGroceryTask() {
 // ─── CHORE FORM ───────────────────────────────────────────────────────────────
 function validateChoreForm() {
   const name = document.getElementById('fChoreName')?.value.trim();
-  const cadence = document.getElementById('fChoreCadence')?.value;
-  const weekdayOk = cadence !== 'weekday' || selectedChoreWeekdays.length > 0;
+  const weekdayOk = selectedChoreCadence !== 'weekly' || selectedChoreWeekdays.length > 0;
+  const monthOk = selectedChoreCadence !== 'monthly' || choreMonthDays.length > 0;
   const btn = document.getElementById('btnSave');
-  if (btn) btn.disabled = !(name && weekdayOk);
+  if (btn) btn.disabled = !(name && weekdayOk && monthOk);
 }
 
 function renderChoreAssigneeRow() {
@@ -925,31 +965,94 @@ function selectChoreAssignee(userId, el) {
   if (choreFormAssigneeId) el.classList.add('active');
 }
 
-function onChoreCadenceChange() {
-  const val = document.getElementById('fChoreCadence').value;
-  document.getElementById('choreDayPicker').style.display = val === 'weekday' ? '' : 'none';
+function selectChoreCadence(cadence) {
+  selectedChoreCadence = cadence;
   selectedChoreWeekdays = [];
+  choreMonthDays = [];
+  document.querySelectorAll('.cadence-pill').forEach(p => p.classList.remove('active'));
+  document.getElementById('cp' + cadence.charAt(0).toUpperCase() + cadence.slice(1)).classList.add('active');
+  document.getElementById('choreWeeklyPicker').style.display = cadence === 'weekly' ? '' : 'none';
+  document.getElementById('choreMonthlyPicker').style.display = cadence === 'monthly' ? '' : 'none';
+  document.getElementById('choreMonthGrid').style.display = 'none';
   document.querySelectorAll('#choreDaysGrid .day-pill').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.month-quick-pills .cadence-pill').forEach(p => p.classList.remove('active'));
   validateChoreForm();
 }
 
-function toggleChoreDay(day, el) {
+function toggleChoreWeekDay(el) {
+  const day = parseInt(el.dataset.cday);
   const idx = selectedChoreWeekdays.indexOf(day);
   if (idx >= 0) { selectedChoreWeekdays.splice(idx, 1); el.classList.remove('active'); }
   else { selectedChoreWeekdays.push(day); el.classList.add('active'); }
   validateChoreForm();
 }
 
+function toggleChoreMonthQuick(day) {
+  const idx = choreMonthDays.indexOf(day);
+  const pills = { 1: 'mqFirst', 15: 'mqFifteenth', 31: 'mqLast' };
+  const el = document.getElementById(pills[day]);
+  if (idx >= 0) {
+    choreMonthDays.splice(idx, 1);
+    if (el) el.classList.remove('active');
+  } else {
+    choreMonthDays.push(day);
+    if (el) el.classList.add('active');
+  }
+  // Sync grid if open
+  if (document.getElementById('choreMonthGrid').style.display !== 'none') renderChoreMonthGrid();
+  validateChoreForm();
+}
+
+function toggleChoreMonthCustom() {
+  const grid = document.getElementById('choreMonthGrid');
+  const isOpen = grid.style.display !== 'none';
+  if (isOpen) {
+    grid.style.display = 'none';
+    document.getElementById('mqCustom').classList.remove('active');
+  } else {
+    grid.style.display = '';
+    document.getElementById('mqCustom').classList.add('active');
+    renderChoreMonthGrid();
+  }
+}
+
+function renderChoreMonthGrid() {
+  const grid = document.getElementById('choreMonthGrid');
+  const cells = [];
+  for (let d = 1; d <= 31; d++) {
+    const active = choreMonthDays.includes(d) ? ' active' : '';
+    const label = d === 31 ? 'Last' : d;
+    cells.push(`<div class="month-day-cell${active}" data-mday="${d}" onclick="toggleChoreMonthCell(this)">${label}</div>`);
+  }
+  // Pad to complete last row
+  const remainder = 31 % 7;
+  if (remainder) for (let i = 0; i < 7 - remainder; i++) cells.push('<div></div>');
+  grid.innerHTML = `<div class="month-day-grid">${cells.join('')}</div>`;
+}
+
+function toggleChoreMonthCell(el) {
+  const day = parseInt(el.dataset.mday);
+  const idx = choreMonthDays.indexOf(day);
+  if (idx >= 0) { choreMonthDays.splice(idx, 1); el.classList.remove('active'); }
+  else { choreMonthDays.push(day); el.classList.add('active'); }
+  // Sync quick pills
+  const pills = { 1: 'mqFirst', 15: 'mqFifteenth', 31: 'mqLast' };
+  if (pills[day]) {
+    const p = document.getElementById(pills[day]);
+    if (p) p.classList.toggle('active', choreMonthDays.includes(day));
+  }
+  validateChoreForm();
+}
+
 async function saveChoreTask() {
   const name = document.getElementById('fChoreName').value.trim(); if (!name) return;
-  const cadenceVal = document.getElementById('fChoreCadence').value;
   const btn = document.getElementById('btnSave');
   btn.disabled = true; btn.textContent = 'Saving...';
-  const isWeekday = cadenceVal === 'weekday';
   const item = {
     name, type: 'chore', status: 'active', checklist: [],
-    days: isWeekday ? null : parseInt(cadenceVal),
-    weekdays: isWeekday ? [...selectedChoreWeekdays].sort((a,b)=>a-b) : null,
+    days: selectedChoreCadence === 'daily' ? 1 : null,
+    weekdays: selectedChoreCadence === 'weekly' ? [...selectedChoreWeekdays].sort((a,b)=>a-b) : null,
+    monthDays: selectedChoreCadence === 'monthly' ? [...choreMonthDays].sort((a,b)=>a-b) : null,
     lastDone: isoToday(), weekInterval: 1,
     monthDay: null, monthWeek: null, monthWeekday: null, yearInterval: 1,
     date: null, dueDate: null, altDueDate: null,
@@ -3140,6 +3243,8 @@ let choreEditSelected = new Set();
 let choreEditMode = 'add';
 let choreFormAssigneeId = null;
 let selectedChoreWeekdays = [];
+let selectedChoreCadence = 'weekly';
+let choreMonthDays = [];
 
 // ─── GROCERY PANEL ────────────────────────────────────────────────────────────
 let groceryTaskId = null;
