@@ -3673,11 +3673,12 @@ function renderChorePanelHTML(taskId) {
   const total = choreListItems.length;
   if (!total) return `<div style="color:#AFA9EC;font-size:13px;padding:.25rem 0">No items yet.</div>
     <div class="chore-panel-actions">
-      <button class="chore-edit-list-btn" onclick="openChoreEditSheet(${taskId},'add')">＋ Add Items</button>
+      <button class="chore-edit-list-btn" onclick="openChoreEditSheet('${taskId}','add')">＋ Add Items</button>
+      <button class="chore-panel-del" onclick="deleteChoreTask('${taskId}')">🗑</button>
     </div>`;
   const rows = choreListItems.map(ci => `
     <div class="chore-cl-item">
-      <div class="chore-cl-check${ci.done?' done':''}" data-ci="${ci.id}" onclick="toggleChoreItem(${ci.id},${!ci.done},${taskId})">
+      <div class="chore-cl-check${ci.done?' done':''}" data-ci="${ci.id}" onclick="toggleChoreItem('${ci.id}',${!ci.done},'${taskId}')">
         ${ci.done?`<svg width="11" height="11" viewBox="0 0 11 11" fill="none"><polyline points="1.5,5.5 4.5,8.5 9.5,2.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`:''}
       </div>
       <span class="chore-cl-name${ci.done?' done':''}">${ci.name}</span>
@@ -3685,8 +3686,9 @@ function renderChorePanelHTML(taskId) {
   return `<div class="chore-panel-header"><span class="chore-panel-title">Chore List</span><span class="chore-panel-progress">${done}/${total} done</span></div>
     ${rows}
     <div class="chore-panel-actions">
-      <button class="chore-all-done-btn" onclick="completeChoreTask(${taskId})">✓ All Done</button>
-      <button class="chore-edit-list-btn" onclick="openChoreEditSheet(${taskId},'edit')">✎ Edit List</button>
+      <button class="chore-all-done-btn" onclick="completeChoreTask('${taskId}')">✓ All Done</button>
+      <button class="chore-edit-list-btn" onclick="openChoreEditSheet('${taskId}','edit')">✎ Edit</button>
+      <button class="chore-panel-del" onclick="deleteChoreTask('${taskId}')">🗑</button>
     </div>`;
 }
 
@@ -3707,6 +3709,16 @@ async function toggleChoreItem(choreItemId, done, taskId) {
 async function completeChoreTask(taskId) {
   if (expandedId == taskId) expandedId = null;
   await completeItem(taskId);
+}
+
+async function deleteChoreTask(taskId) {
+  const item = items.find(i => i.id == taskId); if (!item) return;
+  if (!confirm(`Delete "${item.name}"?`)) return;
+  items = items.filter(i => i.id != taskId);
+  await deleteItemFromDb(taskId);
+  expandedId = null;
+  showToast('🗑 Deleted');
+  render();
 }
 
 // ─── CHORE EDIT SHEET ─────────────────────────────────────────────────────────

@@ -925,6 +925,7 @@
     & .chore-cl-name{color:#E8E5FF}
     & .chore-cl-name.done{color:#6B65A8}
     & .chore-edit-list-btn{background:#1E1A3C;border-color:#2E2A5E;color:#7B72D4}
+    & .chore-panel-del{background:#2E1A1A;border-color:#5E2A2A;color:#F87171}
     & .chore-assignee-pill{background:#1E1A3C;border-color:#2E2A5E;color:#7B72D4}
     & .chore-assignee-pill.active{background:#534AB7;color:#fff;border-color:#534AB7}
     & .ca-initials{background:#2E2A5E;color:#7B72D4}
@@ -1216,6 +1217,7 @@ html[data-theme="dark"] {
   & .chore-cl-name{color:#E8E5FF}
   & .chore-cl-name.done{color:#6B65A8}
   & .chore-edit-list-btn{background:#1E1A3C;border-color:#2E2A5E;color:#7B72D4}
+  & .chore-panel-del{background:#2E1A1A;border-color:#5E2A2A;color:#F87171}
   & .chore-assignee-pill{background:#1E1A3C;border-color:#2E2A5E;color:#7B72D4}
   & .chore-assignee-pill.active{background:#534AB7;color:#fff;border-color:#534AB7}
   & .ca-initials{background:#2E2A5E;color:#7B72D4}
