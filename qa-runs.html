@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Tether QA Runs</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: system-ui, sans-serif; background: #0f0e17; color: #e8e6f0; padding: 24px 16px 60px; max-width: 720px; margin: 0 auto; }
@@ -53,8 +54,6 @@
 </div>
 
 <script>
-  const SUPABASE_URL  = 'https://auth.get-tethered.app';
-  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdudWRjY2ZpYm1zbHpvdGFhZXJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NjE2ODAsImV4cCI6MjA5MTIzNzY4MH0.H0l8uLg4PmQWqosYdzjUwa4q0Xe-5ErtNR2XtUbW5OM';
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
   const TOTAL_TESTS = 57;
