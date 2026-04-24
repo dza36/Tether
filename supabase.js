@@ -30,20 +30,12 @@ async function initAuth() {
 async function onSignedIn(user) {
   currentUser = user;
   updateAvatar(user);
-  let loadResults;
-  try {
-    loadResults = await Promise.all([
-      loadItems(),
-      loadHousehold(),
-      sb.from('users').select('holidays_enabled, party_days_enabled').eq('id', user.id).single(),
-      checkOnboarding()
-    ]);
-  } catch(e) {
-    showToast('Load error: ' + e.message);
-    console.error('onSignedIn failed:', e);
-    return;
-  }
-  const [, , prefResult, obResult] = loadResults;
+  const [, , prefResult, obResult] = await Promise.all([
+    loadItems(),
+    loadHousehold(),
+    sb.from('users').select('holidays_enabled, party_days_enabled').eq('id', user.id).single(),
+    checkOnboarding()
+  ]);
   if (prefResult?.data) {
     userPrefs.holidaysEnabled = prefResult.data.holidays_enabled || false;
     userPrefs.partyDaysEnabled = prefResult.data.party_days_enabled || false;
