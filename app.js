@@ -3351,23 +3351,26 @@ function groceryListItemHTML(gi) {
   ).join('') : '';
   return `<div class="grocery-list-item${gi.checked?' checked':''}" id="gli-${gi.id}">
     <div class="grocery-item-check${gi.checked?' done':''}" onclick="toggleGroceryItem('${gi.id}')">${gi.checked?checkSVG:''}</div>
-    ${emoji ? `<span class="grocery-item-emoji">${emoji}</span>` : ''}
     <div class="grocery-item-body">
-      <span class="grocery-item-name${gi.checked?' checked':''}">${escAttr(gi.name)}</span>
-      ${gi.note ? `<span class="grocery-item-note">${escAttr(gi.note)}</span>` : ''}
-    </div>
-    <div class="grocery-item-controls">
-      <button class="grocery-unit-toggle" onclick="cycleGroceryUnit('${gi.id}','${gi.unit}')">${isWeight?'lbs':'qty'}</button>
-      <div class="grocery-item-qty">
-        <button class="grocery-qty-btn" onclick="adjustGroceryQty('${gi.id}',${isWeight?-0.5:-1})">−</button>
-        <input type="number" class="grocery-qty-input" id="gli-qty-${gi.id}" value="${qty}" step="${step}" min="${step}" onchange="editGroceryQtyDirect('${gi.id}',this.value)"/>
-        <button class="grocery-qty-btn" onclick="adjustGroceryQty('${gi.id}',${isWeight?0.5:1})">+</button>
+      <div class="grocery-item-top">
+        ${emoji ? `<span class="grocery-item-emoji">${emoji}</span>` : ''}
+        <span class="grocery-item-name${gi.checked?' checked':''}">${escAttr(gi.name)}</span>
+        <button class="grocery-item-edit-btn" onclick="startEditGroceryItem('${gi.id}')">✎</button>
+        <button class="grocery-item-remove" onclick="removeGroceryItem('${gi.id}')">✕</button>
       </div>
-      ${isWeight ? '<span class="grocery-unit-label">lbs</span>' : ''}
-      ${sizePills ? `<div class="grocery-size-pills">${sizePills}</div>` : ''}
+      <div class="grocery-item-bottom">
+        <span class="grocery-item-note">${gi.note ? escAttr(gi.note) : ''}</span>
+        <div class="grocery-item-controls">
+          <button class="grocery-unit-toggle" onclick="cycleGroceryUnit('${gi.id}','${gi.unit}')">${isWeight?'lbs':'qty'}</button>
+          <div class="grocery-item-qty">
+            <button class="grocery-qty-btn" onclick="adjustGroceryQty('${gi.id}',${isWeight?-0.5:-1})">−</button>
+            <input type="number" class="grocery-qty-input" id="gli-qty-${gi.id}" value="${qty}" step="${step}" min="${step}" onchange="editGroceryQtyDirect('${gi.id}',this.value)"/>
+            <button class="grocery-qty-btn" onclick="adjustGroceryQty('${gi.id}',${isWeight?0.5:1})">+</button>
+          </div>
+          ${sizePills ? `<div class="grocery-size-pills">${sizePills}</div>` : ''}
+        </div>
+      </div>
     </div>
-    <button class="grocery-item-edit-btn" onclick="startEditGroceryItem('${gi.id}')">✎</button>
-    <button class="grocery-item-remove" onclick="removeGroceryItem('${gi.id}')">✕</button>
   </div>`;
 }
 
