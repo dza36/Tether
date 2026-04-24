@@ -3253,6 +3253,7 @@ let groceryRealtimeChannel = null;
 let groceryDebounce = null;
 let groceryQaSelected = new Map(); // name.toLowerCase() → catalog item data
 let groceryPendingDiff = null;
+let groceryEditingId = null;
 let grocerySubmitting = false;
 
 function openGroceryPanel(taskId) {
@@ -3327,14 +3328,17 @@ function renderGroceryListView() {
     html += '<div class="grocery-dept-header">🛒 Custom</div>';
     html += customItems.map(gi => groceryListItemHTML(gi)).join('');
   }
+  const qaDeptOptions = GROCERY_DEPARTMENTS.map(d => `<option value="${d.key}">${d.emoji} ${d.label}</option>`).join('') + '<option value="misc">🛒 Misc</option>';
   html += `<div class="grocery-quick-add-row">
     <input type="text" class="grocery-quick-input" id="groceryQuickInput" placeholder="Add an item..." onkeydown="if(event.key==='Enter')quickAddCustomItem()"/>
+    <select class="grocery-quick-dept" id="groceryQuickDept">${qaDeptOptions}</select>
     <button class="grocery-quick-btn" onclick="quickAddCustomItem()">Add</button>
   </div>`;
   body.innerHTML = html;
 }
 
 function groceryListItemHTML(gi) {
+  if (gi.id === groceryEditingId) return groceryListItemEditHTML(gi);
   const isWeight = gi.unit === 'weight';
   const isVolume = gi.unit === 'volume';
   const step = isWeight ? 0.5 : 1;
@@ -3348,7 +3352,10 @@ function groceryListItemHTML(gi) {
   return `<div class="grocery-list-item${gi.checked?' checked':''}" id="gli-${gi.id}">
     <div class="grocery-item-check${gi.checked?' done':''}" onclick="toggleGroceryItem('${gi.id}')">${gi.checked?checkSVG:''}</div>
     ${emoji ? `<span class="grocery-item-emoji">${emoji}</span>` : ''}
-    <span class="grocery-item-name${gi.checked?' checked':''}">${gi.name}</span>
+    <div class="grocery-item-body">
+      <span class="grocery-item-name${gi.checked?' checked':''}">${escAttr(gi.name)}</span>
+      ${gi.note ? `<span class="grocery-item-note">${escAttr(gi.note)}</span>` : ''}
+    </div>
     <div class="grocery-item-controls">
       <button class="grocery-unit-toggle" onclick="cycleGroceryUnit('${gi.id}','${gi.unit}')">${isWeight?'lbs':'qty'}</button>
       <div class="grocery-item-qty">
@@ -3359,8 +3366,50 @@ function groceryListItemHTML(gi) {
       ${isWeight ? '<span class="grocery-unit-label">lbs</span>' : ''}
       ${sizePills ? `<div class="grocery-size-pills">${sizePills}</div>` : ''}
     </div>
+    <button class="grocery-item-edit-btn" onclick="startEditGroceryItem('${gi.id}')">✎</button>
     <button class="grocery-item-remove" onclick="removeGroceryItem('${gi.id}')">✕</button>
   </div>`;
+}
+
+function groceryListItemEditHTML(gi) {
+  const deptOpts = GROCERY_DEPARTMENTS.map(d =>
+    `<option value="${d.key}"${gi.dept===d.key?' selected':''}>${d.emoji} ${d.label}</option>`
+  ).join('') + `<option value="misc"${gi.dept==='misc'?' selected':''}>🛒 Misc</option>`;
+  return `<div class="grocery-list-item grocery-list-item-editing" id="gli-${gi.id}">
+    <div class="grocery-item-edit-form">
+      <div class="grocery-edit-row">
+        <input type="text" class="grocery-edit-name" id="gli-edit-name-${gi.id}" value="${escAttr(gi.name)}" placeholder="Item name..."/>
+        <select class="grocery-edit-dept" id="gli-edit-dept-${gi.id}">${deptOpts}</select>
+      </div>
+      <input type="text" class="grocery-edit-note" id="gli-edit-note-${gi.id}" value="${escAttr(gi.note||'')}" placeholder="Add a note… (e.g. baby tylenol)"/>
+      <div class="grocery-edit-actions">
+        <button class="grocery-edit-save" onclick="saveGroceryItemEdit('${gi.id}')">Save</button>
+        <button class="grocery-edit-cancel" onclick="cancelGroceryItemEdit()">Cancel</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function startEditGroceryItem(id) {
+  groceryEditingId = id;
+  renderGroceryListView();
+  setTimeout(() => document.getElementById(`gli-edit-name-${id}`)?.focus(), 50);
+}
+
+function cancelGroceryItemEdit() {
+  groceryEditingId = null;
+  renderGroceryListView();
+}
+
+async function saveGroceryItemEdit(id) {
+  const name = document.getElementById(`gli-edit-name-${id}`)?.value.trim();
+  const dept = document.getElementById(`gli-edit-dept-${id}`)?.value || 'misc';
+  const note = document.getElementById(`gli-edit-note-${id}`)?.value.trim() || null;
+  if (!name) return;
+  const { error } = await sb.from('grocery_items').update({ name, dept, note }).eq('id', id);
+  if (error) { showToast('Error: ' + error.message); return; }
+  groceryEditingId = null;
+  await loadGroceryItems();
 }
 
 // ── Quick-add sub-sheet ───────────────────────────────────────────────────────
@@ -3605,15 +3654,17 @@ async function setGrocerySize(id, size) {
 
 async function quickAddCustomItem() {
   const input = document.getElementById('groceryQuickInput');
+  const deptEl = document.getElementById('groceryQuickDept');
   const name = input?.value.trim();
   if (!name) return;
   const already = groceryListItems.some(g => g.name.toLowerCase() === name.toLowerCase());
   if (already) { showToast(`${name} is already on the list`); return; }
+  const dept = deptEl?.value || 'misc';
   const task = items.find(i => i.id === groceryTaskId);
   const { error } = await sb.from('grocery_items').insert({
     task_id: groceryTaskId,
     household_id: task?.householdId || currentHousehold?.id || null,
-    name, dept: 'misc', qty: 1, unit: 'count', checked: false,
+    name, dept, qty: 1, unit: 'count', checked: false,
     added_by: currentUser.id,
     is_custom: true,
   });
