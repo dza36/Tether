@@ -18,8 +18,11 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Generate version.js
-        run: echo "const APP_VERSION = \"0.2.$(git rev-list --count HEAD)\";" > version.js
+      - name: Generate version
+        run: |
+          VER="0.2.$(git rev-list --count HEAD)"
+          echo "const APP_VERSION = \"$VER\";" > version.js
+          sed -i "s/?v=[^\"']*/?v=$VER/g" index.html
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
         with:

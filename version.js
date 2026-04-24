@@ -1,1 +1,1 @@
-const APP_VERSION = "0.2.49";
+const APP_VERSION = "0.0.0"; // overwritten by CI at build time
