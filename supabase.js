@@ -67,6 +67,7 @@ function showAuth() {
   document.getElementById('loadingScreen').classList.remove('open');
   document.getElementById('mainApp').style.display = 'none';
   document.getElementById('authScreen').classList.add('open');
+  renderAuthButtons();
 }
 
 function updateAvatar(user) {

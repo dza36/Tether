@@ -25,6 +25,7 @@ jobs:
           sed -i "s/?v=[^\"']*/?v=$VER/g" index.html
           sed -i "s|__SUPABASE_URL__|${{ secrets.SUPABASE_URL }}|g" config.js
           sed -i "s|__SUPABASE_ANON__|${{ secrets.SUPABASE_ANON }}|g" config.js
+          sed -i "s|__AUTH_PROVIDERS__|${{ secrets.AUTH_PROVIDERS }}|g" config.js
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
         with:
