@@ -5,61 +5,106 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Tether QA</title>
 <!--
-  SQL MIGRATION — run once in Supabase SQL editor before using this page:
+  SQL MIGRATION — run once in Supabase SQL editor:
 
   CREATE TABLE qa_runs (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     run_at timestamptz DEFAULT now(),
     submitted_by uuid REFERENCES users(id),
     label text,
+    platform text,
+    version text,
+    notes text,
     results jsonb
   );
   ALTER TABLE qa_runs ENABLE ROW LEVEL SECURITY;
   CREATE POLICY "qa_runs_access" ON qa_runs FOR ALL USING (
     EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND subscription_tier IN ('creator','employee'))
   );
+
+  -- If upgrading existing table:
+  ALTER TABLE qa_runs ADD COLUMN IF NOT EXISTS platform text;
+  ALTER TABLE qa_runs ADD COLUMN IF NOT EXISTS version text;
+  ALTER TABLE qa_runs ADD COLUMN IF NOT EXISTS notes text;
 -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: system-ui, sans-serif; background: #0f0e17; color: #e8e6f0; padding: 24px 16px 80px; max-width: 720px; margin: 0 auto; }
+  body { font-family: system-ui, sans-serif; background: #0f0e17; color: #e8e6f0; padding: 24px 16px 100px; max-width: 720px; margin: 0 auto; }
   #gate { display: flex; align-items: center; justify-content: center; min-height: 60vh; text-align: center; color: #7c77a0; font-size: .9rem; }
   #app { display: none; }
   .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
   h1 { font-size: 1.4rem; font-weight: 700; color: #c4beff; }
   .top a { font-size: .8rem; color: #6c63ff; text-decoration: none; }
   .top a:hover { text-decoration: underline; }
-  .platform-row { display: flex; gap: 8px; margin: 14px 0 10px; }
+  .version-bar { font-size: .78rem; color: #7c77a0; margin-bottom: 14px; }
+  .version-bar span { color: #a78bfa; font-weight: 600; }
+  .platform-row { display: flex; gap: 8px; margin: 0 0 16px; }
   .btn-platform { flex: 1; border: 2px solid #2e2a45; border-radius: 10px; padding: 9px 0; background: #1e1b2e; color: #7c77a0; font-size: .84rem; font-weight: 600; cursor: pointer; transition: all .15s; }
   .btn-platform:hover { border-color: #6c63ff; color: #c4beff; }
   .btn-platform.active { border-color: #6c63ff; background: #2d2860; color: #c4beff; }
-  .run-label { width: 100%; margin: 0 0 10px; padding: 10px 14px; background: #1e1b2e; border: 1px solid #2e2a45; border-radius: 10px; color: #e8e6f0; font-size: .9rem; outline: none; }
-  .run-label:focus { border-color: #6c63ff; }
   .progress-bar-wrap { background: #1e1b2e; border-radius: 8px; height: 8px; overflow: hidden; }
   .progress-bar { height: 100%; border-radius: 8px; transition: width .3s; background: linear-gradient(90deg, #6c63ff, #a78bfa); }
   .progress-label { font-size: .75rem; color: #7c77a0; margin: 6px 0 20px; }
-  section { margin-bottom: 28px; }
-  h2 { font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #6c63ff; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #1e1b2e; }
-  .test-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; transition: background .15s; }
-  .test-row:hover { background: #1a1726; }
-  .test-label { flex: 1; font-size: .86rem; line-height: 1.4; }
+
+  /* Sections */
+  .section { margin-bottom: 10px; border-radius: 12px; overflow: hidden; background: #1a1726; }
+  .section-header { display: flex; align-items: center; gap: 10px; padding: 12px 14px; cursor: pointer; user-select: none; transition: background .15s; }
+  .section-header:hover { background: #1e1b2e; }
+  .section-chevron { color: #7c77a0; font-size: .75rem; transition: transform .2s; flex-shrink: 0; }
+  .section.open .section-chevron { transform: rotate(90deg); }
+  .section-title { font-size: .78rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #6c63ff; flex: 1; }
+  .section-counts { display: flex; gap: 6px; flex-shrink: 0; }
+  .sc { border-radius: 5px; padding: 3px 8px; font-size: .7rem; font-weight: 700; }
+  .sc-pass { background: #1a2e22; color: #4ade80; }
+  .sc-fail { background: #2e1a1a; color: #f87171; }
+  .sc-na { background: #1e2030; color: #7c77a0; }
+  .sc-left { background: #1e1b2e; color: #7c77a0; }
+  .section-body { display: none; border-top: 1px solid #2a2540; padding: 4px 0; }
+  .section.open .section-body { display: block; }
+
+  /* Sub-sections */
+  .subsection { margin: 4px 8px 4px; border-radius: 8px; overflow: hidden; background: #15121f; }
+  .subsection-header { display: flex; align-items: center; gap: 10px; padding: 9px 12px; cursor: pointer; user-select: none; transition: background .15s; }
+  .subsection-header:hover { background: #1a1726; }
+  .subsection-chevron { color: #7c77a0; font-size: .7rem; transition: transform .2s; flex-shrink: 0; }
+  .subsection.open .subsection-chevron { transform: rotate(90deg); }
+  .subsection-title { font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #a78bfa; flex: 1; }
+  .subsection-body { display: none; border-top: 1px solid #2a2540; padding: 2px 0; }
+  .subsection.open .subsection-body { display: block; }
+
+  /* Test rows */
+  .test-row { display: flex; align-items: center; gap: 8px; padding: 8px 14px; transition: background .15s; }
+  .test-row:hover { background: #1e1b2e; }
+  .test-label { flex: 1; font-size: .84rem; line-height: 1.4; }
   .test-label.pass { color: #4ade80; }
   .test-label.fail { color: #f87171; }
-  .btn-pass, .btn-fail { border: none; border-radius: 6px; padding: 5px 13px; font-size: .78rem; font-weight: 600; cursor: pointer; transition: opacity .15s, transform .1s; }
+  .test-label.na { color: #7c77a0; text-decoration: line-through; }
+  .btn-pass, .btn-fail, .btn-na { border: none; border-radius: 6px; padding: 5px 10px; font-size: .74rem; font-weight: 600; cursor: pointer; transition: opacity .15s; flex-shrink: 0; }
   .btn-pass { background: #1a2e22; color: #4ade80; }
   .btn-fail { background: #2e1a1a; color: #f87171; }
+  .btn-na { background: #1e2030; color: #7c77a0; }
   .btn-pass.active { background: #4ade80; color: #0a1f12; }
   .btn-fail.active { background: #f87171; color: #2e0a0a; }
-  .btn-pass:hover, .btn-fail:hover { opacity: .85; }
+  .btn-na.active { background: #4a4a6a; color: #c4beff; }
+  .btn-pass:hover, .btn-fail:hover, .btn-na:hover { opacity: .85; }
+  .fail-note { display: none; width: calc(100% - 28px); margin: 0 14px 8px; padding: 8px 12px; background: #1e1214; border: 1px solid #5a2020; border-radius: 8px; color: #f0d0d0; font-size: .82rem; resize: vertical; min-height: 52px; outline: none; font-family: inherit; }
+  .fail-note:focus { border-color: #f87171; }
+
+  /* Run notes */
+  .run-notes-wrap { margin-top: 20px; }
+  .run-notes-label { font-size: .78rem; font-weight: 700; color: #7c77a0; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  .run-notes { width: 100%; padding: 12px 14px; background: #1e1b2e; border: 1px solid #2e2a45; border-radius: 10px; color: #e8e6f0; font-size: .88rem; resize: vertical; min-height: 80px; outline: none; font-family: inherit; }
+  .run-notes:focus { border-color: #6c63ff; }
+
+  /* Bottom bar */
   .bottom { position: fixed; bottom: 0; left: 0; right: 0; background: #0f0e17; border-top: 1px solid #1e1b2e; padding: 14px 16px; display: flex; gap: 10px; justify-content: center; }
   .btn-submit { background: #6c63ff; color: #fff; border: none; border-radius: 10px; padding: 12px 32px; font-size: .95rem; font-weight: 700; cursor: pointer; transition: opacity .2s; }
   .btn-submit:disabled { opacity: .35; cursor: default; }
   .btn-submit:not(:disabled):hover { opacity: .85; }
   .btn-reset { background: #1e1b2e; color: #7c77a0; border: none; border-radius: 10px; padding: 12px 20px; font-size: .88rem; font-weight: 600; cursor: pointer; }
   .btn-reset:hover { background: #2a2540; }
-  .fail-note { display: none; width: 100%; margin: 2px 10px 8px; padding: 8px 12px; background: #1e1214; border: 1px solid #5a2020; border-radius: 8px; color: #f0d0d0; font-size: .82rem; resize: vertical; min-height: 56px; outline: none; font-family: inherit; box-sizing: border-box; width: calc(100% - 20px); }
-  .fail-note:focus { border-color: #f87171; }
   .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #4ade80; color: #0a1f12; padding: 10px 20px; border-radius: 10px; font-weight: 700; font-size: .88rem; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 99; }
   .toast.show { opacity: 1; }
 </style>
@@ -73,118 +118,24 @@
     <h1>Tether QA</h1>
     <a href="/qa-runs.html">View Past Runs →</a>
   </div>
+  <div class="version-bar">Version: <span id="versionLabel">—</span></div>
   <div class="platform-row">
     <button class="btn-platform" data-p="iOS">iOS</button>
     <button class="btn-platform" data-p="Android">Android</button>
     <button class="btn-platform" data-p="macOS">macOS</button>
     <button class="btn-platform" data-p="Windows">Windows</button>
   </div>
-  <input class="run-label" id="runLabel" type="text" placeholder="Run label (e.g. iPhone 15 — v1.3 — Danny)"/>
   <div class="progress-bar-wrap"><div class="progress-bar" id="bar" style="width:0%"></div></div>
   <div class="progress-label" id="progressLabel">0 evaluated</div>
 
-  <!-- AUTH -->
-  <section>
-    <h2>Auth</h2>
-    <div class="test-row" data-id="auth-1"><span class="test-label">Google OAuth sign-in completes and lands on app</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="auth-2"><span class="test-label">Lock screen → unlock → checkboxes respond and writes persist</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="auth-3"><span class="test-label">Sign out → auth screen shown, no app state visible</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="auth-4"><span class="test-label">Reassurance copy appears between OAuth buttons and "or use email" divider</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-  </section>
+  <div id="sections"></div>
 
-  <!-- TASKS -->
-  <section>
-    <h2>Tasks — Core</h2>
-    <div class="test-row" data-id="task-1"><span class="test-label">Create interval task — appears on Today tab with correct due badge</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="task-2"><span class="test-label">Create weekday task — appears on correct day</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="task-3"><span class="test-label">Create one-time task — appears on Today or Upcoming correctly</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="task-4"><span class="test-label">Swipe right → task completes, toast shown, task recurs correctly</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="task-5"><span class="test-label">Swipe right on task with checklist → confirm sheet appears</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="task-6"><span class="test-label">Swipe left → snooze sheet appears, snooze persists after refresh</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="task-7"><span class="test-label">Swipe dismiss — item gone from UI and gone after refresh (not reverting)</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="task-8"><span class="test-label">Edit task → changes saved, reflected immediately</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="task-9"><span class="test-label">Delete task → removed, does not reappear on refresh</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="task-10"><span class="test-label">Overdue badge shown for past-due tasks</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="task-11"><span class="test-label">Upcoming tab shows future tasks in correct order</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-  </section>
+  <div class="run-notes-wrap">
+    <div class="run-notes-label">Run Notes</div>
+    <textarea class="run-notes" id="runNotes" placeholder="Observations, suggested test additions, outdated tests to revisit…"></textarea>
+  </div>
 
-  <!-- CHECKLIST -->
-  <section>
-    <h2>Tasks — Checklist</h2>
-    <div class="test-row" data-id="cl-1"><span class="test-label">Expand task → checklist items shown</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="cl-2"><span class="test-label">Check checklist item → persists after collapse/reopen</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="cl-3"><span class="test-label">Add checklist item inline → appears immediately</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="cl-4"><span class="test-label">Delete checklist item → removed, no revert on refresh</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="cl-5"><span class="test-label">Complete task with all checklist items checked → no confirm sheet</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="cl-6"><span class="test-label">Complete task with unchecked items → confirm sheet appears</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-  </section>
-
-  <!-- EVENTS -->
-  <section>
-    <h2>Events</h2>
-    <div class="test-row" data-id="ev-1"><span class="test-label">Create event — appears on Events tab</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="ev-2"><span class="test-label">Event detail sheet opens on tap</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="ev-3"><span class="test-label">Edit event → changes saved</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="ev-4"><span class="test-label">Delete event → removed after confirm</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="ev-5"><span class="test-label">Bring list — add item, appears on list</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="ev-6"><span class="test-label">Bring list — claim item as "bringing"</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="ev-7"><span class="test-label">Navigate button launches Google Maps with event address</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="ev-8"><span class="test-label">Past events hidden / archived correctly</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-  </section>
-
-  <!-- GROCERY -->
-  <section>
-    <h2>Grocery</h2>
-    <div class="test-row" data-id="gr-1"><span class="test-label">Create grocery task → "Save &amp; Add Items" opens panel then quick-add sheet</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="gr-2"><span class="test-label">Chip grid loads, tapping chip selects/deselects correctly</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="gr-3"><span class="test-label">Confirm adds selected chips to list, sheet closes</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="gr-4"><span class="test-label">Items grouped by department on list view</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="gr-5"><span class="test-label">Emoji shown correctly per item (not dept fallback)</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="gr-6"><span class="test-label">FAB shows "＋ Add Items" when list empty, "✎ Edit List" when items present</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="gr-7"><span class="test-label">Qty +/– works: integer steps for count, 0.5 steps for weight items</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="gr-8"><span class="test-label">Direct-entry qty input updates correctly without scroll reset</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="gr-9"><span class="test-label">Size pills (S/M/L/XL) appear for volume items, tap-same deselects</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="gr-10"><span class="test-label">Inline custom add from list view (Enter or Add button) — appears in misc dept</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="gr-11"><span class="test-label">Custom add from Add Items sheet (name + dept select) — appears correctly</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="gr-12"><span class="test-label">Check off item on list → stays checked, not reset on reopen</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="gr-13"><span class="test-label">Reopening Add Items pre-selects chips already on list</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="gr-14"><span class="test-label">Removing items via Add Items → confirm panel shown when removals detected</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="gr-15"><span class="test-label">Fast path (no removals) skips confirm panel</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="gr-16"><span class="test-label">"Done Shopping" hidden when list empty, visible when items present</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="gr-17"><span class="test-label">"Done Shopping" completes the grocery task</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="gr-18"><span class="test-label">Double-tap confirm/add does not create duplicate inserts</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="gr-19"><span class="test-label">Unlock phone → grocery panel still shows correct list (no stale state)</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-  </section>
-
-  <!-- HOUSEHOLD -->
-  <section>
-    <h2>Household</h2>
-    <div class="test-row" data-id="hh-1"><span class="test-label">Household sheet opens from profile menu</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="hh-2"><span class="test-label">Create household — name saved, user shown as member</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="hh-3"><span class="test-label">Invite flow — invite sent (can verify in DB if needed)</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="hh-4"><span class="test-label">Assigned-to avatar shown on task rows in household context</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-  </section>
-
-  <!-- ONBOARDING -->
-  <section>
-    <h2>Onboarding</h2>
-    <div class="test-row" data-id="ob-1"><span class="test-label">New email sign-up → onboarding flow triggers</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="ob-2"><span class="test-label">Onboarding completes → lands on main app</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="ob-3"><span class="test-label">Returning user (onboarded=true) → onboarding skipped</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-  </section>
-
-  <!-- UI -->
-  <section>
-    <h2>UI / General</h2>
-    <div class="test-row" data-id="ui-1"><span class="test-label">Today / Upcoming / Events tabs switch correctly</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="ui-2"><span class="test-label">Background color picker saves and persists on reload</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="ui-3"><span class="test-label">Toast messages display and auto-dismiss</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="ui-4"><span class="test-label">Keyboard does not obscure input fields in sheets (scrolls into view)</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="ui-5"><span class="test-label">App works in PWA installed mode (add to home screen)</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-    <div class="test-row" data-id="ui-6"><span class="test-label">No console errors on normal flow</span><button class="btn-pass">Pass</button><button class="btn-fail">Fail</button></div>
-  </section>
-
-  <div style="height:60px"></div>
+  <div style="height:80px"></div>
 </div>
 
 <div class="bottom" id="bottomBar" style="display:none">
@@ -195,130 +146,395 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-  const results = {};
-  let currentUserId = null;
-  let selectedPlatform = null;
+const TEST_PLAN = [
+  {
+    id: 'auth', title: 'Auth',
+    tests: [
+      { id: 'auth-1', label: 'Google OAuth — sign-in completes and lands on app' },
+      { id: 'auth-2', label: 'Microsoft OAuth — sign-in completes and lands on app' },
+      { id: 'auth-3', label: 'Magic link — email received, link signs in correctly' },
+      { id: 'auth-4', label: 'Sign out → auth screen shown, no app state visible' },
+      { id: 'auth-5', label: 'Returning user (onboarded) → onboarding skipped, lands on main app' },
+      { id: 'auth-6', label: 'Lock screen → unlock → app state intact, writes still persist' },
+    ]
+  },
+  {
+    id: 'onboarding', title: 'Onboarding',
+    tests: [
+      { id: 'ob-1', label: 'New user → onboarding flow triggers after sign-in' },
+      { id: 'ob-2', label: 'Birthday step — Skip advances without saving' },
+      { id: 'ob-3', label: 'Birthday step — Save & continue saves to DB and advances' },
+      { id: 'ob-4', label: 'Anniversary step — Skip advances without saving' },
+      { id: 'ob-5', label: 'Anniversary step — Add saves correctly, Done advances' },
+      { id: 'ob-6', label: 'Household step — Skip for now advances without creating household' },
+      { id: 'ob-7', label: 'Household step — Create household saves name, user shown as member' },
+      { id: 'ob-8', label: 'Onboarding completes → lands on main app, onboarded=true in DB' },
+      { id: 'ob-9', label: 'Hard refresh after onboarding → does not re-trigger onboarding' },
+    ]
+  },
+  {
+    id: 'tasks', title: 'Tasks',
+    tests: [
+      { id: 'task-1', label: 'Create interval task — appears on Today tab with correct due badge' },
+      { id: 'task-2', label: 'Create weekday task — appears on correct day(s)' },
+      { id: 'task-3', label: 'Create one-time task — appears on Today or This Week correctly' },
+      { id: 'task-4', label: 'Create monthly task — appears on correct day' },
+      { id: 'task-5', label: 'Create annual task — appears in Annual list' },
+      { id: 'task-6', label: 'Swipe right → task completes, toast shown, recurring task advances correctly' },
+      { id: 'task-7', label: 'Swipe left → snooze sheet appears, snooze persists after refresh' },
+      { id: 'task-8', label: 'Swipe dismiss on one-time task → gone from UI and does not reappear on refresh' },
+      { id: 'task-9', label: 'Edit task → changes saved and reflected immediately' },
+      { id: 'task-10', label: 'Delete task → removed, does not reappear on refresh' },
+      { id: 'task-11', label: 'Overdue badge shown for past-due tasks' },
+      { id: 'task-12', label: 'Urgent flag — task marked urgent appears correctly' },
+    ],
+    subsections: [
+      {
+        id: 'checklist', title: 'Checklist',
+        tests: [
+          { id: 'cl-1', label: 'Expand task → checklist items shown' },
+          { id: 'cl-2', label: 'Check item → persists after collapse and reopen' },
+          { id: 'cl-3', label: 'Add checklist item inline → appears immediately' },
+          { id: 'cl-4', label: 'Delete checklist item → removed, no revert on refresh' },
+          { id: 'cl-5', label: 'Complete task with all items checked → no confirm sheet' },
+          { id: 'cl-6', label: 'Complete task with unchecked items → confirm sheet appears' },
+          { id: 'cl-7', label: 'Last checkbox checked → auto-prompt to complete task' },
+        ]
+      },
+      {
+        id: 'chores', title: 'Chores',
+        tests: [
+          { id: 'ch-1', label: 'Create chore list with daily cadence — appears correctly' },
+          { id: 'ch-2', label: 'Create chore list with weekly cadence — appears on correct days' },
+          { id: 'ch-3', label: 'Create chore list with monthly cadence — appears on correct day' },
+          { id: 'ch-4', label: 'Edit chore list — add items, delete items, changes saved' },
+          { id: 'ch-5', label: 'All Done → resets all items to unchecked, task recurs correctly' },
+          { id: 'ch-6', label: 'Delete chore list → removed from all views' },
+        ]
+      },
+      {
+        id: 'grocery', title: 'Grocery',
+        tests: [
+          { id: 'gr-1', label: 'Create grocery task → Save & Add Items opens panel then quick-add sheet' },
+          { id: 'gr-2', label: 'Chip grid loads, tapping chip selects/deselects correctly' },
+          { id: 'gr-3', label: 'Confirm adds selected chips to list, sheet closes' },
+          { id: 'gr-4', label: 'Items grouped by department on list view' },
+          { id: 'gr-5', label: 'Emoji shown per item (not dept fallback)' },
+          { id: 'gr-6', label: 'FAB shows "+ Add Items" when empty, "✎ Edit List" when items present' },
+          { id: 'gr-7', label: 'Qty +/– works: integer steps for count, 0.5 steps for weight' },
+          { id: 'gr-8', label: 'Direct-entry qty input updates correctly without scroll reset' },
+          { id: 'gr-9', label: 'Size pills (S/M/L/XL) appear for volume items, tap-same deselects' },
+          { id: 'gr-10', label: 'Quick-add row: dept selector changes dept of added item' },
+          { id: 'gr-11', label: 'Inline custom add from list view → appears in selected dept' },
+          { id: 'gr-12', label: 'Custom add from Add Items sheet (name + dept) → appears correctly' },
+          { id: 'gr-13', label: 'Edit item inline — name, dept, note saved correctly' },
+          { id: 'gr-14', label: 'Check item → stays checked on reopen (not reset)' },
+          { id: 'gr-15', label: 'Reopen Add Items → chips pre-selected for items already on list' },
+          { id: 'gr-16', label: 'Remove via Add Items → confirm panel shown when removals detected' },
+          { id: 'gr-17', label: 'Fast path (no removals) skips confirm panel' },
+          { id: 'gr-18', label: 'Done Shopping hidden when list empty, visible when items present' },
+          { id: 'gr-19', label: 'Done Shopping completes the grocery task' },
+          { id: 'gr-20', label: 'Double-tap confirm does not create duplicate inserts' },
+          { id: 'gr-21', label: 'Unlock phone → grocery list still shows correct state (no stale data)' },
+        ]
+      },
+    ]
+  },
+  {
+    id: 'events', title: 'Events',
+    tests: [
+      { id: 'ev-1', label: 'Create event → appears on Events tab in correct bucket (Future/Pending/Past)' },
+      { id: 'ev-2', label: 'Event detail sheet opens on tap' },
+      { id: 'ev-3', label: 'Edit event → changes saved correctly' },
+      { id: 'ev-4', label: 'Delete event → removed after confirm' },
+      { id: 'ev-5', label: 'Clone event → date cleared, all other fields copied' },
+      { id: 'ev-6', label: 'Navigate button launches Google Maps with event address' },
+      { id: 'ev-7', label: 'Past events appear in Past tab, not in Future' },
+    ],
+    subsections: [
+      {
+        id: 'attendees', title: 'Attendees',
+        tests: [
+          { id: 'att-1', label: 'Invite household member → appears in attendee list' },
+          { id: 'att-2', label: 'RSVP Going — updates correctly for invited user' },
+          { id: 'att-3', label: 'RSVP Tentative — updates correctly, note field optional' },
+          { id: 'att-4', label: "RSVP Can't make it — removes from active attendees" },
+          { id: 'att-5', label: 'Owner RSVP buttons hidden (owner is auto-going)' },
+        ]
+      },
+      {
+        id: 'bringlist', title: 'Bring List',
+        tests: [
+          { id: 'bl-1', label: 'Add bring list item → appears on list' },
+          { id: 'bl-2', label: 'Claim item → shown as claimed by current user' },
+          { id: 'bl-3', label: 'Unclaim item → reverts to unclaimed correctly' },
+        ]
+      },
+    ]
+  },
+  {
+    id: 'household', title: 'Household',
+    tests: [
+      { id: 'hh-1', label: 'Household sheet opens from profile menu' },
+      { id: 'hh-2', label: 'Create household → name saved, user shown as member' },
+      { id: 'hh-3', label: 'Invite by email → invite sent (verify in DB if needed)' },
+      { id: 'hh-4', label: 'Assigned-to avatar shown on task rows in household context' },
+    ]
+  },
+  {
+    id: 'annual', title: 'Annual',
+    tests: [
+      { id: 'an-1', label: 'Annual sheet opens from profile menu' },
+      { id: 'an-2', label: 'Annual items grouped by month, sorted by date within month' },
+      { id: 'an-3', label: 'Annual task surfaces on Today/This Week/This Month when due' },
+      { id: 'an-4', label: 'Holidays toggle saves and persists' },
+      { id: 'an-5', label: 'Party Every Day toggle saves and persists' },
+    ]
+  },
+  {
+    id: 'settings', title: 'Settings',
+    tests: [
+      { id: 'set-1', label: 'Theme — Dark applies immediately and persists on reload' },
+      { id: 'set-2', label: 'Theme — Light applies immediately and persists on reload' },
+      { id: 'set-3', label: 'Theme — System follows OS preference' },
+      { id: 'set-4', label: 'Color theme — each swatch changes background and accent correctly' },
+      { id: 'set-5', label: 'Color theme — persists on hard refresh' },
+      { id: 'set-6', label: 'Color theme — syncs across devices (verify on second device)' },
+    ]
+  },
+  {
+    id: 'ui', title: 'UI / General',
+    tests: [
+      { id: 'ui-1', label: 'Today / This Week / This Month tabs switch correctly' },
+      { id: 'ui-2', label: 'Toast messages display and auto-dismiss' },
+      { id: 'ui-3', label: 'Keyboard does not obscure input fields in sheets' },
+      { id: 'ui-4', label: 'App works in PWA installed mode (add to home screen)' },
+      { id: 'ui-5', label: 'No console errors on normal flow' },
+      { id: 'ui-6', label: 'Version shown correctly in footer and Settings' },
+      { id: 'ui-7', label: 'Auth screen shows only configured providers (no Apple/Facebook if not enabled)' },
+    ]
+  },
+];
 
-  async function init() {
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session?.user) {
-      document.getElementById('gate').innerHTML = 'Please <a href="/" style="color:#6c63ff">sign in to Tether</a> first.';
-      return;
-    }
-    const { data: user } = await sb.from('users').select('subscription_tier').eq('id', session.user.id).single();
-    if (!user || !['creator','employee'].includes(user.subscription_tier)) {
-      document.getElementById('gate').textContent = 'Access denied. Creator or Employee account required.';
-      return;
-    }
-    currentUserId = session.user.id;
-    document.getElementById('gate').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
-    document.getElementById('bottomBar').style.display = 'flex';
-    initButtons();
-    document.querySelectorAll('.btn-platform').forEach(btn => {
-      btn.addEventListener('click', () => {
-        selectedPlatform = selectedPlatform === btn.dataset.p ? null : btn.dataset.p;
-        document.querySelectorAll('.btn-platform').forEach(b => b.classList.toggle('active', b.dataset.p === selectedPlatform));
-      });
+const results = {};
+let currentUserId = null;
+let selectedPlatform = null;
+let appVersion = '—';
+
+function totalTests() {
+  let n = 0;
+  TEST_PLAN.forEach(s => {
+    n += s.tests.length;
+    (s.subsections || []).forEach(ss => { n += ss.tests.length; });
+  });
+  return n;
+}
+
+function buildSections() {
+  const container = document.getElementById('sections');
+  container.innerHTML = TEST_PLAN.map(section => {
+    const subsHtml = (section.subsections || []).map(ss => `
+      <div class="subsection" id="sub-${ss.id}">
+        <div class="subsection-header" onclick="toggleSub('${ss.id}')">
+          <span class="subsection-chevron">▶</span>
+          <span class="subsection-title">${ss.title}</span>
+          <div class="section-counts" id="subcounts-${ss.id}"></div>
+        </div>
+        <div class="subsection-body">
+          ${ss.tests.map(t => testRowHtml(t)).join('')}
+        </div>
+      </div>`).join('');
+
+    return `
+      <div class="section" id="sec-${section.id}">
+        <div class="section-header" onclick="toggleSec('${section.id}')">
+          <span class="section-chevron">▶</span>
+          <span class="section-title">${section.title}</span>
+          <div class="section-counts" id="counts-${section.id}"></div>
+        </div>
+        <div class="section-body">
+          ${section.tests.map(t => testRowHtml(t)).join('')}
+          ${subsHtml}
+        </div>
+      </div>`;
+  }).join('');
+
+  // Wire up buttons
+  document.querySelectorAll('.test-row').forEach(row => {
+    const id = row.dataset.id;
+    const label = row.querySelector('.test-label').textContent;
+    const btnPass = row.querySelector('.btn-pass');
+    const btnFail = row.querySelector('.btn-fail');
+    const btnNa   = row.querySelector('.btn-na');
+    const note = document.createElement('textarea');
+    note.className = 'fail-note';
+    note.placeholder = 'Describe what went wrong…';
+    note.addEventListener('input', () => { if (results[id]) results[id].note = note.value.trim(); });
+    row.insertAdjacentElement('afterend', note);
+    btnPass.addEventListener('click', () => setResult(id, label, 'pass', row, note));
+    btnFail.addEventListener('click', () => setResult(id, label, 'fail', row, note));
+    btnNa.addEventListener('click',   () => setResult(id, label, 'na',   row, note));
+  });
+}
+
+function testRowHtml(t) {
+  return `<div class="test-row" data-id="${t.id}">
+    <span class="test-label">${t.label}</span>
+    <button class="btn-pass">Pass</button>
+    <button class="btn-fail">Fail</button>
+    <button class="btn-na">N/A</button>
+  </div>`;
+}
+
+function toggleSec(id) {
+  document.getElementById('sec-' + id).classList.toggle('open');
+}
+function toggleSub(id) {
+  document.getElementById('sub-' + id).classList.toggle('open');
+}
+
+function setResult(id, label, result, row, note) {
+  if (results[id]?.result === result) {
+    delete results[id];
+    row.querySelectorAll('.btn-pass,.btn-fail,.btn-na').forEach(b => b.classList.remove('active'));
+    row.querySelector('.test-label').className = 'test-label';
+    note.style.display = 'none'; note.value = '';
+  } else {
+    results[id] = { label, result };
+    row.querySelectorAll('.btn-pass,.btn-fail,.btn-na').forEach(b => b.classList.remove('active'));
+    row.querySelector('.btn-' + result).classList.add('active');
+    row.querySelector('.test-label').className = 'test-label ' + result;
+    note.style.display = result === 'fail' ? 'block' : 'none';
+    if (result !== 'fail') note.value = '';
+  }
+  updateProgress();
+  updateCounts();
+}
+
+function updateProgress() {
+  const total = totalTests();
+  const evaluated = Object.keys(results).length;
+  const passed = Object.values(results).filter(r => r.result === 'pass').length;
+  const failed = Object.values(results).filter(r => r.result === 'fail').length;
+  const pct = total ? (evaluated / total) * 100 : 0;
+  document.getElementById('bar').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent =
+    evaluated === 0 ? `0 / ${total} evaluated`
+    : `${evaluated} / ${total} evaluated — ${passed} pass, ${failed} fail`;
+  document.getElementById('btnSubmit').disabled = evaluated === 0;
+}
+
+function updateCounts() {
+  TEST_PLAN.forEach(section => {
+    const allTests = [...section.tests, ...(section.subsections || []).flatMap(ss => ss.tests)];
+    setCounts('counts-' + section.id, allTests);
+    (section.subsections || []).forEach(ss => {
+      setCounts('subcounts-' + ss.id, ss.tests);
     });
+  });
+}
+
+function setCounts(elId, tests) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const pass = tests.filter(t => results[t.id]?.result === 'pass').length;
+  const fail = tests.filter(t => results[t.id]?.result === 'fail').length;
+  const na   = tests.filter(t => results[t.id]?.result === 'na').length;
+  const left = tests.length - pass - fail - na;
+  el.innerHTML = [
+    pass ? `<span class="sc sc-pass">${pass} pass</span>` : '',
+    fail ? `<span class="sc sc-fail">${fail} fail</span>` : '',
+    na   ? `<span class="sc sc-na">${na} n/a</span>`   : '',
+    left ? `<span class="sc sc-left">${left} left</span>` : '',
+  ].join('');
+}
+
+function resetAll() {
+  Object.keys(results).forEach(k => delete results[k]);
+  document.querySelectorAll('.btn-pass,.btn-fail,.btn-na').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.test-label').forEach(l => l.className = 'test-label');
+  document.querySelectorAll('.fail-note').forEach(n => { n.style.display = 'none'; n.value = ''; });
+  document.getElementById('runNotes').value = '';
+  selectedPlatform = null;
+  document.querySelectorAll('.btn-platform').forEach(b => b.classList.remove('active'));
+  updateProgress();
+  updateCounts();
+}
+
+async function submitRun() {
+  const btn = document.getElementById('btnSubmit');
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+  const platformPrefix = selectedPlatform ? `[${selectedPlatform}] ` : '';
+  const label = (platformPrefix + 'v' + appVersion).trim();
+  const { error } = await sb.from('qa_runs').insert({
+    submitted_by: currentUserId,
+    label,
+    platform: selectedPlatform,
+    version: appVersion,
+    notes: document.getElementById('runNotes').value.trim() || null,
+    results
+  });
+  if (error) {
+    showToast('Error: ' + error.message, true);
+    btn.disabled = false;
+    btn.textContent = 'Submit Run';
+  } else {
+    showToast('Run submitted!');
+    setTimeout(() => window.location.href = '/qa-runs.html', 1200);
   }
+}
 
-  function initButtons() {
-    document.querySelectorAll('.test-row').forEach(row => {
-      const id = row.dataset.id;
-      const label = row.querySelector('.test-label').textContent;
-      const btnPass = row.querySelector('.btn-pass');
-      const btnFail = row.querySelector('.btn-fail');
+function showToast(msg, isError) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = isError ? '#f87171' : '#4ade80';
+  t.style.color = isError ? '#2e0a0a' : '#0a1f12';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
 
-      const note = document.createElement('textarea');
-      note.className = 'fail-note';
-      note.placeholder = 'Describe what went wrong…';
-      note.addEventListener('input', () => {
-        if (results[id]) results[id].note = note.value.trim();
-      });
-      row.insertAdjacentElement('afterend', note);
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session?.user) {
+    document.getElementById('gate').innerHTML = 'Please <a href="/" style="color:#6c63ff">sign in to Tether</a> first.';
+    return;
+  }
+  const { data: user } = await sb.from('users').select('subscription_tier').eq('id', session.user.id).single();
+  if (!user || !['creator','employee'].includes(user.subscription_tier)) {
+    document.getElementById('gate').textContent = 'Access denied. Creator or Employee account required.';
+    return;
+  }
+  currentUserId = session.user.id;
 
-      btnPass.addEventListener('click', () => setResult(id, label, 'pass', btnPass, btnFail, row, note));
-      btnFail.addEventListener('click', () => setResult(id, label, 'fail', btnFail, btnPass, row, note));
+  // Get version
+  try {
+    const r = await fetch('/version.js?v=' + Date.now());
+    const text = await r.text();
+    const match = text.match(/"([^"]+)"/);
+    if (match) appVersion = match[1];
+  } catch(_) {}
+  document.getElementById('versionLabel').textContent = appVersion;
+
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('bottomBar').style.display = 'flex';
+
+  buildSections();
+  updateProgress();
+  updateCounts();
+
+  document.querySelectorAll('.btn-platform').forEach(btn => {
+    btn.addEventListener('click', () => {
+      selectedPlatform = selectedPlatform === btn.dataset.p ? null : btn.dataset.p;
+      document.querySelectorAll('.btn-platform').forEach(b => b.classList.toggle('active', b.dataset.p === selectedPlatform));
     });
-  }
+  });
+}
 
-  function setResult(id, label, result, activeBtn, otherBtn, row, note) {
-    if (results[id]?.result === result) {
-      delete results[id];
-      activeBtn.classList.remove('active');
-      row.querySelector('.test-label').className = 'test-label';
-      note.style.display = 'none';
-      note.value = '';
-    } else {
-      results[id] = { label, result };
-      activeBtn.classList.add('active');
-      otherBtn.classList.remove('active');
-      row.querySelector('.test-label').className = 'test-label ' + result;
-      note.style.display = result === 'fail' ? 'block' : 'none';
-      if (result === 'pass') note.value = '';
-    }
-    updateProgress();
-  }
-
-  function updateProgress() {
-    const total = document.querySelectorAll('.test-row').length;
-    const evaluated = Object.keys(results).length;
-    const passed = Object.values(results).filter(r => r.result === 'pass').length;
-    const failed = Object.values(results).filter(r => r.result === 'fail').length;
-    const pct = total ? (evaluated / total) * 100 : 0;
-    document.getElementById('bar').style.width = pct + '%';
-    document.getElementById('progressLabel').textContent =
-      evaluated === 0 ? '0 evaluated'
-      : `${evaluated} / ${total} evaluated — ${passed} pass, ${failed} fail`;
-    document.getElementById('btnSubmit').disabled = evaluated === 0;
-  }
-
-  function resetAll() {
-    Object.keys(results).forEach(k => delete results[k]);
-    document.querySelectorAll('.btn-pass, .btn-fail').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.test-label').forEach(l => l.className = 'test-label');
-    document.querySelectorAll('.fail-note').forEach(n => { n.style.display = 'none'; n.value = ''; });
-    document.getElementById('runLabel').value = '';
-    selectedPlatform = null;
-    document.querySelectorAll('.btn-platform').forEach(b => b.classList.remove('active'));
-    updateProgress();
-  }
-
-  async function submitRun() {
-    const btn = document.getElementById('btnSubmit');
-    btn.disabled = true;
-    btn.textContent = 'Submitting…';
-    const labelInput = document.getElementById('runLabel').value.trim();
-    const platformPrefix = selectedPlatform ? `[${selectedPlatform}] ` : '';
-    const label = (platformPrefix + (labelInput || 'Unlabeled run')).trim();
-    const { error } = await sb.from('qa_runs').insert({
-      submitted_by: currentUserId,
-      label,
-      results
-    });
-    if (error) {
-      showToast('Error: ' + error.message, true);
-      btn.disabled = false;
-      btn.textContent = 'Submit Run';
-    } else {
-      showToast('Run submitted!');
-      setTimeout(() => window.location.href = '/qa-runs.html', 1200);
-    }
-  }
-
-  function showToast(msg, isError) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.style.background = isError ? '#f87171' : '#4ade80';
-    t.style.color = isError ? '#2e0a0a' : '#0a1f12';
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2500);
-  }
-
-  init();
+init();
 </script>
 </body>
 </html>
