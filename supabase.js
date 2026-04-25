@@ -33,12 +33,14 @@ async function onSignedIn(user) {
   const [, , prefResult, obResult] = await Promise.all([
     loadItems(),
     loadHousehold(),
-    sb.from('users').select('holidays_enabled, party_days_enabled').eq('id', user.id).single(),
+    sb.from('users').select('holidays_enabled, party_days_enabled, preferences').eq('id', user.id).single(),
     checkOnboarding()
   ]);
   if (prefResult?.data) {
     userPrefs.holidaysEnabled = prefResult.data.holidays_enabled || false;
     userPrefs.partyDaysEnabled = prefResult.data.party_days_enabled || false;
+    userPrefs.preferences = prefResult.data.preferences || {};
+    if (userPrefs.preferences.colorTheme) applyColorTheme(userPrefs.preferences.colorTheme);
   }
   document.getElementById('loadingScreen').classList.remove('open');
   document.getElementById('authScreen').classList.remove('open');

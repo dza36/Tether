@@ -746,7 +746,7 @@ function rowHTML(item, isOverdue) {
   let expandedPanel = '';
   if (exp) {
     if (isEvent) expandedPanel = `<div class="event-panel" id="evpanel-${item.id}">Loading...</div>`;
-    else if (isChore) expandedPanel = `<div class="chore-panel" id="chorepanel-${item.id}"><div style="color:#AFA9EC;font-size:13px;padding:.5rem 0">Loading...</div></div>`;
+    else if (isChore) expandedPanel = `<div class="chore-panel" id="chorepanel-${item.id}"><div style="color:var(--accent-soft);font-size:13px;padding:.5rem 0">Loading...</div></div>`;
     else expandedPanel = `<div class="checklist-panel" id="clpanel-${item.id}">${clHTML(item)}</div>`;
   }
   return `<div class="row-outer" id="outer-${item.id}">
@@ -1548,7 +1548,7 @@ function renderAttendeeSearch() {
         const selectedCount = members.filter(m => eventAttendeeDraft.some(a => a.userId === m.userId)).length;
         const meta = selectedCount > 0 ? `${selectedCount} of ${members.length} selected` : `${members.length} member${members.length===1?'':'s'}`;
         return `<div class="social-row" onclick="attendeeGroupViewId='${g.id}';renderAttendeeSearch()">
-          <div class="social-avatar" style="background:#F7F6FF;font-size:18px">👥</div>
+          <div class="social-avatar" style="background:var(--surface);font-size:18px">👥</div>
           <div class="social-row-info">
             <div class="social-row-name">${g.name}</div>
             <div class="social-row-meta">${meta}</div>
@@ -1900,7 +1900,7 @@ async function renderGroupsSheet(groupId) {
     body.innerHTML = groups.map(g => {
       const n = countMap[g.id] || 0;
       return `<div class="social-row" onclick="renderGroupsSheet('${g.id}')">
-        <div class="social-avatar" style="background:#F7F6FF;font-size:18px">👥</div>
+        <div class="social-avatar" style="background:var(--surface);font-size:18px">👥</div>
         <div class="social-row-info">
           <div class="social-row-name">${g.name}</div>
           <div class="social-row-meta">${n} member${n === 1 ? '' : 's'}</div>
@@ -2672,12 +2672,12 @@ function renderAnnualContent() {
   html += '<div class="annual-section" style="margin-top:1.5rem">More</div>';
   html += `<div class="annual-toggle-row">
     <div class="annual-toggle-label"><span>🇺🇸</span> Holidays</div>
-    <input type="checkbox" ${userPrefs.holidaysEnabled ? 'checked' : ''} onchange="toggleAnnualPref('holidaysEnabled',this.checked)" style="width:20px;height:20px;cursor:pointer;accent-color:#534AB7"/>
+    <input type="checkbox" ${userPrefs.holidaysEnabled ? 'checked' : ''} onchange="toggleAnnualPref('holidaysEnabled',this.checked)" style="width:20px;height:20px;cursor:pointer;accent-color:var(--accent)"/>
   </div>`;
   if (userPrefs.holidaysEnabled) html += '<div class="annual-coming-soon">Coming soon</div>';
   html += `<div class="annual-toggle-row">
     <div class="annual-toggle-label"><span>🎉</span> Party Every Day</div>
-    <input type="checkbox" ${userPrefs.partyDaysEnabled ? 'checked' : ''} onchange="toggleAnnualPref('partyDaysEnabled',this.checked)" style="width:20px;height:20px;cursor:pointer;accent-color:#534AB7"/>
+    <input type="checkbox" ${userPrefs.partyDaysEnabled ? 'checked' : ''} onchange="toggleAnnualPref('partyDaysEnabled',this.checked)" style="width:20px;height:20px;cursor:pointer;accent-color:var(--accent)"/>
   </div>`;
   if (userPrefs.partyDaysEnabled) html += '<div class="annual-coming-soon">Coming soon</div>';
 
@@ -2718,7 +2718,7 @@ function showCelebration() {
 
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
-  const COLORS = ['#534AB7','#7B72D4','#B8A9FF','#E8E5FF','#ffffff','#FFD700','#AFA9EC','#C4B0FF','#fff9c4'];
+  const COLORS = ['var(--accent)','var(--accent-mid)','#B8A9FF','#E8E5FF','#ffffff','#FFD700','var(--accent-soft)','#C4B0FF','#fff9c4'];
   const particles = [];
 
   function burst(x, y) {
@@ -2777,9 +2777,98 @@ function showCelebration() {
 }
 
 // ─── THEME ────────────────────────────────────────────────────────────────────
+const COLOR_THEMES = [
+  {
+    id: 'tether',
+    name: 'Tether',
+    bg: '#0B353B',
+    accent: '#534AB7',
+    'accent-dark': '#26215C',
+    'accent-mid': '#7B72D4',
+    'accent-soft': '#AFA9EC',
+    'accent-pale': '#CECBF6',
+    surface: '#F7F6FF',
+  },
+  {
+    id: 'ocean',
+    name: 'Ocean',
+    bg: '#0A2340',
+    accent: '#0284C7',
+    'accent-dark': '#0C4A6E',
+    'accent-mid': '#38BDF8',
+    'accent-soft': '#7DD3FC',
+    'accent-pale': '#BAE6FD',
+    surface: '#F0F9FF',
+  },
+  {
+    id: 'dusk',
+    name: 'Dusk',
+    bg: '#2D1B4E',
+    accent: '#9333EA',
+    'accent-dark': '#3B0764',
+    'accent-mid': '#A855F7',
+    'accent-soft': '#C084FC',
+    'accent-pale': '#E9D5FF',
+    surface: '#FAF5FF',
+  },
+  {
+    id: 'forest',
+    name: 'Forest',
+    bg: '#142614',
+    accent: '#16A34A',
+    'accent-dark': '#14532D',
+    'accent-mid': '#4ADE80',
+    'accent-soft': '#86EFAC',
+    'accent-pale': '#BBF7D0',
+    surface: '#F0FDF4',
+  },
+  {
+    id: 'ember',
+    name: 'Ember',
+    bg: '#2C1A10',
+    accent: '#EA580C',
+    'accent-dark': '#7C2D12',
+    'accent-mid': '#F97316',
+    'accent-soft': '#FB923C',
+    'accent-pale': '#FED7AA',
+    surface: '#FFF7ED',
+  },
+];
+
 function initTheme() {
-  const saved = localStorage.getItem('tether-theme') || 'system';
-  applyTheme(saved);
+  const savedMode = localStorage.getItem('tether-theme') || 'system';
+  const savedColorTheme = localStorage.getItem('tether-color-theme') || 'tether';
+  applyColorTheme(savedColorTheme);
+  applyTheme(savedMode);
+}
+
+function applyColorTheme(themeId) {
+  const theme = COLOR_THEMES.find(t => t.id === themeId) || COLOR_THEMES[0];
+  const html = document.documentElement;
+  html.style.setProperty('--bg', theme.bg);
+  html.style.setProperty('--accent', theme.accent);
+  html.style.setProperty('--accent-dark', theme['accent-dark']);
+  html.style.setProperty('--accent-mid', theme['accent-mid']);
+  html.style.setProperty('--accent-soft', theme['accent-soft']);
+  html.style.setProperty('--accent-pale', theme['accent-pale']);
+  html.style.setProperty('--surface', theme.surface);
+  localStorage.setItem('tether-color-theme', themeId);
+  localStorage.setItem('tether-bg', theme.bg);
+}
+
+function setColorTheme(themeId) {
+  applyColorTheme(themeId);
+  document.querySelectorAll('.color-theme-swatch').forEach(s => {
+    s.classList.toggle('active', s.dataset.themeId === themeId);
+  });
+  if (currentUser) persistColorTheme(themeId);
+}
+
+async function persistColorTheme(themeId) {
+  const prefs = userPrefs.preferences || {};
+  prefs.colorTheme = themeId;
+  userPrefs.preferences = prefs;
+  await sb.from('users').update({ preferences: prefs }).eq('id', currentUser.id);
 }
 
 function applyTheme(theme) {
@@ -2791,15 +2880,11 @@ function applyTheme(theme) {
   } else {
     html.removeAttribute('data-theme');
   }
-  // Re-assert --bg so theme changes never clobber the custom background
-  const savedBg = localStorage.getItem('tether-bg');
-  if (savedBg) html.style.setProperty('--bg', savedBg);
 }
 
 function setTheme(theme) {
   localStorage.setItem('tether-theme', theme);
   applyTheme(theme);
-  // Refresh pill states if settings sheet is open
   document.querySelectorAll('.theme-pill').forEach(p => {
     p.classList.toggle('active', p.dataset.theme === theme);
   });
@@ -2832,14 +2917,14 @@ function renderSettingsSheet() {
         <button class="theme-pill${currentTheme==='system'?' active':''}" data-theme="system" onclick="setTheme('system')">System</button>
       </div>
     </div>
-    <div class="settings-row">
-      <div class="settings-row-info">
-        <div class="settings-row-label">Background color</div>
-        <div class="settings-row-sub">App background tint</div>
-      </div>
-      <div class="bg-color-control">
-        <div class="bg-color-swatch" id="bgSwatch" style="background:${currentBg}"></div>
-        <input type="text" class="bg-color-input" id="bgColorInput" maxlength="7" spellcheck="false" placeholder="#0B353B" value="${currentBg}"/>
+    <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:10px">
+      <div class="settings-row-label">Color theme</div>
+      <div class="color-theme-swatches">${COLOR_THEMES.map(t => `
+        <button class="color-theme-swatch${localStorage.getItem('tether-color-theme')===t.id?' active':''}" data-theme-id="${t.id}" onclick="setColorTheme('${t.id}')" title="${t.name}">
+          <span class="color-theme-bg" style="background:${t.bg}"></span>
+          <span class="color-theme-accent" style="background:${t.accent}"></span>
+          <span class="color-theme-name">${t.name}</span>
+        </button>`).join('')}
       </div>
     </div>
 
@@ -2849,7 +2934,7 @@ function renderSettingsSheet() {
         <div class="settings-row-label">Daily reset time</div>
         <div class="settings-row-sub">When tasks reset to "due today"</div>
       </div>
-      <input type="time" value="00:00" style="padding:6px 10px;border-radius:10px;border:0.5px solid #CECBF6;background:#F7F6FF;color:#26215C;font-family:inherit;font-size:14px"/>
+      <input type="time" value="00:00" style="padding:6px 10px;border-radius:10px;border:0.5px solid var(--accent-pale);background:var(--surface);color:var(--accent-dark);font-family:inherit;font-size:14px"/>
     </div>
 
     <div class="settings-section">Integrations</div>
@@ -2858,7 +2943,7 @@ function renderSettingsSheet() {
         <div class="settings-row-label">Calendar sync</div>
         <div class="settings-row-sub">Coming soon</div>
       </div>
-      <span style="font-size:12px;color:#AFA9EC;font-weight:600">Soon</span>
+      <span style="font-size:12px;color:var(--accent-soft);font-weight:600">Soon</span>
     </div>
 
     <div class="settings-section">About</div>
@@ -2868,7 +2953,7 @@ function renderSettingsSheet() {
       </div>
       <div style="display:flex;align-items:center;gap:6px">
         <span class="settings-version">${version}</span>
-        <span class="settings-version-chevron" style="color:#AFA9EC;font-size:16px">›</span>
+        <span class="settings-version-chevron" style="color:var(--accent-soft);font-size:16px">›</span>
       </div>
     </div>
   `;
@@ -3758,7 +3843,7 @@ async function loadAndRenderChorePanel(taskId) {
 function renderChorePanelHTML(taskId) {
   const done = choreListItems.filter(c=>c.done).length;
   const total = choreListItems.length;
-  if (!total) return `<div style="color:#AFA9EC;font-size:13px;padding:.25rem 0">No items yet.</div>
+  if (!total) return `<div style="color:var(--accent-soft);font-size:13px;padding:.25rem 0">No items yet.</div>
     <div class="chore-panel-actions">
       <button class="chore-edit-list-btn" onclick="openChoreEditSheet('${taskId}','add')">＋ Add Items</button>
       <button class="chore-panel-del" onclick="deleteChoreTask('${taskId}')">🗑</button>
