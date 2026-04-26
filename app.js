@@ -2184,7 +2184,7 @@ async function acceptPendingInvite() {
     .eq('id', pendingInvite.id);
   // Add to household members
   await sb.from('household_members')
-    .insert({ household_id: pendingInvite.household_id, user_id: currentUser.id, role: 'member' });
+    .insert({ household_id: pendingInvite.household_id, user_id: currentUser.id, role: 'adult' });
   pendingInvite = null;
   document.getElementById('inviteBanner').classList.remove('show');
   document.getElementById('notifBadge').classList.remove('show');
@@ -2373,7 +2373,7 @@ async function renderHouseholdContent() {
 
 async function approveJoinRequest(inviteId, userId) {
   await sb.from('household_invites').update({ status: 'accepted' }).eq('id', inviteId);
-  await sb.from('household_members').insert({ household_id: currentHousehold.id, user_id: userId, role: 'member' });
+  await sb.from('household_members').insert({ household_id: currentHousehold.id, user_id: userId, role: 'adult' });
   showToast('Member added!');
   renderHouseholdContent();
 }
