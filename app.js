@@ -111,22 +111,21 @@ function itemVisibleInTab(item, tabName) {
   // Dismissed tasks never show (they will reappear when due again naturally)
   if (item.status === 'cancelled') return false;
 
-  const d = daysUntil(item);
-  const due = getDueDate(item);
+  // Snoozed items: tab determined by altDueDate, never in Today
+  if (isSnoozed(item)) {
+    const snoozeDays = dateDiff(today, new Date(item.altDueDate + 'T00:00:00'));
+    if (tabName === 'today') return false;
+    if (tabName === 'week') return snoozeDays >= 1 && snoozeDays <= 7;
+    if (tabName === 'beyond') return snoozeDays > 7;
+    return false;
+  }
 
-  if (tabName === 'today') {
-    // Show overdue and due today (events included)
-    return d <= 0;
-  }
-  if (tabName === 'week') {
-    // Rolling 7 days from today — events always show if within window or overdue
-    return due <= rollingWeekEnd();
-  }
-  if (tabName === 'month') {
-    // Rolling 30 days from today — events always show if within window or overdue
-    return due <= rollingMonthEnd();
-  }
-  return true;
+  const d = daysUntil(item);
+
+  if (tabName === 'today') return d <= 0;
+  if (tabName === 'week') return d >= 1 && d <= 7;
+  if (tabName === 'beyond') return d > 7;
+  return false;
 }
 
 function fmtInterval(days) {
@@ -231,6 +230,7 @@ function showToast(msg) {
 
 // ─── ITEM ACTIONS ─────────────────────────────────────────────────────────────
 let tab="today", expandedId=null, itemType="interval", selectedWeekdays=[1], selectedTaskCategory='custom';
+// tab values: 'today' | 'week' | 'beyond'
 
 async function completeItem(id) {
   const item = items.find(i=>i.id===id); if (!item) return;
@@ -355,7 +355,8 @@ let snoozeDays = 1;
 function openSnoozeSheet(id) {
   const item = items.find(i=>i.id===id); if (!item) return;
   snoozeTargetId = id;
-  snoozeDays = 1;
+  // Minimum snooze days ensures item moves to the next tab
+  snoozeDays = tab === 'week' || tab === 'beyond' ? 8 : 1;
   document.getElementById('snoozeItemName').textContent = item.name;
   updateSnoozeDaysDisplay();
   document.getElementById('snoozeBg').classList.add('open');
@@ -371,7 +372,8 @@ function bgClickSnooze(e) {
 }
 
 function adjustSnoozeDays(delta) {
-  snoozeDays = Math.max(1, snoozeDays + delta);
+  const min = tab === 'week' || tab === 'beyond' ? 8 : 1;
+  snoozeDays = Math.max(min, snoozeDays + delta);
   updateSnoozeDaysDisplay();
 }
 
@@ -824,7 +826,7 @@ function render() {
         <div class="slate-sub">Nothing left for today.<br>Rest easy — you've got this.</div>
       </div>`;
     } else {
-      html = `<div class="empty-state"><div class="empty-icon">⚓</div><p>Nothing due ${tab === 'week' ? 'this week' : 'this month'}.<br>You're ahead of the game.</p></div>`;
+      html = `<div class="empty-state"><div class="empty-icon">⚓</div><p>Nothing ${tab === 'week' ? 'coming up this week' : 'on the horizon'}.<br>You're ahead of the game.</p></div>`;
     }
   } else {
     if (tab === 'today') celebrationShown = false;
