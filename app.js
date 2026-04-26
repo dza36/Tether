@@ -1752,7 +1752,7 @@ function renderEventListPanel(item, now) {
   let html = '<div class="evlist-panel">';
 
   if (item.location) {
-    html += `<div class="evlist-panel-location">📍 ${item.location}</div>`;
+    html += `<div class="evlist-panel-location">📍 <a href="https://maps.google.com/maps?q=${encodeURIComponent(item.location)}" target="_blank" rel="noopener" class="evlist-location-link">${item.location}</a></div>`;
   }
 
   if (!isPast && isInvited) {
