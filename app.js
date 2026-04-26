@@ -2182,8 +2182,8 @@ async function createHousehold(name) {
     .insert({ household_id: hh.id, user_id: currentUser.id, role: 'admin' });
   if (memberError) {
     showToast('Member error: ' + memberError.message);
-    // Clean up the orphaned household
-    await sb.from('households').delete().eq('id', hh.id);
+    // Mark orphaned household as deleted
+    await sb.from('households').update({ status: 'deleted' }).eq('id', hh.id);
     return;
   }
 
@@ -3429,6 +3429,7 @@ async function loadGroceryItems() {
   const { data, error } = await sb.from('grocery_items')
     .select('*')
     .eq('task_id', groceryTaskId)
+    .neq('status', 'deleted')
     .order('created_at', { ascending: true });
   if (error) { showToast('Load error: ' + error.message); return; }
   groceryListItems = data || [];
@@ -3734,7 +3735,7 @@ async function applyDiff(diff) {
   }
   if (d.removing.length) {
     const ids = d.removing.map(gi => gi.id);
-    const { error } = await sb.from('grocery_items').delete().in('id', ids);
+    const { error } = await sb.from('grocery_items').update({ status: 'deleted' }).in('id', ids);
     if (error) { grocerySubmitting = false; showToast('Error: ' + error.message); return; }
   }
   await loadGroceryItems();
@@ -3822,7 +3823,7 @@ async function quickAddCustomItem() {
 }
 
 async function removeGroceryItem(id) {
-  const { error } = await sb.from('grocery_items').delete().eq('id', id);
+  const { error } = await sb.from('grocery_items').update({ status: 'deleted' }).eq('id', id);
   if (error) { showToast('Error: ' + error.message); return; }
   groceryListItems = groceryListItems.filter(g => g.id !== id);
   renderGroceryListView();

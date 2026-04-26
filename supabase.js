@@ -257,8 +257,8 @@ function onRealtimeChange(payload) {
 // ── Load ──────────────────────────────────────────────────────────────────────
 async function loadItems() {
   const [tasksRes, eventsRes, guestRes] = await Promise.all([
-    sb.from('tether_items').select('*').order('created_at', { ascending: true }),
-    sb.from('items').select('*').eq('item_type', 'event').order('created_at', { ascending: true }),
+    sb.from('tether_items').select('*').neq('status', 'deleted').order('created_at', { ascending: true }),
+    sb.from('items').select('*').eq('item_type', 'event').neq('status', 'deleted').order('created_at', { ascending: true }),
     sb.from('event_guests').select('item_id, rsvp_status, note').eq('user_id', currentUser.id).eq('is_owner', false),
   ]);
   if (tasksRes.error) { showToast('Load error: ' + tasksRes.error.message); return; }
@@ -374,7 +374,7 @@ async function persistUserPref(key, value) {
 
 // ─── CHORE ITEMS ──────────────────────────────────────────────────────────────
 async function loadChoreItems(taskId) {
-  const { data, error } = await sb.from('chore_items').select('*').eq('task_id', taskId).order('created_at', { ascending: true });
+  const { data, error } = await sb.from('chore_items').select('*').eq('task_id', taskId).neq('status', 'deleted').order('created_at', { ascending: true });
   if (error) { showToast('Load error: ' + error.message); return []; }
   return data || [];
 }
@@ -386,7 +386,7 @@ async function insertChoreItems(taskId, names, householdId) {
 }
 
 async function deleteChoreItems(ids) {
-  const { error } = await sb.from('chore_items').delete().in('id', ids);
+  const { error } = await sb.from('chore_items').update({ status: 'deleted' }).in('id', ids);
   if (error) showToast('Delete error: ' + error.message);
 }
 
@@ -402,7 +402,7 @@ async function resetChoreItems(taskId) {
 async function deleteItemFromDb(id) {
   const item = items.find(i => i.id === id);
   const table = item?.type === 'event' ? 'items' : 'tether_items';
-  const { error } = await sb.from(table).delete().eq('id', id);
+  const { error } = await sb.from(table).update({ status: 'deleted' }).eq('id', id);
   if (error) {
     aiError('deleteItem', error, { name: item?.name, type: item?.type });
     showToast('Delete error: ' + error.message);
