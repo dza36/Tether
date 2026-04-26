@@ -4241,7 +4241,9 @@ async function confirmChoreApply() {
 document.addEventListener('visibilitychange', async () => {
   if (document.hidden || !currentUser) return;
   const { data: { session } } = await sb.auth.getSession();
-  if (session?.user) currentUser = session.user;
+  if (!session?.user) { showAuth(); return; }
+  currentUser = session.user;
+  setupRealtime();
   await loadItems();
   render();
   if (groceryTaskId) loadGroceryItems();

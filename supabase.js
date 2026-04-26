@@ -238,6 +238,8 @@ function setupRealtime() {
   realtimeChannel = sb.channel('tether-sync')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'tether_items' }, onRealtimeChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'items' }, onRealtimeChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'occasions' }, onRealtimeChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'household_invites' }, onRealtimeChange)
     .subscribe((status, err) => {
       console.log('[Realtime]', status, err || '');
     });
