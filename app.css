@@ -542,6 +542,11 @@
   .rsvp-btn.tentative{background:#FEF9C3;color:#854D0E;border-color:#F6E05E}
   .rsvp-btn.active-tentative{background:#D97706;color:#fff;border-color:#D97706}
   .attendee-status.tentative{background:#FEF9C3;color:#854D0E}
+  .rsvp-note-wrap{margin-bottom:.75rem}
+  .rsvp-note-input{width:100%;padding:10px 12px;border-radius:10px;border:0.5px solid var(--accent-pale);background:var(--surface);color:var(--accent-dark);font-family:inherit;font-size:13px;resize:vertical;min-height:60px;outline:none}
+  .rsvp-note-input:focus{border-color:var(--accent)}
+  .rsvp-note-save{margin-top:6px;padding:8px 18px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
+  .event-organizer-badge{font-size:12px;font-weight:600;color:var(--accent-mid);background:var(--surface);border-radius:8px;padding:6px 12px;text-align:center;margin-bottom:.75rem}
 
   /* Event creation card rows (attendees / bring list) */
   .event-card{display:flex;align-items:center;justify-content:space-between;padding:.85rem 1rem;border:0.5px solid var(--accent-pale);border-radius:14px;background:var(--surface);cursor:pointer;margin-bottom:.75rem;gap:8px}

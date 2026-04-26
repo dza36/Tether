@@ -526,8 +526,9 @@ async function resetChecklist(id) {
 async function deleteItem(id) {
   const item=items.find(i=>i.id===id); if (!item) return;
   if (!confirm(`Delete "${item.name}"?`)) return;
+  const ok = await deleteItemFromDb(id);
+  if (!ok) return;
   items=items.filter(i=>i.id!==id);
-  await deleteItemFromDb(id);
   expandedId=null;
   showToast("🗑 Deleted");
   render();
@@ -544,14 +545,21 @@ function editItem(id) {
     document.getElementById("fEventEndDate").value=item.endDate||"";
     document.getElementById("fEventEndTime").value=item.endTime||"";
     document.getElementById("fEventLocation").value=item.location||"";
+    document.getElementById("fGuestsCanInvite").checked=item.guestsCanInvite??true;
+    document.getElementById("fAllowAdditions").checked=item.allowAdditionalItems??true;
+    selectedEventIcon=item.eventIcon||null;
     document.getElementById("btnEventSave").disabled=false;
     document.getElementById("btnEventSave").textContent='Update Event';
     document.getElementById("btnEventSave").onclick=async function(){
       item.name=document.getElementById("fEventName").value.trim(); if(!item.name) return;
       item.date=document.getElementById("fEventStartDate").value;
+      item.endDate=document.getElementById("fEventEndDate").value||null;
       item.startTime=document.getElementById("fEventStartTime").value||null;
       item.endTime=document.getElementById("fEventEndTime").value||null;
       item.location=document.getElementById("fEventLocation").value.trim()||null;
+      item.guestsCanInvite=document.getElementById("fGuestsCanInvite").checked;
+      item.allowAdditionalItems=document.getElementById("fAllowAdditions").checked;
+      item.eventIcon=selectedEventIcon;
       closeEventModal();
       await persistItem(item);
       expandedId=null;
@@ -2403,11 +2411,16 @@ async function loadEventPanel(itemId) {
   const collapsed = eventBringCollapsed[itemId] !== undefined ? eventBringCollapsed[itemId] : allClaimed;
 
   // RSVP section — owners don't need to confirm their own attendance
-  const rsvpHTML = isOwner ? '' : `
+  const isTentative = myRsvp?.rsvp_status === 'maybe';
+  const rsvpHTML = isOwner ? `<div class="event-organizer-badge">You're the organizer</div>` : `
     <div class="event-rsvp-row">
       <button class="rsvp-btn accept${myRsvp?.rsvp_status==='going'?' active-accept':''}" onclick="rsvpEvent('${itemId}','going')">✓ Going</button>
-      <button class="rsvp-btn tentative${myRsvp?.rsvp_status==='maybe'?' active-tentative':''}" onclick="rsvpEvent('${itemId}','maybe')">~ Tentative</button>
+      <button class="rsvp-btn tentative${isTentative?' active-tentative':''}" onclick="rsvpEvent('${itemId}','maybe')">~ Tentative</button>
       <button class="rsvp-btn decline${myRsvp?.rsvp_status==='not_going'?' active-decline':''}" onclick="rsvpEvent('${itemId}','not_going')">✕ Can't make it</button>
+    </div>
+    <div class="rsvp-note-wrap" id="rsvpNoteWrap-${itemId}" style="display:${isTentative?'block':'none'}">
+      <textarea class="rsvp-note-input" id="rsvpNote-${itemId}" placeholder="Optional note (e.g. 'We'll try to make it')">${myRsvp?.note||''}</textarea>
+      <button class="rsvp-note-save" onclick="saveRsvpNote('${itemId}')">Save note</button>
     </div>`;
 
   // Attendees section — with inline bring items per person
@@ -2492,7 +2505,6 @@ function toggleBringList(itemId) {
 }
 
 async function rsvpEvent(itemId, status) {
-  // Check if already RSVPd
   const { data: existing } = await sb.from('event_guests')
     .select('id, rsvp_status')
     .eq('item_id', itemId)
@@ -2500,17 +2512,32 @@ async function rsvpEvent(itemId, status) {
     .limit(1);
 
   if (existing && existing.length > 0) {
-    // Update existing
     await sb.from('event_guests')
       .update({ rsvp_status: status, responded_at: new Date().toISOString() })
       .eq('id', existing[0].id);
   } else {
-    // Insert new
     await sb.from('event_guests')
       .insert({ item_id: itemId, user_id: currentUser.id, rsvp_status: status, responded_at: new Date().toISOString() });
   }
+  if (myRsvpMap[itemId]) myRsvpMap[itemId].rsvp_status = status;
+  else myRsvpMap[itemId] = { rsvp_status: status };
+
+  // Show/hide tentative note field without full reload
+  const noteWrap = document.getElementById(`rsvpNoteWrap-${itemId}`);
+  if (noteWrap) noteWrap.style.display = status === 'maybe' ? 'block' : 'none';
+
   showToast(status === 'going' ? '✓ You\'re going!' : status === 'maybe' ? 'Marked as tentative' : 'Noted — you can\'t make it');
   loadEventPanel(itemId);
+}
+
+async function saveRsvpNote(itemId) {
+  const note = document.getElementById(`rsvpNote-${itemId}`)?.value.trim() || null;
+  const { data: existing } = await sb.from('event_guests')
+    .select('id').eq('item_id', itemId).eq('user_id', currentUser.id).limit(1);
+  if (!existing?.length) return;
+  await sb.from('event_guests').update({ note }).eq('id', existing[0].id);
+  if (myRsvpMap[itemId]) myRsvpMap[itemId].note = note;
+  showToast('Note saved');
 }
 
 async function addBringItem(itemId) {

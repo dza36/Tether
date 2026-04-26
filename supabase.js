@@ -406,8 +406,9 @@ async function deleteItemFromDb(id) {
   if (error) {
     aiError('deleteItem', error, { name: item?.name, type: item?.type });
     showToast('Delete error: ' + error.message);
-  } else {
-    aiTrack('deleteItem.success', { name: item?.name, type: item?.type });
+    return false;
   }
+  aiTrack('deleteItem.success', { name: item?.name, type: item?.type });
+  return true;
 }
 
