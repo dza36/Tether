@@ -619,6 +619,11 @@
   .annual-toggle-row{display:flex;align-items:center;justify-content:space-between;padding:.85rem 0;border-bottom:0.5px solid #EEEDFE}
   .annual-toggle-label{display:flex;align-items:center;gap:10px;font-size:15px;color:var(--accent-dark);font-weight:500}
   .annual-coming-soon{font-size:12px;color:var(--accent-soft);padding:.4rem 0 .4rem 2.5rem;font-style:italic}
+  .occasion-type-pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:.5rem}
+  .occasion-vis-pills{display:flex;gap:8px;flex-wrap:wrap}
+  .occasion-type-pill{padding:8px 14px;font-size:13px;font-weight:600;border-radius:10px;border:0.5px solid var(--accent-pale);color:var(--accent);cursor:pointer;background:transparent;transition:all .15s;white-space:nowrap}
+  .occasion-type-pill.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .occasion-empty-row{font-size:13px;color:var(--accent-soft);padding:.5rem 0 .75rem;font-style:italic}
   .annual-empty{text-align:center;padding:2.5rem 1rem}
   .annual-empty-icon{font-size:32px;margin-bottom:.75rem}
   .annual-empty-title{font-size:15px;font-weight:600;color:var(--accent-dark);margin-bottom:.4rem}

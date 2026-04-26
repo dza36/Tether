@@ -2643,40 +2643,76 @@ function initBgColor() {
 }
 
 // ─── ANNUAL SHEET ─────────────────────────────────────────────────────────────
-function openAnnualSheet() {
-  renderAnnualContent();
-  document.getElementById('annualBg').classList.add('open');
-}
-function closeAnnualSheet() { document.getElementById('annualBg').classList.remove('open'); }
-function bgClickAnnual(e) { if (e.target === document.getElementById('annualBg')) closeAnnualSheet(); }
+// ─── OCCASIONS ────────────────────────────────────────────────────────────────
+let occasionsList = [];
+let editingOccasionId = null;
 
-function openTaskModalAnnual() {
-  closeAnnualSheet();
-  openTaskModal();
-  document.getElementById('fRecurring').checked = true;
-  document.getElementById('recurringSection').style.display = '';
-  document.getElementById('fIncrement').value = 'year';
-  document.getElementById('fEveryNum').value = '1';
-  document.getElementById('fDueDate').value = '';
-  onIncrementChange();
-  validateForm();
+const OCCASION_TYPES = [
+  { key: 'birthday',      label: 'Birthday',      emoji: '🎂' },
+  { key: 'anniversary',   label: 'Anniversary',   emoji: '💍' },
+  { key: 'remembrance',   label: 'Remembrance',   emoji: '🕯️' },
+];
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+async function openOccasionsSheet() {
+  await loadOccasions();
+  renderOccasionsSheet();
+  document.getElementById('occasionsBg').classList.add('open');
+}
+function closeOccasionsSheet() { document.getElementById('occasionsBg').classList.remove('open'); }
+function bgClickOccasions(e) { if (e.target === document.getElementById('occasionsBg')) closeOccasionsSheet(); }
+
+async function loadOccasions() {
+  const { data, error } = await sb.from('occasions')
+    .select('*')
+    .neq('status', 'deleted')
+    .order('month').order('day');
+  if (error) { showToast('Load error: ' + error.message); return; }
+  occasionsList = data || [];
 }
 
-function renderAnnualContent() {
-  const body = document.getElementById('annualBody');
+function daysUntilOccasion(month, day) {
+  const now = new Date(); now.setHours(0,0,0,0);
+  const thisYear = now.getFullYear();
+  let next = new Date(thisYear, month - 1, day);
+  if (next < now) next = new Date(thisYear + 1, month - 1, day);
+  return Math.round((next - now) / 86400000);
+}
+
+function renderOccasionsSheet() {
+  const body = document.getElementById('occasionsBody');
   if (!body) return;
-  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  const annuals = items.filter(i => i.type === 'annual');
-  let html = '<div class="annual-section">My Annuals</div>';
 
-  if (annuals.length === 0) {
-    html += `<div class="annual-empty">
-      <div class="annual-empty-icon">🗓</div>
-      <div class="annual-empty-title">No annuals yet.</div>
-      <div class="annual-empty-sub">Add birthdays, anniversaries, and yearly reminders.</div>
-      <button class="btn-save" style="max-width:200px;margin:0 auto" onclick="openTaskModalAnnual()">+ Add Annual</button>
-    </div>`;
-  } else {
+  let html = '';
+
+  // Group occasions by type
+  for (const type of OCCASION_TYPES) {
+    const group = occasionsList.filter(o => o.type === type.key);
+    html += `<div class="annual-section">${type.emoji} ${type.label}s</div>`;
+    if (group.length === 0) {
+      html += `<div class="occasion-empty-row">No ${type.label.toLowerCase()}s yet — tap + to add one</div>`;
+    } else {
+      for (const o of group) {
+        const d = daysUntilOccasion(o.month, o.day);
+        const dateStr = `${MONTH_SHORT[o.month - 1]} ${o.day}${o.year ? ', ' + o.year : ''}`;
+        const dueStr = d === 0 ? 'Today! 🎉' : d === 1 ? 'Tomorrow' : `in ${d} days`;
+        const visIcon = o.visibility === 'private' ? '🔒' : o.visibility === 'household' ? '🏠' : '👥';
+        html += `<div class="annual-row" onclick="openOccasionDetail('${o.id}')">
+          <div class="annual-row-icon">${type.emoji}</div>
+          <div class="annual-row-info">
+            <div class="annual-row-name">${o.name} <span style="font-size:11px;color:var(--accent-soft)">${visIcon}</span></div>
+            <div class="annual-row-sub">${dateStr} · ${dueStr}</div>
+          </div>
+        </div>`;
+      }
+    }
+  }
+
+  // Annual tasks (backward compat)
+  const annuals = items.filter(i => i.type === 'annual');
+  if (annuals.length > 0) {
+    html += `<div class="annual-section" style="margin-top:1rem">📋 Annual Tasks</div>`;
     const byMonth = {};
     for (const item of annuals) {
       const due = getDueDate(item);
@@ -2685,9 +2721,8 @@ function renderAnnualContent() {
       byMonth[m].push({ item, due });
     }
     for (const m of Object.keys(byMonth).map(Number).sort((a,b) => a-b)) {
-      html += `<div class="annual-section">${monthNames[m]}</div>`;
       for (const { item, due } of byMonth[m].sort((a,b) => a.due.getDate() - b.due.getDate())) {
-        html += `<div class="annual-row" onclick="closeAnnualSheet();editItem('${item.id}')">
+        html += `<div class="annual-row" onclick="closeOccasionsSheet();editItem('${item.id}')">
           <div class="annual-row-icon">${iconFor(item)}</div>
           <div class="annual-row-info">
             <div class="annual-row-name">${item.name}</div>
@@ -2698,7 +2733,8 @@ function renderAnnualContent() {
     }
   }
 
-  html += '<div class="annual-section" style="margin-top:1.5rem">More</div>';
+  // Toggles
+  html += `<div class="annual-section" style="margin-top:1.5rem">More</div>`;
   html += `<div class="annual-toggle-row">
     <div class="annual-toggle-label"><span>🇺🇸</span> Holidays</div>
     <input type="checkbox" ${userPrefs.holidaysEnabled ? 'checked' : ''} onchange="toggleAnnualPref('holidaysEnabled',this.checked)" style="width:20px;height:20px;cursor:pointer;accent-color:var(--accent)"/>
@@ -2715,7 +2751,122 @@ function renderAnnualContent() {
 
 async function toggleAnnualPref(key, value) {
   await persistUserPref(key, value);
-  renderAnnualContent();
+  renderOccasionsSheet();
+}
+
+// ── Occasion form ─────────────────────────────────────────────────────────────
+function openOccasionForm(id) {
+  editingOccasionId = id || null;
+  const existing = id ? occasionsList.find(o => o.id === id) : null;
+  _occasionType = existing?.type || 'birthday';
+  _occasionVis = existing?.visibility || 'private';
+  document.getElementById('occasionFormTitle').textContent = existing ? 'Edit Occasion' : 'New Occasion';
+  renderOccasionForm(existing);
+  document.getElementById('occasionFormBg').classList.add('open');
+}
+function closeOccasionForm() {
+  document.getElementById('occasionFormBg').classList.remove('open');
+  editingOccasionId = null;
+}
+function bgClickOccasionForm(e) { if (e.target === document.getElementById('occasionFormBg')) closeOccasionForm(); }
+
+function renderOccasionForm(o) {
+  const body = document.getElementById('occasionFormBody');
+  const selectedType = o?.type || 'birthday';
+  const months = MONTH_NAMES.map((m, i) => `<option value="${i+1}"${o?.month===i+1?' selected':''}>${m}</option>`).join('');
+  const days = Array.from({length:31}, (_,i) => `<option value="${i+1}"${o?.day===i+1?' selected':''}>${i+1}</option>`).join('');
+
+  body.innerHTML = `
+    <div class="occasion-type-pills">
+      ${OCCASION_TYPES.map(t => `<button class="occasion-type-pill${selectedType===t.key?' active':''}" data-type="${t.key}" onclick="selectOccasionType('${t.key}')">${t.emoji} ${t.label}</button>`).join('')}
+    </div>
+    <div class="ob-fields" style="margin-top:1rem">
+      <input class="ob-input" id="ocName" type="text" placeholder="Name (e.g. Kirsten, Jean &amp; Danny)" maxlength="60" value="${o?.name||''}"/>
+      <div style="display:flex;gap:8px">
+        <select class="ob-input" id="ocMonth" style="flex:2">${months}</select>
+        <select class="ob-input" id="ocDay" style="flex:1">${days}</select>
+      </div>
+      <input class="ob-input" id="ocYear" type="number" placeholder="Year (optional)" min="1900" max="2099" value="${o?.year||''}"/>
+      <textarea class="ob-input" id="ocNotes" placeholder="Notes (optional)" style="resize:vertical;min-height:70px">${o?.notes||''}</textarea>
+    </div>
+    <div class="annual-section" style="margin-top:1rem">Visibility</div>
+    <div class="occasion-vis-pills">
+      <button class="occasion-type-pill${(o?.visibility||'private')==='private'?' active':''}" onclick="selectOccasionVis('private')">🔒 Private</button>
+      <button class="occasion-type-pill${o?.visibility==='household'?' active':''}" onclick="selectOccasionVis('household')">🏠 Household</button>
+      <button class="occasion-type-pill${o?.visibility==='contacts'?' active':''}" onclick="selectOccasionVis('contacts')">👥 All Contacts</button>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:1.5rem">
+      <button class="btn-save" style="flex:1" onclick="saveOccasion()">Save</button>
+      ${o ? `<button class="btn-cancel" style="flex:0 0 auto;padding:0 16px" onclick="deleteOccasion('${o.id}')">🗑</button>` : ''}
+    </div>
+  `;
+}
+
+let _occasionType = 'birthday';
+let _occasionVis = 'private';
+
+function selectOccasionType(type) {
+  _occasionType = type;
+  document.querySelectorAll('.occasion-type-pills .occasion-type-pill').forEach(b => b.classList.toggle('active', b.dataset.type === type));
+}
+function selectOccasionVis(vis) {
+  _occasionVis = vis;
+  document.querySelectorAll('.occasion-vis-pills .occasion-type-pill').forEach((b, i) => {
+    const vals = ['private','household','contacts'];
+    b.classList.toggle('active', vals[i] === vis);
+  });
+}
+
+async function saveOccasion() {
+  const name = document.getElementById('ocName')?.value.trim();
+  const month = parseInt(document.getElementById('ocMonth')?.value);
+  const day = parseInt(document.getElementById('ocDay')?.value);
+  const year = parseInt(document.getElementById('ocYear')?.value) || null;
+  const notes = document.getElementById('ocNotes')?.value.trim() || null;
+  if (!name) { showToast('Name is required'); return; }
+
+  const existing = editingOccasionId ? occasionsList.find(o => o.id === editingOccasionId) : null;
+  const type = _occasionType;
+  const vis = _occasionVis;
+
+  const row = { name, month, day, year, notes, visibility: vis, type };
+
+  if (editingOccasionId) {
+    const { error } = await sb.from('occasions').update(row).eq('id', editingOccasionId);
+    if (error) { showToast('Save error: ' + error.message); return; }
+  } else {
+    const { error } = await sb.from('occasions').insert({ ...row, user_id: currentUser.id });
+    if (error) { showToast('Save error: ' + error.message); return; }
+  }
+  showToast(editingOccasionId ? '✏️ Updated' : '✓ Occasion saved');
+  closeOccasionForm();
+  await loadOccasions();
+  renderOccasionsSheet();
+}
+
+async function deleteOccasion(id) {
+  if (!confirm('Remove this occasion?')) return;
+  await sb.from('occasions').update({ status: 'deleted' }).eq('id', id);
+  closeOccasionForm();
+  await loadOccasions();
+  renderOccasionsSheet();
+}
+
+function openOccasionDetail(id) {
+  openOccasionForm(id);
+}
+
+// Kept for backward compat — annual tasks still use this path
+function openTaskModalAnnual() {
+  closeOccasionsSheet();
+  openTaskModal();
+  document.getElementById('fRecurring').checked = true;
+  document.getElementById('recurringSection').style.display = '';
+  document.getElementById('fIncrement').value = 'year';
+  document.getElementById('fEveryNum').value = '1';
+  document.getElementById('fDueDate').value = '';
+  onIncrementChange();
+  validateForm();
 }
 
 // ─── CELEBRATION ──────────────────────────────────────────────────────────────
