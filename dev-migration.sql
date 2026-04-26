@@ -206,6 +206,23 @@ CREATE TABLE contacts (
   UNIQUE(requester_id, recipient_id)
 );
 
+CREATE TABLE occasions (
+  id          uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id     uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  type        text NOT NULL CHECK (type IN ('birthday', 'anniversary', 'remembrance')),
+  name        text NOT NULL,
+  month       integer NOT NULL CHECK (month >= 1 AND month <= 12),
+  day         integer NOT NULL CHECK (day >= 1 AND day <= 31),
+  year        integer,
+  notes       text,
+  visibility  text DEFAULT 'private' CHECK (visibility IN ('private', 'household', 'contacts')),
+  contact_id  uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  status      text DEFAULT 'active',
+  merged_into uuid REFERENCES occasions(id) ON DELETE SET NULL,
+  created_at  timestamptz DEFAULT now(),
+  updated_at  timestamptz DEFAULT now()
+);
+
 -- ─────────────────────────────────────────────
 -- FUNCTIONS AND TRIGGERS
 -- ─────────────────────────────────────────────
@@ -436,4 +453,16 @@ CREATE POLICY "group_members: read own"
 CREATE POLICY "contacts: all own"
   ON contacts FOR ALL USING (
     requester_id = auth.uid() OR recipient_id = auth.uid()
+  );
+
+ALTER TABLE occasions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "occasions: all own"
+  ON occasions FOR ALL USING (user_id = auth.uid());
+CREATE POLICY "occasions: read household"
+  ON occasions FOR SELECT USING (
+    visibility IN ('household', 'contacts')
+    AND user_id IN (
+      SELECT user_id FROM household_members
+      WHERE household_id = ANY(get_my_household_ids())
+    )
   );
