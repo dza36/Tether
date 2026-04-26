@@ -43,6 +43,7 @@ CREATE TABLE households (
   id          uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   name        text NOT NULL,
   created_by  uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  status      text DEFAULT 'active',
   created_at  timestamptz DEFAULT now()
 );
 
@@ -108,6 +109,7 @@ CREATE TABLE chore_items (
   household_id uuid REFERENCES households(id) ON DELETE SET NULL,
   name         text NOT NULL,
   done         boolean DEFAULT false,
+  status       text DEFAULT 'active',
   added_by     uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   created_at   timestamptz DEFAULT now()
 );
@@ -175,6 +177,7 @@ CREATE TABLE grocery_items (
   note         text,
   checked      boolean DEFAULT false,
   is_custom    boolean DEFAULT false,
+  status       text DEFAULT 'active',
   added_by     uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   created_at   timestamptz DEFAULT now()
 );
