@@ -256,10 +256,11 @@ function onRealtimeChange(payload) {
 
 // ── Load ──────────────────────────────────────────────────────────────────────
 async function loadItems() {
-  const [tasksRes, eventsRes, guestRes] = await Promise.all([
+  const [tasksRes, eventsRes, guestRes, occasionsRes] = await Promise.all([
     sb.from('tether_items').select('*').neq('status', 'deleted').order('created_at', { ascending: true }),
     sb.from('items').select('*').eq('item_type', 'event').neq('status', 'deleted').order('created_at', { ascending: true }),
     sb.from('event_guests').select('item_id, rsvp_status, note').eq('user_id', currentUser.id).eq('is_owner', false),
+    sb.from('occasions').select('*').neq('status', 'deleted').order('month').order('day'),
   ]);
   if (tasksRes.error) { showToast('Load error: ' + tasksRes.error.message); return; }
   if (eventsRes.error) { showToast('Load error: ' + eventsRes.error.message); return; }
@@ -277,11 +278,40 @@ async function loadItems() {
     invitedRows = data || [];
   }
 
+  occasionsList = occasionsRes.data || [];
   items = [
     ...(tasksRes.data || []).map(dbRowToItem),
     ...(eventsRes.data || []).map(dbRowToEvent),
     ...invitedRows.map(dbRowToEvent),
+    ...(occasionsRes.data || []).map(dbRowToOccasion),
   ];
+}
+
+function dbRowToOccasion(row) {
+  const year = new Date().getFullYear();
+  let next = new Date(year, row.month - 1, row.day);
+  const today = new Date(); today.setHours(0,0,0,0);
+  if (next < today) next = new Date(year + 1, row.month - 1, row.day);
+  const dateStr = next.toISOString().slice(0, 10);
+  return {
+    id: row.id,
+    _dbId: row.id,
+    type: 'occasion',
+    occasionType: row.type,
+    name: row.name,
+    month: row.month,
+    day: row.day,
+    year: row.year || null,
+    notes: row.notes || null,
+    visibility: row.visibility || 'private',
+    status: row.status || 'active',
+    date: dateStr,
+    checklist: [],
+    isUrgent: false,
+    startTime: null,
+    endTime: null,
+    altDueDate: null,
+  };
 }
 
 // ── Persist ───────────────────────────────────────────────────────────────────

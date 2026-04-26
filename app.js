@@ -74,6 +74,7 @@ function getDueDate(item) {
     const l = new Date((item.lastDone||isoToday())+'T00:00:00');
     const d = new Date(l); d.setDate(d.getDate()+(item.days||7)); return d;
   }
+  if (item.type==='occasion') return new Date((item.date||isoToday())+'T00:00:00');
   if (item.type==='event'||item.type==='oneTime'||item.type==='grocery') return new Date((item.date||isoToday())+'T00:00:00');
   if (item.type==='weekday') return nextFromDays(item.weekdays||[1], item.lastDone===isoToday()?1:0);
   if (item.type==='monthly'||item.type==='yearly') return new Date((item.lastDone||isoToday())+'T00:00:00');
@@ -152,6 +153,11 @@ function badgeFor(item) {
     return `<span class="badge progress">${done}/${cl.length}</span>`;
   }
   const d = daysUntil(item);
+  if (item.type==='occasion') {
+    if (d===0) return `<span class="badge soon">Today! 🎉</span>`;
+    if (d<=7) return `<span class="badge soon">in ${d}d</span>`;
+    return `<span class="badge ok">in ${d}d</span>`;
+  }
   if (item.type==='event') {
     if (d<0) return `<span class="badge past">Past</span>`;
     if (d===0) return `<span class="badge soon">Today</span>`;
@@ -204,6 +210,12 @@ function subFor(item) {
     const intervalStr = interval === 1 ? "Every year" : `Every ${interval} years`;
     return `${intervalStr} · Next due ${fmtDate(getDueDate(item))}${timeStr}`;
   }
+  if (item.type==="occasion") {
+    const typeEmoji = {birthday:'🎂',anniversary:'💍',remembrance:'🕯️'}[item.occasionType] || '🗓';
+    const d = daysUntil(item);
+    const dueStr = d === 0 ? 'Today! 🎉' : d === 1 ? 'Tomorrow' : `${MONTH_SHORT[item.month-1]} ${item.day}`;
+    return `${typeEmoji} ${item.occasionType.charAt(0).toUpperCase()+item.occasionType.slice(1)} · ${dueStr}`;
+  }
   // event
   const due = getDueDate(item);
   return due.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",year:"numeric"})+timeStr;
@@ -213,6 +225,7 @@ function iconFor(item) {
   if (item.type === 'grocery') return '🛒';
   if (item.type === 'event') return item.eventIcon || '📅';
   if (item.type === 'annual') return '<span class="type-icon">🗓</span>';
+  if (item.type === 'occasion') return {birthday:'🎂',anniversary:'💍',remembrance:'🕯️'}[item.occasionType] || '🗓';
   if (item.isUrgent) return '<span class="type-dot dot-urgent"></span>';
   if (item.startTime) return '<span class="type-icon">🕐</span>';
   return '<span class="type-dot dot-task"></span>';
@@ -749,6 +762,24 @@ function rowHTML(item, isOverdue) {
   const isEvent = item.type === 'event';
   const isGrocery = item.type === 'grocery';
   const isChore = item.type === 'chore';
+  const isOccasion = item.type === 'occasion';
+
+  // Occasions get a simplified non-swipeable row
+  if (isOccasion) {
+    return `<div class="row-outer" id="outer-${item.id}">
+      <div class="row-wrap" id="wrap-${item.id}">
+        <div class="item" id="item-${item.id}" data-id="${item.id}" style="position:relative;cursor:pointer" onclick="openOccasionDetail('${item.id}')">
+          <div class="type-icon-wrap">${iconFor(item)}</div>
+          <div class="item-body">
+            <div class="item-name">${item.name}</div>
+            <div class="item-sub">${subFor(item)}</div>
+          </div>
+          ${badgeFor(item)}
+        </div>
+      </div>
+    </div>`;
+  }
+
   const avatarHTML = (currentHousehold && !isEvent) ? itemAvatarHTML(item.assignedTo || item.createdBy, item.id) : '';
   const itemStyle = exp ? `position:relative;${(isEvent||isChore)?'cursor:pointer;':'border-bottom-left-radius:0;border-bottom-right-radius:0;'}` : `position:absolute;inset:0;cursor:${(isEvent||isGrocery)?'pointer':'grab'};`;
   const itemClick = (isEvent || isGrocery || exp) ? `onclick="toggleExpand('${item.id}')"` : '';
@@ -856,6 +887,8 @@ function render() {
 // ─── SWIPE ────────────────────────────────────────────────────────────────────
 function attachSwipe(el) {
   const id=el.dataset.id;
+  const item=items.find(i=>i.id===id);
+  if (item?.type==='occasion') return; // occasions are not swipeable
   let startX=0,startY=0,curX=0,dragging=false,didMove=false,holdTimer=null;
   const THRESHOLD=80,HOLD_MS=500;
   function start(x,y){startX=x;startY=y;curX=0;dragging=true;didMove=false;el.classList.add('swiping');holdTimer=setTimeout(()=>{if(!didMove){dragging=false;el.classList.remove('swiping');el.style.transform='';toggleExpand(id);}},HOLD_MS);}
@@ -2852,7 +2885,8 @@ async function deleteOccasion(id) {
   renderOccasionsSheet();
 }
 
-function openOccasionDetail(id) {
+async function openOccasionDetail(id) {
+  if (occasionsList.length === 0) await loadOccasions();
   openOccasionForm(id);
 }
 
