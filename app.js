@@ -2806,8 +2806,10 @@ function bgClickOccasionForm(e) { if (e.target === document.getElementById('occa
 function renderOccasionForm(o) {
   const body = document.getElementById('occasionFormBody');
   const selectedType = o?.type || 'birthday';
-  const months = MONTH_NAMES.map((m, i) => `<option value="${i+1}"${o?.month===i+1?' selected':''}>${m}</option>`).join('');
-  const days = Array.from({length:31}, (_,i) => `<option value="${i+1}"${o?.day===i+1?' selected':''}>${i+1}</option>`).join('');
+  // Initialize date picker state from existing occasion
+  _dpMonth = o?.month || null;
+  _dpDay = o?.day || null;
+  _dpYear = o?.year || null;
 
   body.innerHTML = `
     <div class="occasion-type-pills">
@@ -2815,11 +2817,7 @@ function renderOccasionForm(o) {
     </div>
     <div class="ob-fields" style="margin-top:1rem">
       <input class="ob-input" id="ocName" type="text" placeholder="Name (e.g. Kirsten, Jean &amp; Danny)" maxlength="60" value="${o?.name||''}"/>
-      <div style="display:flex;gap:8px">
-        <select class="ob-input" id="ocMonth" style="flex:2">${months}</select>
-        <select class="ob-input" id="ocDay" style="flex:1">${days}</select>
-      </div>
-      <input class="ob-input" id="ocYear" type="number" placeholder="Year (optional)" min="1900" max="2099" value="${o?.year||''}"/>
+      <button class="ob-input occasion-date-btn" id="ocDateBtn" onclick="openOccasionDatePicker()" style="text-align:left;cursor:pointer">${ocDateLabel()}</button>
       <textarea class="ob-input" id="ocNotes" placeholder="Notes (optional)" style="resize:vertical;min-height:70px">${o?.notes||''}</textarea>
     </div>
     <div class="annual-section" style="margin-top:1rem">Visibility</div>
@@ -2838,6 +2836,26 @@ function renderOccasionForm(o) {
 let _occasionType = 'birthday';
 let _occasionVis = 'private';
 
+function ocDateLabel() {
+  if (!_dpMonth && !_dpDay) return 'Select date…';
+  const m = _dpMonth ? MONTH_SHORT[_dpMonth - 1] : '?';
+  const d = _dpDay || '?';
+  const y = _dpYear ? ', ' + _dpYear : '';
+  return `${m} ${d}${y}`;
+}
+
+function openOccasionDatePicker() {
+  openDatePicker({
+    month: _dpMonth, day: _dpDay, year: _dpYear,
+    yearOptional: true,
+    onSet: (month, day, year) => {
+      _dpMonth = month; _dpDay = day; _dpYear = year;
+      const btn = document.getElementById('ocDateBtn');
+      if (btn) btn.textContent = ocDateLabel();
+    }
+  });
+}
+
 function selectOccasionType(type) {
   _occasionType = type;
   document.querySelectorAll('.occasion-type-pills .occasion-type-pill').forEach(b => b.classList.toggle('active', b.dataset.type === type));
@@ -2852,11 +2870,12 @@ function selectOccasionVis(vis) {
 
 async function saveOccasion() {
   const name = document.getElementById('ocName')?.value.trim();
-  const month = parseInt(document.getElementById('ocMonth')?.value);
-  const day = parseInt(document.getElementById('ocDay')?.value);
-  const year = parseInt(document.getElementById('ocYear')?.value) || null;
+  const month = _dpMonth;
+  const day = _dpDay;
+  const year = _dpYear || null;
   const notes = document.getElementById('ocNotes')?.value.trim() || null;
   if (!name) { showToast('Name is required'); return; }
+  if (!month || !day) { showToast('Please select a date'); return; }
 
   const existing = editingOccasionId ? occasionsList.find(o => o.id === editingOccasionId) : null;
   const type = _occasionType;
@@ -2901,6 +2920,140 @@ function openTaskModalAnnual() {
   document.getElementById('fDueDate').value = '';
   onIncrementChange();
   validateForm();
+}
+
+// ─── DATE PICKER ─────────────────────────────────────────────────────────────
+const DP_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DP_ITEM_H = 44;
+const DP_VISIBLE = 5;
+const DP_PAD = Math.floor(DP_VISIBLE / 2);
+const DP_YEAR_MIN = 1900;
+const DP_YEAR_MAX = 2099;
+
+let _dpMonth = null; // 1-12
+let _dpDay = null;   // 1-31
+let _dpYear = null;  // optional
+let _dpYearOptional = false;
+let _dpCallback = null;
+
+function openDatePicker({ month, day, year, yearOptional = false, onSet }) {
+  _dpMonth = month || new Date().getMonth() + 1;
+  _dpDay = day || new Date().getDate();
+  _dpYear = year || null;
+  _dpYearOptional = yearOptional;
+  _dpCallback = onSet;
+
+  document.getElementById('dpYearWrap').style.display = yearOptional ? '' : '';
+  document.querySelector('#dpYearWrap .dp-optional').style.display = yearOptional ? '' : 'none';
+
+  dpBuildMonthCol();
+  dpBuildYearCol();
+  dpRenderCalendar();
+  document.getElementById('datepickerBg').classList.add('open');
+}
+
+function bgClickDatepicker(e) {
+  if (e.target === document.getElementById('datepickerBg')) dpCancel();
+}
+
+function dpCancel() {
+  document.getElementById('datepickerBg').classList.remove('open');
+}
+
+function dpClear() {
+  _dpMonth = new Date().getMonth() + 1;
+  _dpDay = null;
+  _dpYear = null;
+  dpBuildMonthCol();
+  dpBuildYearCol();
+  dpRenderCalendar();
+}
+
+function dpSet() {
+  if (_dpCallback) _dpCallback(_dpMonth, _dpDay, _dpYear);
+  document.getElementById('datepickerBg').classList.remove('open');
+}
+
+function dpBuildCol(containerId, items, selectedIdx, onSelect) {
+  const col = document.getElementById(containerId);
+  const padItem = '<div class="dp-item dp-spacer"></div>';
+  col.innerHTML =
+    Array(DP_PAD).fill(padItem).join('') +
+    items.map((item, i) => `<div class="dp-item${i === selectedIdx ? ' selected' : ''}" data-idx="${i}">${item}</div>`).join('') +
+    Array(DP_PAD).fill(padItem).join('');
+
+  // Scroll to selected
+  col.scrollTop = selectedIdx * DP_ITEM_H;
+
+  // Click to select
+  col.querySelectorAll('.dp-item:not(.dp-spacer)').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.dataset.idx);
+      onSelect(idx);
+      col.querySelectorAll('.dp-item').forEach(e => e.classList.remove('selected'));
+      el.classList.add('selected');
+      col.scrollTo({ top: idx * DP_ITEM_H, behavior: 'smooth' });
+    });
+  });
+
+  // Scroll snap selection
+  let scrollTimer;
+  col.addEventListener('scroll', () => {
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(() => {
+      const idx = Math.round(col.scrollTop / DP_ITEM_H);
+      const clamped = Math.max(0, Math.min(idx, items.length - 1));
+      onSelect(clamped);
+      col.querySelectorAll('.dp-item:not(.dp-spacer)').forEach((el, i) => el.classList.toggle('selected', i === clamped));
+      col.scrollTo({ top: clamped * DP_ITEM_H, behavior: 'smooth' });
+    }, 150);
+  });
+}
+
+function dpBuildMonthCol() {
+  dpBuildCol('dpMonthCol', DP_MONTHS, (_dpMonth || 1) - 1, idx => {
+    _dpMonth = idx + 1;
+    if (_dpDay) {
+      const max = new Date(_dpYear || 2000, _dpMonth, 0).getDate();
+      if (_dpDay > max) _dpDay = max;
+    }
+    dpRenderCalendar();
+  });
+}
+
+function dpBuildYearCol() {
+  const years = [];
+  for (let y = DP_YEAR_MIN; y <= DP_YEAR_MAX; y++) years.push(String(y));
+  const selectedIdx = _dpYear ? _dpYear - DP_YEAR_MIN : new Date().getFullYear() - DP_YEAR_MIN;
+  dpBuildCol('dpYearCol', years, selectedIdx, idx => {
+    _dpYear = _dpYearOptional && idx === 0 ? null : DP_YEAR_MIN + idx;
+    dpRenderCalendar();
+  });
+}
+
+function dpRenderCalendar() {
+  const month = _dpMonth || new Date().getMonth() + 1;
+  const year = _dpYear || new Date().getFullYear();
+  const header = document.getElementById('dpCalHeader');
+  const grid = document.getElementById('dpCalGrid');
+
+  header.textContent = `${DP_MONTHS[month - 1]} ${year}`;
+
+  const firstDay = new Date(year, month - 1, 1).getDay();
+  const daysInMonth = new Date(year, month, 0).getDate();
+
+  let html = '';
+  for (let i = 0; i < firstDay; i++) html += '<div class="dp-cal-cell dp-cal-empty"></div>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const sel = d === _dpDay;
+    html += `<div class="dp-cal-cell${sel ? ' selected' : ''}" onclick="dpSelectDay(${d})">${d}</div>`;
+  }
+  grid.innerHTML = html;
+}
+
+function dpSelectDay(d) {
+  _dpDay = d;
+  dpRenderCalendar();
 }
 
 // ─── CELEBRATION ──────────────────────────────────────────────────────────────

@@ -629,6 +629,37 @@
   .annual-empty-title{font-size:15px;font-weight:600;color:var(--accent-dark);margin-bottom:.4rem}
   .annual-empty-sub{font-size:13px;color:var(--accent-soft);line-height:1.5;margin-bottom:1.25rem}
 
+  /* Date picker */
+  .datepicker-bg{display:none;position:fixed;inset:0;background:rgba(38,33,92,.5);z-index:300;align-items:flex-end;justify-content:center}
+  .datepicker-bg.open{display:flex}
+  .datepicker-sheet{background:#fff;border-radius:20px 20px 0 0;border:0.5px solid var(--accent-pale);width:100%;max-width:430px;padding:0 0 1.5rem}
+  .datepicker-handle{width:36px;height:4px;background:var(--accent-pale);border-radius:2px;margin:12px auto 8px}
+  .datepicker-cols{display:flex;gap:8px;padding:0 1rem;margin-bottom:.75rem}
+  .dp-col-wrap{flex:1;display:flex;flex-direction:column;align-items:center}
+  .dp-col-label{font-size:11px;font-weight:700;color:var(--accent-soft);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+  .dp-optional{font-weight:400;font-style:italic}
+  .dp-col-selector{width:100%;height:220px;overflow-y:scroll;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;border:0.5px solid var(--accent-pale);border-radius:12px;position:relative}
+  .dp-col-selector::-webkit-scrollbar{display:none}
+  .dp-item{height:44px;display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--accent-dark);scroll-snap-align:center;cursor:pointer;transition:all .15s}
+  .dp-item.selected{font-weight:700;color:var(--accent);font-size:16px}
+  .dp-item.dp-spacer{pointer-events:none}
+  .dp-col-selector::before,.dp-col-selector::after{content:'';position:sticky;display:block;height:88px;pointer-events:none;z-index:1}
+  .dp-col-selector::before{top:0;background:linear-gradient(to bottom,rgba(255,255,255,.9),rgba(255,255,255,0));top:0}
+  .dp-col-selector::after{bottom:0;background:linear-gradient(to top,rgba(255,255,255,.9),rgba(255,255,255,0))}
+  .dp-cal-wrap{padding:0 1rem;margin-bottom:.75rem}
+  .dp-cal-header{font-size:15px;font-weight:700;color:var(--accent-dark);text-align:center;margin-bottom:.5rem}
+  .dp-cal-days-header{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:11px;font-weight:600;color:var(--accent-soft);margin-bottom:4px}
+  .dp-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+  .dp-cal-cell{height:36px;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--accent-dark);border-radius:8px;cursor:pointer;transition:all .15s}
+  .dp-cal-cell:hover{background:var(--surface)}
+  .dp-cal-cell.selected{background:var(--accent);color:#fff;font-weight:700}
+  .dp-cal-cell.dp-cal-empty{pointer-events:none}
+  .dp-actions{display:flex;gap:10px;padding:0 1rem}
+  .dp-btn{flex:1;padding:12px;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer}
+  .dp-btn-clear{background:var(--surface);color:var(--accent-soft)}
+  .dp-btn-cancel{background:var(--surface);color:var(--accent)}
+  .dp-btn-set{background:var(--accent);color:#fff}
+
   /* Settings sheet */
   .settings-bg{display:none;position:fixed;inset:0;background:rgba(38,33,92,.5);z-index:220;align-items:flex-end;justify-content:center}
   .settings-bg.open{display:flex}
