@@ -2700,10 +2700,11 @@ function renderAboutSheet() {
   if (!body || !_aboutData) return;
 
   const o = _aboutData.opening;
+  const openingBody = o?.body?.split('\n\n').map(p => `<p>${p}</p>`).join('') || '';
   const openingHtml = o ? `
     <div class="about-opening">
       <div class="about-tagline">${o.tagline}</div>
-      <div class="about-opening-body">${o.body}</div>
+      <div class="about-opening-body">${openingBody}</div>
     </div>
     <div class="about-divider"></div>
   ` : '';
