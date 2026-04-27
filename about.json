@@ -1,11 +1,16 @@
 {
+  "opening": {
+    "title": "About Tether",
+    "tagline": "Tether (n.) — an object that keeps something anchored to a point while allowing fluidity of motion.",
+    "body": "Our Tether is the digital version of that. Stay anchored to the people, rhythms, and responsibilities that matter most — then move fluidly within them. Life coordinated, not chaotic. And nothing important ever drifts."
+  },
   "sections": [
     {
-      "id": "tasks",
-      "icon": "⚓",
-      "title": "Tasks",
-      "color": "#534AB7",
-      "body": "Tasks are things you do. They live on your Today, This Week, and Beyond tabs based on when they're due.",
+      "id": "household",
+      "icon": "🏠",
+      "title": "Household",
+      "color": "#0284C7",
+      "intro": "This is your daily functioning unit — the people you wake up with and go to bed knowing everything got handled. Who's picking the kids up from school. Who's grabbing groceries. Whether the lawn got mowed or the vacuuming got done. The small, invisible labor that keeps a home running.\n\nTasks are built exactly for this. Assign them, reassign them, pick them up when you have capacity. Tether keeps it all visible, shared, and moving — so nothing falls through the cracks and no one person carries it alone.",
       "subsections": [
         {
           "icon": "🔁",
@@ -13,38 +18,38 @@
           "body": "Set a task to repeat daily, on specific weekdays, monthly, or annually. Tether automatically advances the due date each time you complete it."
         },
         {
-          "icon": "☑️",
-          "title": "One-Time Tasks",
-          "body": "Due once. Swipe right to complete and dismiss it."
-        },
-        {
           "icon": "🧹",
           "title": "Chore Lists",
-          "body": "A checklist-style task with sub-items. Great for room-by-room cleaning, shared household responsibilities, or anything with multiple steps. Tap All Done to reset and recur."
+          "body": "A checklist-style task with sub-items. Great for room-by-room cleaning, shared responsibilities, or anything with multiple steps. Tap All Done to reset and recur."
         },
         {
           "icon": "🛒",
           "title": "Grocery Lists",
           "body": "A smart shopping list with a built-in catalog. Items are grouped by department. Add custom items, adjust quantities, and mark items as you shop."
+        },
+        {
+          "icon": "📬",
+          "title": "Joining a household",
+          "body": "An admin invites you by email. You'll see a banner to accept or decline when you sign in. Joining is instant — no approval queue."
         }
       ]
     },
     {
-      "id": "events",
-      "icon": "📅",
-      "title": "Events",
-      "color": "#1D9E75",
-      "body": "Events are things you attend. Create an event, invite people, and coordinate who's bringing what.",
+      "id": "groups",
+      "icon": "👥",
+      "title": "Groups",
+      "color": "#7B72D4",
+      "intro": "Some coordination happens beyond your front door. The extended family Thanksgiving where someone needs to claim the green bean casserole. The friend group Super Bowl party where half the people don't know each other but all need to know where to show up. Your buddy's 40th where twelve people are trying to figure out the plan in four different text threads.\n\nGroups let you bring those people together in one place — invite everyone at once, coordinate who's bringing what, and make sure the right people have the right information with a few flicks of your thumb.",
       "subsections": [
         {
-          "icon": "🎟️",
-          "title": "Attendees & RSVP",
-          "body": "Invite household members or contacts. Guests can RSVP Going, Tentative, or Can't make it. You always see who's coming."
+          "icon": "📨",
+          "title": "Invite in bulk",
+          "body": "When creating an event, invite a whole group at once instead of adding people one by one. Individual group members can still be added separately."
         },
         {
-          "icon": "🧺",
-          "title": "Bring List",
-          "body": "Add items you need people to bring — drinks, dessert, chairs. Guests can claim what they're bringing so nothing gets doubled up."
+          "icon": "📅",
+          "title": "Events",
+          "body": "Create an event, invite people, and coordinate who's bringing what. Guests RSVP Going, Tentative, or Can't make it. Add a bring list so nothing gets doubled up."
         },
         {
           "icon": "📍",
@@ -59,12 +64,36 @@
       ]
     },
     {
-      "id": "occasions",
-      "icon": "🎂",
-      "title": "Occasions",
-      "color": "#D97706",
-      "body": "Occasions are things you celebrate. Annual, life-significant dates tied to people or moments.",
+      "id": "contacts",
+      "icon": "🤝",
+      "title": "Contacts",
+      "color": "#1D9E75",
+      "intro": "Not everyone needs to be in your household or a recurring group — but they still matter. The cousin you see twice a year. The neighbor who always comes to the block party. The friend you want to loop in for the next big thing. We have room for them too.\n\nHousehold members and group members are automatically your contacts — no separate request needed. The spectrum from tight to loose: Household → Groups → Contacts.",
       "subsections": [
+        {
+          "icon": "📩",
+          "title": "Adding contacts",
+          "body": "Send a contact request by email. They accept or decline. Once connected, you can invite them to events and see shared occasions."
+        },
+        {
+          "icon": "🔒",
+          "title": "Privacy",
+          "body": "Contacts only see what you share with them. Nothing is visible by default — you choose what to make household-visible, contact-visible, or private."
+        }
+      ]
+    },
+    {
+      "id": "you",
+      "icon": "⚓",
+      "title": "You",
+      "color": "#534AB7",
+      "intro": "Dealing with the ever-changing events in life and struggling to keep up — this is exactly what you've been missing. All of the above, and if you choose, a place to track and share the birthdays, anniversaries, and life occasions worth celebrating and remembering together.\n\nRegardless of what you have going on in life, we're here to help you Get-Tethered.",
+      "subsections": [
+        {
+          "icon": "☑️",
+          "title": "One-Time Tasks",
+          "body": "Due once. Swipe right to complete and dismiss it. Swipe left to snooze it to tomorrow."
+        },
         {
           "icon": "🎂",
           "title": "Birthdays",
@@ -78,69 +107,7 @@
         {
           "icon": "🕯️",
           "title": "Remembrance",
-          "body": "Some dates are about honoring someone no longer here. Remembrance occasions don't require a Tether account — a name and a date is enough."
-        },
-        {
-          "icon": "✨",
-          "title": "Create from an Occasion",
-          "body": "Tap any occasion to create a related task or event — plan a birthday party, set a reminder to buy a gift, or invite the family to visit a grave. What you create is yours and not linked back to the occasion."
-        }
-      ]
-    },
-    {
-      "id": "household",
-      "icon": "🏠",
-      "title": "Household",
-      "color": "#0284C7",
-      "body": "Your household is the people you live with day to day. You have one household — it has many members. Everything shared in a household is automatic.",
-      "subsections": [
-        {
-          "icon": "🤝",
-          "title": "Shared by default",
-          "body": "Tasks assigned to household members, events created within a household, and grocery lists are all visible to everyone in the house."
-        },
-        {
-          "icon": "📬",
-          "title": "Joining a household",
-          "body": "An admin invites you by email. You'll see a banner to accept or decline when you sign in. Joining is instant — no approval queue."
-        }
-      ]
-    },
-    {
-      "id": "groups",
-      "icon": "👥",
-      "title": "Groups",
-      "color": "#7B72D4",
-      "body": "Groups are named collections of people — Benson Family, Book Club, Soccer Team. Think of them as smart distribution lists that know who's in Tether.",
-      "subsections": [
-        {
-          "icon": "📨",
-          "title": "Invite in bulk",
-          "body": "When creating an event, invite a whole group at once instead of adding people one by one. Individual group members can still be added separately."
-        },
-        {
-          "icon": "🔗",
-          "title": "Groups and Contacts",
-          "body": "Household members and group members are automatically your contacts — no separate request needed. The spectrum from tight to loose: Household → Groups → Contacts."
-        }
-      ]
-    },
-    {
-      "id": "contacts",
-      "icon": "🤝",
-      "title": "Contacts",
-      "color": "#AFA9EC",
-      "body": "Contacts are your personal network in Tether. They can be invited to events, added to groups, and will eventually be linkable to occasions.",
-      "subsections": [
-        {
-          "icon": "📩",
-          "title": "Adding contacts",
-          "body": "Send a contact request by email. They accept or decline. Once connected, you can invite them to events and see shared occasions."
-        },
-        {
-          "icon": "🔒",
-          "title": "Privacy",
-          "body": "Contacts only see what you share with them. Nothing is visible by default — you choose what to make household-visible, contact-visible, or private."
+          "body": "Some dates are about honoring someone no longer here. A name and a date is enough — no Tether account required."
         }
       ]
     }

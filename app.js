@@ -2699,25 +2699,50 @@ function renderAboutSheet() {
   const body = document.getElementById('aboutBody');
   if (!body || !_aboutData) return;
 
-  body.innerHTML = _aboutData.sections.map(section => `
-    <div class="about-section-header" style="border-left:4px solid ${section.color}">
-      <span class="about-section-icon">${section.icon}</span>
-      <div>
-        <div class="about-section-title">${section.title}</div>
-        <div class="about-section-body">${section.body}</div>
+  const o = _aboutData.opening;
+  const openingHtml = o ? `
+    <div class="about-opening">
+      <div class="about-tagline">${o.tagline}</div>
+      <div class="about-opening-body">${o.body}</div>
+    </div>
+    <div class="about-divider"></div>
+  ` : '';
+
+  const sectionsHtml = _aboutData.sections.map(section => `
+    <div class="about-section" id="about-sec-${section.id}">
+      <div class="about-section-header" style="border-left:4px solid ${section.color}" onclick="toggleAboutSection('${section.id}')">
+        <span class="about-section-icon">${section.icon}</span>
+        <div style="flex:1">
+          <div class="about-section-title">${section.title}</div>
+        </div>
+        <span class="about-chevron" id="about-chev-${section.id}">▶</span>
+      </div>
+      <div class="about-section-body" id="about-body-${section.id}" style="display:none">
+        ${section.intro ? `<div class="about-intro">${section.intro.replace(/\n\n/g, '</p><p>').replace(/^/, '<p>').replace(/$/, '</p>')}</div>` : ''}
+        ${(section.subsections || []).map(sub => `
+          <div class="about-sub-row">
+            <div class="about-sub-icon">${sub.icon}</div>
+            <div class="about-sub-content">
+              <div class="about-sub-title">${sub.title}</div>
+              <div class="about-sub-body">${sub.body}</div>
+            </div>
+          </div>
+        `).join('')}
       </div>
     </div>
-    ${(section.subsections || []).map(sub => `
-      <div class="about-sub-row">
-        <div class="about-sub-icon">${sub.icon}</div>
-        <div class="about-sub-content">
-          <div class="about-sub-title">${sub.title}</div>
-          <div class="about-sub-body">${sub.body}</div>
-        </div>
-      </div>
-    `).join('')}
     <div class="about-divider"></div>
   `).join('');
+
+  body.innerHTML = openingHtml + sectionsHtml;
+}
+
+function toggleAboutSection(id) {
+  const bodyEl = document.getElementById(`about-body-${id}`);
+  const chevEl = document.getElementById(`about-chev-${id}`);
+  const isOpen = bodyEl.style.display !== 'none';
+  bodyEl.style.display = isOpen ? 'none' : 'block';
+  chevEl.style.transform = isOpen ? '' : 'rotate(90deg)';
+  chevEl.style.transition = 'transform .2s';
 }
 
 // ─── OCCASIONS ────────────────────────────────────────────────────────────────

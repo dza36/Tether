@@ -620,16 +620,24 @@
   .annual-toggle-label{display:flex;align-items:center;gap:10px;font-size:15px;color:var(--accent-dark);font-weight:500}
   .annual-coming-soon{font-size:12px;color:var(--accent-soft);padding:.4rem 0 .4rem 2.5rem;font-style:italic}
   /* About sheet */
-  .about-section-header{display:flex;gap:12px;align-items:flex-start;padding:1rem 0 .5rem;border-left-width:4px;border-left-style:solid;padding-left:12px;margin-bottom:.25rem}
-  .about-section-icon{font-size:24px;flex-shrink:0;margin-top:2px}
-  .about-section-title{font-size:16px;font-weight:700;color:var(--accent-dark);margin-bottom:3px}
-  .about-section-body{font-size:13px;color:var(--accent-soft);line-height:1.5}
-  .about-sub-row{display:flex;gap:12px;align-items:flex-start;padding:.6rem 0 .6rem 16px}
-  .about-sub-icon{font-size:18px;flex-shrink:0;width:24px;text-align:center}
+  .about-opening{padding:.75rem 0 .5rem}
+  .about-tagline{font-size:13px;font-style:italic;color:var(--accent-mid);line-height:1.5;margin-bottom:.75rem}
+  .about-opening-body{font-size:14px;color:var(--accent-dark);line-height:1.65}
+  .about-section{margin-bottom:2px}
+  .about-section-header{display:flex;gap:12px;align-items:center;padding:.85rem 0 .85rem 12px;border-left-width:4px;border-left-style:solid;cursor:pointer;user-select:none}
+  .about-section-icon{font-size:22px;flex-shrink:0}
+  .about-section-title{font-size:15px;font-weight:700;color:var(--accent-dark)}
+  .about-chevron{font-size:11px;color:var(--accent-soft);flex-shrink:0;margin-right:4px}
+  .about-section-body{padding:.25rem 0 .75rem 16px}
+  .about-intro{font-size:13px;color:var(--accent-dark);line-height:1.65;margin-bottom:.75rem}
+  .about-intro p{margin-bottom:.6rem}
+  .about-intro p:last-child{margin-bottom:0}
+  .about-sub-row{display:flex;gap:12px;align-items:flex-start;padding:.5rem 0}
+  .about-sub-icon{font-size:17px;flex-shrink:0;width:24px;text-align:center;margin-top:1px}
   .about-sub-content{flex:1}
   .about-sub-title{font-size:13px;font-weight:600;color:var(--accent-dark);margin-bottom:2px}
   .about-sub-body{font-size:12px;color:var(--accent-soft);line-height:1.5}
-  .about-divider{height:1px;background:var(--accent-pale);margin:.75rem 0}
+  .about-divider{height:1px;background:var(--accent-pale);margin:.25rem 0}
 
   .occasion-type-pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:.5rem}
   .occasion-vis-pills{display:flex;gap:8px;flex-wrap:wrap}
