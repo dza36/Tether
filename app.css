@@ -625,6 +625,7 @@
   .about-opening-body{font-size:14px;color:#333;line-height:1.75}
   .about-opening-body p{margin-bottom:.9rem}
   .about-opening-body p:last-child{margin-bottom:0}
+  .about-para-label{color:var(--accent);font-weight:700}
   .about-section{margin-bottom:2px}
   .about-section-header{display:flex;gap:12px;align-items:center;padding:.85rem 0 .85rem 12px;border-left-width:4px;border-left-style:solid;cursor:pointer;user-select:none}
   .about-section-icon{font-size:22px;flex-shrink:0}

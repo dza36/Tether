@@ -2700,11 +2700,15 @@ function renderAboutSheet() {
   if (!body || !_aboutData) return;
 
   const o = _aboutData.opening;
-  const openingBody = o?.body?.split('\n\n').map(p => `<p>${p}</p>`).join('') || '';
+  const openingParas = (o?.paragraphs || []).map(p => {
+    const labelHtml = p.label ? `<span class="about-para-label">${p.label}</span> ` : '';
+    const bodyHtml = p.body.split('\n\n').map(b => `<p>${labelHtml}${b}</p>`).join('');
+    return bodyHtml;
+  }).join('');
   const openingHtml = o ? `
     <div class="about-opening">
       <div class="about-tagline">${o.tagline}</div>
-      <div class="about-opening-body">${openingBody}</div>
+      <div class="about-opening-body">${openingParas}</div>
     </div>
     <div class="about-divider"></div>
   ` : '';

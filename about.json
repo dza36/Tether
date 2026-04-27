@@ -2,7 +2,28 @@
   "opening": {
     "title": "About Tether",
     "tagline": "Tether (n.) — an object that keeps something anchored to a point while allowing fluidity of motion.",
-    "body": "Our Tether is the digital version of that. Stay anchored to the people, rhythms, and responsibilities that matter most — then move fluidly within them. Life coordinated, not chaotic. And nothing important ever drifts.\n\nThis is your daily functioning unit — the people you wake up with and go to bed knowing everything got handled. Who's picking the kids up from school. Who's grabbing groceries. Whether the lawn got mowed or the vacuuming got done. The small, invisible labor that keeps a home running.\n\nTasks are built exactly for this. Assign them, reassign them, pick them up when you have capacity. Tether keeps it all visible, shared, and moving — so nothing falls through the cracks and no one person carries it alone.\n\nSome coordination happens beyond your front door. The extended family Thanksgiving where someone needs to claim the green bean casserole. The friend group Super Bowl party where half the people don't know each other but all need to know where to show up. Your buddy's 40th where twelve people are trying to figure out the plan in four different text threads.\n\nGroups let you bring those people together in one place — invite everyone at once, coordinate who's bringing what, and make sure the right people have the right information with a few flicks of your thumb.\n\nNot everyone needs to be in your household or a recurring group — but they still matter. The cousin you see twice a year. The neighbor who always comes to the block party. The friend you want to loop in for the next big thing. We have room for them too.\n\nDealing with the ever-changing events in life and struggling to keep up — this is exactly what you've been missing. All of the above, and if you choose, a place to track and share the birthdays, anniversaries, and life occasions worth celebrating and remembering together.\n\nRegardless of what you have going on in life, we're here to help you Get-Tethered."
+    "paragraphs": [
+      {
+        "label": null,
+        "body": "Our Tether is the digital version of that. Stay anchored to the people, rhythms, and responsibilities that matter most — then move fluidly within them. Life coordinated, not chaotic. And nothing important ever drifts."
+      },
+      {
+        "label": "Households.",
+        "body": "This is your daily functioning unit — the people you wake up with and go to bed knowing everything got handled. Who's picking the kids up from school. Who's grabbing groceries. Whether the lawn got mowed or the vacuuming got done. The small, invisible labor that keeps a home running.\n\nTasks are built exactly for this. Assign them, reassign them, pick them up when you have capacity. Tether keeps it all visible, shared, and moving — so nothing falls through the cracks and no one person carries it alone."
+      },
+      {
+        "label": "Groups.",
+        "body": "Some coordination happens beyond your front door. The extended family Thanksgiving where someone needs to claim the green bean casserole. The friend group Super Bowl party where half the people don't know each other but all need to know where to show up. Your buddy's 40th where twelve people are trying to figure out the plan in four different text threads.\n\nGroups let you bring those people together in one place — invite everyone at once, coordinate who's bringing what, and make sure the right people have the right information with a few flicks of your thumb."
+      },
+      {
+        "label": "Contacts.",
+        "body": "Not everyone needs to be in your household or a recurring group — but they still matter. The cousin you see twice a year. The neighbor who always comes to the block party. The friend you want to loop in for the next big thing. We have room for them too."
+      },
+      {
+        "label": "You.",
+        "body": "Dealing with the ever-changing events in life and struggling to keep up — this is exactly what you've been missing. All of the above, and if you choose, a place to track and share the birthdays, anniversaries, and life occasions worth celebrating and remembering together.\n\nRegardless of what you have going on in life, we're here to help you Get-Tethered."
+      }
+    ]
   },
   "sections": [
     {
@@ -73,6 +94,11 @@
           "body": "Send a contact request by email. They accept or decline. Once connected, you can invite them to events and see shared occasions."
         },
         {
+          "icon": "🔗",
+          "title": "Automatic contacts",
+          "body": "Household members and group members are automatically your contacts — no separate request needed. The spectrum from tight to loose: Household → Groups → Contacts."
+        },
+        {
           "icon": "🔒",
           "title": "Privacy",
           "body": "Contacts only see what you share with them. Nothing is visible by default — you choose what to make household-visible, contact-visible, or private."
@@ -85,11 +111,6 @@
       "title": "You",
       "color": "#534AB7",
       "subsections": [
-        {
-          "icon": "☑️",
-          "title": "One-Time Tasks",
-          "body": "Due once. Swipe right to complete and dismiss it. Swipe left to snooze it to tomorrow."
-        },
         {
           "icon": "🎂",
           "title": "Birthdays",
@@ -104,6 +125,11 @@
           "icon": "🕯️",
           "title": "Remembrance",
           "body": "Some dates are about honoring someone no longer here. A name and a date is enough — no Tether account required."
+        },
+        {
+          "icon": "✨",
+          "title": "Create from an Occasion",
+          "body": "Tap any occasion to create a related task or event — plan a birthday party, set a reminder to buy a gift, or invite the family. What you create is yours."
         }
       ]
     }
