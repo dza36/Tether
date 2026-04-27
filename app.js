@@ -2702,8 +2702,8 @@ function renderAboutSheet() {
   const o = _aboutData.opening;
   const openingParas = (o?.paragraphs || []).map(p => {
     const labelHtml = p.label ? `<span class="about-para-label">${p.label}</span> ` : '';
-    const bodyHtml = p.body.split('\n\n').map(b => `<p>${labelHtml}${b}</p>`).join('');
-    return bodyHtml;
+    const parts = p.body.split('\n\n');
+    return parts.map((b, i) => `<p>${i === 0 ? labelHtml : ''}${b}</p>`).join('');
   }).join('');
   const openingHtml = o ? `
     <div class="about-opening">
