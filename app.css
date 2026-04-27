@@ -622,7 +622,9 @@
   /* About sheet */
   .about-opening{padding:.75rem 0 .5rem}
   .about-tagline{font-size:13px;font-style:italic;color:var(--accent-mid);line-height:1.5;margin-bottom:.75rem}
-  .about-opening-body{font-size:14px;color:var(--accent-dark);line-height:1.65}
+  .about-opening-body{font-size:14px;color:#333;line-height:1.75}
+  .about-opening-body p{margin-bottom:.9rem}
+  .about-opening-body p:last-child{margin-bottom:0}
   .about-section{margin-bottom:2px}
   .about-section-header{display:flex;gap:12px;align-items:center;padding:.85rem 0 .85rem 12px;border-left-width:4px;border-left-style:solid;cursor:pointer;user-select:none}
   .about-section-icon{font-size:22px;flex-shrink:0}
@@ -636,7 +638,7 @@
   .about-sub-icon{font-size:17px;flex-shrink:0;width:24px;text-align:center;margin-top:1px}
   .about-sub-content{flex:1}
   .about-sub-title{font-size:13px;font-weight:600;color:var(--accent-dark);margin-bottom:2px}
-  .about-sub-body{font-size:12px;color:var(--accent-soft);line-height:1.5}
+  .about-sub-body{font-size:12px;color:#555;line-height:1.5}
   .about-divider{height:1px;background:var(--accent-pale);margin:.25rem 0}
 
   .occasion-type-pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:.5rem}
@@ -957,6 +959,10 @@
     & .annual-coming-soon{color:#6B65A8}
     & .annual-empty-title{color:#E8E5FF}
     & .annual-empty-sub{color:#6B65A8}
+    & .about-opening-body{color:#C8C4E8}
+    & .about-sub-body{color:#9B96C8}
+    & .about-sub-title{color:#E8E5FF}
+    & .about-section-title{color:#E8E5FF}
     & .ob-card{background:#1A1730;border-color:#2E2A5E}
     & .ob-title{color:#E8E5FF}
     & .ob-input{background:#1E1A3C;border-color:#2E2A5E;color:#E8E5FF}
@@ -1239,6 +1245,10 @@ html[data-theme="dark"] {
   & .annual-coming-soon{color:#6B65A8}
   & .annual-empty-title{color:#E8E5FF}
   & .annual-empty-sub{color:#6B65A8}
+  & .about-opening-body{color:#C8C4E8}
+  & .about-sub-body{color:#9B96C8}
+  & .about-sub-title{color:#E8E5FF}
+  & .about-section-title{color:#E8E5FF}
   & .ob-card{background:#1A1730;border-color:#2E2A5E}
   & .ob-title{color:#E8E5FF}
   & .ob-input{background:#1E1A3C;border-color:#2E2A5E;color:#E8E5FF}
