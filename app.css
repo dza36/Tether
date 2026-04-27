@@ -619,6 +619,18 @@
   .annual-toggle-row{display:flex;align-items:center;justify-content:space-between;padding:.85rem 0;border-bottom:0.5px solid #EEEDFE}
   .annual-toggle-label{display:flex;align-items:center;gap:10px;font-size:15px;color:var(--accent-dark);font-weight:500}
   .annual-coming-soon{font-size:12px;color:var(--accent-soft);padding:.4rem 0 .4rem 2.5rem;font-style:italic}
+  /* About sheet */
+  .about-section-header{display:flex;gap:12px;align-items:flex-start;padding:1rem 0 .5rem;border-left-width:4px;border-left-style:solid;padding-left:12px;margin-bottom:.25rem}
+  .about-section-icon{font-size:24px;flex-shrink:0;margin-top:2px}
+  .about-section-title{font-size:16px;font-weight:700;color:var(--accent-dark);margin-bottom:3px}
+  .about-section-body{font-size:13px;color:var(--accent-soft);line-height:1.5}
+  .about-sub-row{display:flex;gap:12px;align-items:flex-start;padding:.6rem 0 .6rem 16px}
+  .about-sub-icon{font-size:18px;flex-shrink:0;width:24px;text-align:center}
+  .about-sub-content{flex:1}
+  .about-sub-title{font-size:13px;font-weight:600;color:var(--accent-dark);margin-bottom:2px}
+  .about-sub-body{font-size:12px;color:var(--accent-soft);line-height:1.5}
+  .about-divider{height:1px;background:var(--accent-pale);margin:.75rem 0}
+
   .occasion-type-pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:.5rem}
   .occasion-vis-pills{display:flex;gap:8px;flex-wrap:wrap}
   .occasion-type-pill{padding:8px 14px;font-size:13px;font-weight:600;border-radius:10px;border:0.5px solid var(--accent-pale);color:var(--accent);cursor:pointer;background:transparent;transition:all .15s;white-space:nowrap}

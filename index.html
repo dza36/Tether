@@ -112,6 +112,9 @@
     <div class="menu-item" onclick="showToast('Notifications coming soon')">
       <span class="menu-icon">🔔</span> Notifications
     </div>
+    <div class="menu-item" onclick="openAboutSheet();closeUserMenu();">
+      <span class="menu-icon">💡</span> About Tether
+    </div>
     <div class="menu-item" onclick="openSettingsSheet();closeUserMenu();">
       <span class="menu-icon">⚙️</span> Settings
     </div>
@@ -592,6 +595,18 @@
       <button class="dp-btn dp-btn-cancel" onclick="dpCancel()">Cancel</button>
       <button class="dp-btn dp-btn-set" onclick="dpSet()">Set</button>
     </div>
+  </div>
+</div>
+
+<!-- About sheet -->
+<div class="annual-bg" id="aboutBg" onclick="bgClickAbout(event)">
+  <div class="annual-sheet">
+    <div class="annual-handle"></div>
+    <div class="annual-header">
+      <div class="annual-title">About Tether</div>
+      <div class="annual-close" onclick="closeAboutSheet()">✕</div>
+    </div>
+    <div class="annual-body" id="aboutBody"></div>
   </div>
 </div>
 

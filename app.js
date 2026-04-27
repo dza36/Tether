@@ -2676,6 +2676,50 @@ function initBgColor() {
 }
 
 // ─── ANNUAL SHEET ─────────────────────────────────────────────────────────────
+// ─── ABOUT ────────────────────────────────────────────────────────────────────
+let _aboutData = null;
+
+async function openAboutSheet() {
+  if (!_aboutData) {
+    try {
+      const res = await fetch('/about.json?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '0'));
+      _aboutData = await res.json();
+    } catch(e) {
+      showToast('Could not load About content');
+      return;
+    }
+  }
+  renderAboutSheet();
+  document.getElementById('aboutBg').classList.add('open');
+}
+function closeAboutSheet() { document.getElementById('aboutBg').classList.remove('open'); }
+function bgClickAbout(e) { if (e.target === document.getElementById('aboutBg')) closeAboutSheet(); }
+
+function renderAboutSheet() {
+  const body = document.getElementById('aboutBody');
+  if (!body || !_aboutData) return;
+
+  body.innerHTML = _aboutData.sections.map(section => `
+    <div class="about-section-header" style="border-left:4px solid ${section.color}">
+      <span class="about-section-icon">${section.icon}</span>
+      <div>
+        <div class="about-section-title">${section.title}</div>
+        <div class="about-section-body">${section.body}</div>
+      </div>
+    </div>
+    ${(section.subsections || []).map(sub => `
+      <div class="about-sub-row">
+        <div class="about-sub-icon">${sub.icon}</div>
+        <div class="about-sub-content">
+          <div class="about-sub-title">${sub.title}</div>
+          <div class="about-sub-body">${sub.body}</div>
+        </div>
+      </div>
+    `).join('')}
+    <div class="about-divider"></div>
+  `).join('');
+}
+
 // ─── OCCASIONS ────────────────────────────────────────────────────────────────
 let occasionsList = [];
 let editingOccasionId = null;
