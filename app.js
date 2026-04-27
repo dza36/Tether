@@ -234,11 +234,11 @@ function dotClass(t) { return t==='interval'?'dot-interval':t==='weekday'?'dot-w
 
 // ─── TOAST ────────────────────────────────────────────────────────────────────
 let toastTimer;
-function showToast(msg) {
+function showToast(msg, isError, duration=2400) {
   const t = document.getElementById('toast');
   t.textContent=msg; t.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=>t.classList.remove('show'), 2400);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), duration);
 }
 
 // ─── ITEM ACTIONS ─────────────────────────────────────────────────────────────
@@ -4391,15 +4391,27 @@ async function confirmChoreApply() {
 }
 
 // ─── VISIBILITY ───────────────────────────────────────────────────────────────
+let _resuming = false;
 document.addEventListener('visibilitychange', async () => {
-  if (document.hidden || !currentUser) return;
+  if (document.hidden || !currentUser || _resuming) return;
+  _resuming = true;
+
+  // Show refreshing indicator and block interactions
+  const list = document.getElementById('list');
+  if (list) list.style.pointerEvents = 'none';
+  showToast('Refreshing…', false, 1500);
+
   const { data: { session } } = await sb.auth.getSession();
-  if (!session?.user) { showAuth(); return; }
+  if (!session?.user) { _resuming = false; showAuth(); return; }
   currentUser = session.user;
   setupRealtime();
   await loadItems();
   render();
   if (groceryTaskId) loadGroceryItems();
+
+  // Re-enable interactions
+  if (list) list.style.pointerEvents = '';
+  _resuming = false;
 });
 
 // ─── BOOT ─────────────────────────────────────────────────────────────────────
