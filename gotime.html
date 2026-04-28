@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Tether — Go Time</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #0f0e17; color: #e8e6f0; padding: 24px 16px 120px; max-width: 720px; margin: 0 auto; }
+  #gate { display: flex; align-items: center; justify-content: center; min-height: 60vh; text-align: center; color: #7c77a0; font-size: .9rem; }
+  #app { display: none; }
+  .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  h1 { font-size: 1.4rem; font-weight: 700; color: #c4beff; }
+  .top a { font-size: .8rem; color: #6c63ff; text-decoration: none; }
+  .version-bar { font-size: .78rem; color: #7c77a0; margin-bottom: 6px; }
+  .version-bar span { color: #a78bfa; font-weight: 600; }
+  .env-bar { font-size: .78rem; font-weight: 700; margin-bottom: 16px; padding: 6px 12px; border-radius: 8px; display: inline-block; }
+  .env-dev { background: #1a2e22; color: #4ade80; }
+  .env-prod { background: #2e1a1a; color: #f87171; }
+  .platform-row { display: flex; gap: 8px; margin: 0 0 16px; }
+  .btn-platform { flex: 1; border: 2px solid #2e2a45; border-radius: 10px; padding: 9px 0; background: #1e1b2e; color: #7c77a0; font-size: .84rem; font-weight: 600; cursor: pointer; transition: all .15s; }
+  .btn-platform.active { border-color: #6c63ff; background: #2d2860; color: #c4beff; }
+  .progress-bar-wrap { background: #1e1b2e; border-radius: 8px; height: 8px; overflow: hidden; margin-bottom: 6px; }
+  .progress-bar { height: 100%; border-radius: 8px; transition: width .3s; background: linear-gradient(90deg, #4ade80, #a78bfa); }
+  .progress-label { font-size: .75rem; color: #7c77a0; margin-bottom: 20px; }
+  .resume-banner { background: #1a2e22; border: 1px solid #4ade80; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-size: .84rem; color: #4ade80; }
+  .resume-banner strong { display: block; margin-bottom: 4px; }
+
+  /* Sections */
+  .section { margin-bottom: 8px; border-radius: 12px; overflow: hidden; background: #1a1726; }
+  .section-header { display: flex; align-items: center; gap: 10px; padding: 12px 14px; cursor: pointer; user-select: none; }
+  .section-header:hover { background: #1e1b2e; }
+  .section-chevron { color: #7c77a0; font-size: .75rem; transition: transform .2s; }
+  .section.open .section-chevron { transform: rotate(90deg); }
+  .section-title { font-size: .78rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #6c63ff; flex: 1; }
+  .section-counts { display: flex; gap: 6px; }
+  .sc { border-radius: 5px; padding: 3px 8px; font-size: .7rem; font-weight: 700; }
+  .sc-pass { background: #1a2e22; color: #4ade80; }
+  .sc-na { background: #1e2030; color: #7c77a0; }
+  .sc-left { background: #2e1a1a; color: #f87171; }
+  .section-body { display: none; border-top: 1px solid #2a2540; padding: 4px 0; }
+  .section.open .section-body { display: block; }
+
+  /* Test rows */
+  .test-row { padding: 10px 14px; transition: background .15s; }
+  .test-row.resolved { opacity: .45; }
+  .test-row:hover { background: #1e1b2e; }
+  .test-label { font-size: .84rem; line-height: 1.4; color: #e8e6f0; margin-bottom: 6px; }
+  .test-label.pass { color: #4ade80; }
+  .test-label.na { color: #7c77a0; text-decoration: line-through; }
+  .test-btns { display: flex; gap: 6px; }
+  .btn-pass, .btn-na { border: none; border-radius: 6px; padding: 5px 12px; font-size: .74rem; font-weight: 600; cursor: pointer; flex-shrink: 0; }
+  .btn-pass { background: #1a2e22; color: #4ade80; }
+  .btn-na { background: #1e2030; color: #7c77a0; }
+  .btn-pass.active { background: #4ade80; color: #0a1f12; }
+  .btn-na.active { background: #4a4a6a; color: #c4beff; }
+  .na-note { display: none; width: 100%; margin-top: 6px; padding: 8px 12px; background: #1e1b2e; border: 1px solid #3a3560; border-radius: 8px; color: #c4beff; font-size: .82rem; resize: vertical; min-height: 52px; outline: none; font-family: inherit; }
+  .na-note:focus { border-color: #6c63ff; }
+  .na-note.required { border-color: #f87171; }
+
+  /* Run notes */
+  .run-notes-wrap { margin-top: 20px; }
+  .run-notes-label { font-size: .78rem; font-weight: 700; color: #7c77a0; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  .run-notes { width: 100%; padding: 12px 14px; background: #1e1b2e; border: 1px solid #2e2a45; border-radius: 10px; color: #e8e6f0; font-size: .88rem; resize: vertical; min-height: 80px; outline: none; font-family: inherit; }
+  .run-notes:focus { border-color: #6c63ff; }
+
+  /* Bottom */
+  .bottom { position: fixed; bottom: 0; left: 0; right: 0; background: #0f0e17; border-top: 1px solid #1e1b2e; padding: 14px 16px; display: flex; gap: 10px; justify-content: center; }
+  .btn-submit { background: #4ade80; color: #0a1f12; border: none; border-radius: 10px; padding: 12px 32px; font-size: .95rem; font-weight: 700; cursor: pointer; transition: opacity .2s; }
+  .btn-submit:disabled { opacity: .35; cursor: default; background: #1e1b2e; color: #7c77a0; }
+  .btn-reset { background: #1e1b2e; color: #7c77a0; border: none; border-radius: 10px; padding: 12px 20px; font-size: .88rem; font-weight: 600; cursor: pointer; }
+  .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #4ade80; color: #0a1f12; padding: 10px 20px; border-radius: 10px; font-weight: 700; font-size: .88rem; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 99; white-space: nowrap; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div id="gate">Checking access…</div>
+
+<div id="app">
+  <div class="top">
+    <h1>🚦 Go Time</h1>
+    <a href="/qa-runs.html">QA Runs →</a>
+  </div>
+  <div class="version-bar">Version: <span id="versionLabel">—</span></div>
+  <div id="envLabel"></div>
+  <div class="platform-row">
+    <button class="btn-platform" data-p="iOS">iOS</button>
+    <button class="btn-platform" data-p="Android">Android</button>
+    <button class="btn-platform" data-p="macOS">macOS</button>
+    <button class="btn-platform" data-p="Windows">Windows</button>
+  </div>
+  <div id="resumeBanner"></div>
+  <div class="progress-bar-wrap"><div class="progress-bar" id="bar" style="width:0%"></div></div>
+  <div class="progress-label" id="progressLabel">0 evaluated</div>
+  <div id="sections"></div>
+  <div class="run-notes-wrap">
+    <div class="run-notes-label">Notes</div>
+    <textarea class="run-notes" id="runNotes" placeholder="Deployment notes, known issues, anything the team should know…"></textarea>
+  </div>
+  <div style="height:80px"></div>
+</div>
+
+<div class="bottom" id="bottomBar" style="display:none">
+  <button class="btn-reset" onclick="resetAll()">Reset</button>
+  <button class="btn-submit" id="btnSubmit" disabled onclick="submitRun()">Ship It 🚀</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+const GOTIME_TESTS = [
+  {
+    id: 'auth', title: 'Auth & Session',
+    tests: [
+      { id: 'gt-auth-1', label: 'Google sign-in completes and lands on app' },
+      { id: 'gt-auth-2', label: 'Microsoft sign-in completes and lands on app' },
+      { id: 'gt-auth-3', label: 'Sign out → auth screen shown, no app state visible' },
+      { id: 'gt-auth-4', label: 'Lock phone, unlock → app shows Refreshing then becomes responsive' },
+      { id: 'gt-auth-5', label: 'Hard refresh → returning user skips onboarding' },
+    ]
+  },
+  {
+    id: 'oobe', title: 'Drop Anchor / OOBE',
+    tests: [
+      { id: 'gt-ob-1', label: 'New user sees Drop Anchor screen first' },
+      { id: 'gt-ob-2', label: 'Completing onboarding → celebration fires → About Tether opens' },
+      { id: 'gt-ob-3', label: 'Hard refresh after onboarding → does not re-trigger' },
+    ]
+  },
+  {
+    id: 'about', title: 'About Tether',
+    tests: [
+      { id: 'gt-about-1', label: 'Opens from profile menu' },
+      { id: 'gt-about-2', label: 'Opening copy visible with green labels' },
+      { id: 'gt-about-3', label: 'All sections collapsible and expandable' },
+      { id: 'gt-about-4', label: 'Readable in both light and dark mode' },
+    ]
+  },
+  {
+    id: 'tabs', title: 'Tabs',
+    tests: [
+      { id: 'gt-tab-1', label: 'Today / This Week / Beyond — items appear in correct tab only' },
+      { id: 'gt-tab-2', label: 'Snoozed item from Today → moves to This Week' },
+      { id: 'gt-tab-3', label: 'Overdue items always surface in Today' },
+      { id: 'gt-tab-4', label: 'Beyond tab label shows correctly (not "This Month")' },
+    ]
+  },
+  {
+    id: 'tasks', title: 'Tasks',
+    tests: [
+      { id: 'gt-task-1', label: 'Create recurring task — appears in correct tab' },
+      { id: 'gt-task-2', label: 'Swipe right → completes, recurs correctly' },
+      { id: 'gt-task-3', label: 'Swipe left → snooze moves item to next tab' },
+      { id: 'gt-task-4', label: 'Edit task → changes saved immediately' },
+      { id: 'gt-task-5', label: 'Delete task → gone after refresh, soft deleted in DB' },
+    ]
+  },
+  {
+    id: 'occasions', title: 'Occasions',
+    tests: [
+      { id: 'gt-oc-1', label: 'Profile menu shows Occasions (not Annual)' },
+      { id: 'gt-oc-2', label: 'Create occasion — date picker opens, saves correctly' },
+      { id: 'gt-oc-3', label: 'Occasions surface on Today / This Week / Beyond' },
+      { id: 'gt-oc-4', label: 'Delete occasion → soft deleted, does not reappear' },
+    ]
+  },
+  {
+    id: 'household', title: 'Household',
+    tests: [
+      { id: 'gt-hh-1', label: 'Create household → saved, user shown as member' },
+      { id: 'gt-hh-2', label: 'Invite by email → invite in DB with invited_user_id populated' },
+      { id: 'gt-hh-3', label: 'Invited user sees banner with household name on sign-in' },
+      { id: 'gt-hh-4', label: 'Accept invite → joined as member' },
+    ]
+  },
+  {
+    id: 'events', title: 'Events',
+    tests: [
+      { id: 'gt-ev-1', label: 'Create event → appears in Events tab' },
+      { id: 'gt-ev-2', label: 'Edit event → all fields including toggles save correctly' },
+      { id: 'gt-ev-3', label: 'Delete event → stays gone after refresh' },
+      { id: 'gt-ev-4', label: 'RSVP Tentative → note field appears' },
+      { id: 'gt-ev-5', label: 'Location shows as clickable Maps link' },
+      { id: 'gt-ev-6', label: 'Owner sees "You\'re the organizer" instead of RSVP buttons' },
+    ]
+  },
+  {
+    id: 'themes', title: 'Themes & Settings',
+    tests: [
+      { id: 'gt-th-1', label: 'All 5 color themes apply and persist on refresh' },
+      { id: 'gt-th-2', label: 'Dark / Light / System mode all work' },
+      { id: 'gt-th-3', label: 'Version shown correctly in footer' },
+    ]
+  },
+  {
+    id: 'integrity', title: 'Data Integrity',
+    tests: [
+      { id: 'gt-di-1', label: 'Delete task → status = deleted in DB (not hard deleted)' },
+      { id: 'gt-di-2', label: 'Remove grocery item → status = deleted in DB' },
+      { id: 'gt-di-3', label: 'No console errors on normal flow' },
+    ]
+  },
+];
+
+const results = {};
+let currentUserId = null;
+let selectedPlatform = null;
+let appVersion = '—';
+let existingRunId = null;
+
+function totalTests() {
+  return GOTIME_TESTS.reduce((n, s) => n + s.tests.length, 0);
+}
+
+function isReadyToSubmit() {
+  const total = totalTests();
+  const resolved = Object.keys(results).length;
+  if (resolved < total) return false;
+  // All must be pass or na — na requires a justification note
+  for (const [id, r] of Object.entries(results)) {
+    if (r.result === 'na' && !r.note?.trim()) return false;
+  }
+  return true;
+}
+
+function buildSections(priorResults) {
+  const container = document.getElementById('sections');
+  container.innerHTML = GOTIME_TESTS.map(section => {
+    const testRows = section.tests.map(t => {
+      const prior = priorResults[t.id];
+      const resolved = prior && (prior.result === 'pass' || (prior.result === 'na' && prior.note));
+      if (prior) {
+        results[t.id] = prior;
+      }
+      return `<div class="test-row${resolved ? ' resolved' : ''}" id="row-${t.id}">
+        <div class="test-label${prior?.result === 'pass' ? ' pass' : prior?.result === 'na' ? ' na' : ''}" id="lbl-${t.id}">${t.label}</div>
+        <div class="test-btns">
+          <button class="btn-pass${prior?.result === 'pass' ? ' active' : ''}" onclick="setResult('${t.id}', 'pass')">Pass</button>
+          <button class="btn-na${prior?.result === 'na' ? ' active' : ''}" onclick="setResult('${t.id}', 'na')">N/A</button>
+        </div>
+        <textarea class="na-note" id="note-${t.id}" placeholder="Justification required for N/A…" oninput="onNoteInput('${t.id}')" style="display:${prior?.result === 'na' ? 'block' : 'none'}">${prior?.note || ''}</textarea>
+      </div>`;
+    }).join('');
+
+    const allResolved = section.tests.every(t => {
+      const r = priorResults[t.id];
+      return r && (r.result === 'pass' || (r.result === 'na' && r.note));
+    });
+
+    return `<div class="section${allResolved ? '' : ' open'}" id="sec-${section.id}">
+      <div class="section-header" onclick="toggleSection('${section.id}')">
+        <span class="section-chevron">▶</span>
+        <span class="section-title">${section.title}</span>
+        <div class="section-counts" id="counts-${section.id}"></div>
+      </div>
+      <div class="section-body">${testRows}</div>
+    </div>`;
+  }).join('');
+
+  updateCounts();
+}
+
+function toggleSection(id) {
+  document.getElementById('sec-' + id).classList.toggle('open');
+}
+
+function setResult(id, result) {
+  if (!results[id]) results[id] = {};
+  if (results[id].result === result) {
+    delete results[id];
+    document.querySelector(`#row-${id} .btn-pass`)?.classList.remove('active');
+    document.querySelector(`#row-${id} .btn-na`)?.classList.remove('active');
+    document.getElementById('lbl-' + id).className = 'test-label';
+    document.getElementById('note-' + id).style.display = 'none';
+    document.getElementById('row-' + id).classList.remove('resolved');
+  } else {
+    results[id] = { label: GOTIME_TESTS.flatMap(s => s.tests).find(t => t.id === id)?.label || id, result, note: results[id]?.note || '' };
+    document.querySelector(`#row-${id} .btn-pass`)?.classList.toggle('active', result === 'pass');
+    document.querySelector(`#row-${id} .btn-na`)?.classList.toggle('active', result === 'na');
+    document.getElementById('lbl-' + id).className = 'test-label ' + result;
+    const noteEl = document.getElementById('note-' + id);
+    noteEl.style.display = result === 'na' ? 'block' : 'none';
+    if (result === 'pass') {
+      results[id].note = '';
+      noteEl.value = '';
+      document.getElementById('row-' + id).classList.add('resolved');
+    } else {
+      document.getElementById('row-' + id).classList.remove('resolved');
+    }
+  }
+  updateCounts();
+  updateProgress();
+}
+
+function onNoteInput(id) {
+  if (results[id]) {
+    results[id].note = document.getElementById('note-' + id).value.trim();
+    const resolved = results[id].note.length > 0;
+    document.getElementById('row-' + id).classList.toggle('resolved', resolved);
+    document.getElementById('note-' + id).classList.toggle('required', !resolved);
+  }
+  updateProgress();
+}
+
+function updateProgress() {
+  const total = totalTests();
+  const pass = Object.values(results).filter(r => r.result === 'pass').length;
+  const na = Object.values(results).filter(r => r.result === 'na' && r.note?.trim()).length;
+  const resolved = pass + na;
+  const pct = total ? (resolved / total) * 100 : 0;
+  document.getElementById('bar').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent =
+    `${resolved} / ${total} resolved — ${pass} pass, ${na} n/a`;
+  document.getElementById('btnSubmit').disabled = !isReadyToSubmit();
+}
+
+function updateCounts() {
+  GOTIME_TESTS.forEach(section => {
+    const el = document.getElementById('counts-' + section.id);
+    if (!el) return;
+    const pass = section.tests.filter(t => results[t.id]?.result === 'pass').length;
+    const na = section.tests.filter(t => results[t.id]?.result === 'na' && results[t.id]?.note?.trim()).length;
+    const left = section.tests.length - pass - na;
+    el.innerHTML = [
+      pass ? `<span class="sc sc-pass">${pass} pass</span>` : '',
+      na   ? `<span class="sc sc-na">${na} n/a</span>` : '',
+      left ? `<span class="sc sc-left">${left} left</span>` : '',
+    ].join('');
+  });
+}
+
+function resetAll() {
+  if (!confirm('Reset all results for this run?')) return;
+  Object.keys(results).forEach(k => delete results[k]);
+  existingRunId = null;
+  buildSections({});
+  updateProgress();
+  document.getElementById('runNotes').value = '';
+  document.getElementById('resumeBanner').innerHTML = '';
+  selectedPlatform = null;
+  document.querySelectorAll('.btn-platform').forEach(b => b.classList.remove('active'));
+}
+
+async function submitRun() {
+  const btn = document.getElementById('btnSubmit');
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+  const platformPrefix = selectedPlatform ? `[${selectedPlatform}] ` : '';
+  const label = `${platformPrefix}GoTime v${appVersion}`;
+  const payload = {
+    submitted_by: currentUserId,
+    label,
+    platform: selectedPlatform,
+    version: appVersion,
+    run_type: 'gotime',
+    notes: document.getElementById('runNotes').value.trim() || null,
+    results,
+  };
+  let error;
+  if (existingRunId) {
+    ({ error } = await sb.from('qa_runs').update(payload).eq('id', existingRunId));
+  } else {
+    ({ error } = await sb.from('qa_runs').insert(payload));
+  }
+  if (error) {
+    showToast('Error: ' + error.message, true);
+    btn.disabled = false;
+    btn.textContent = 'Ship It 🚀';
+  } else {
+    showToast('🚀 Go Time submitted!');
+    setTimeout(() => window.location.href = '/qa-runs.html', 1500);
+  }
+}
+
+function showToast(msg, isError) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = isError ? '#f87171' : '#4ade80';
+  t.style.color = isError ? '#2e0a0a' : '#0a1f12';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session?.user) {
+    document.getElementById('gate').innerHTML = 'Please <a href="/" style="color:#6c63ff">sign in to Tether</a> first.';
+    return;
+  }
+  const { data: user } = await sb.from('users').select('subscription_tier').eq('id', session.user.id).single();
+  if (!user || !['creator','employee'].includes(user.subscription_tier)) {
+    document.getElementById('gate').textContent = 'Access denied. Creator or Employee account required.';
+    return;
+  }
+  currentUserId = session.user.id;
+
+  // Get version
+  try {
+    const r = await fetch('/version.js?v=' + Date.now());
+    const text = await r.text();
+    const match = text.match(/"([^"]+)"/);
+    if (match) appVersion = match[1];
+  } catch(_) {}
+  document.getElementById('versionLabel').textContent = appVersion;
+
+  // Show environment indicator
+  const isDev = appVersion.includes('-dev');
+  document.getElementById('envLabel').innerHTML =
+    `<div class="env-bar ${isDev ? 'env-dev' : 'env-prod'}">${isDev ? '🧪 DEV environment' : '🚨 PROD environment'}</div>`;
+
+  // Check for existing GoTime run on this version
+  const { data: existing } = await sb.from('qa_runs')
+    .select('id, results, notes')
+    .eq('version', appVersion)
+    .eq('run_type', 'gotime')
+    .order('run_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  let priorResults = {};
+  if (existing) {
+    existingRunId = existing.id;
+    priorResults = existing.results || {};
+    const priorCount = Object.keys(priorResults).length;
+    const total = totalTests();
+    document.getElementById('resumeBanner').innerHTML = `
+      <div class="resume-banner">
+        <strong>Resuming previous run</strong>
+        ${priorCount} of ${total} tests already resolved — only outstanding items need evaluation.
+      </div>`;
+    if (existing.notes) document.getElementById('runNotes').value = existing.notes;
+  }
+
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('bottomBar').style.display = 'flex';
+
+  buildSections(priorResults);
+  updateProgress();
+
+  document.querySelectorAll('.btn-platform').forEach(btn => {
+    btn.addEventListener('click', () => {
+      selectedPlatform = selectedPlatform === btn.dataset.p ? null : btn.dataset.p;
+      document.querySelectorAll('.btn-platform').forEach(b => b.classList.toggle('active', b.dataset.p === selectedPlatform));
+    });
+  });
+}
+
+init();
+</script>
+</body>
+</html>
