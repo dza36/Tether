@@ -49,16 +49,21 @@
   .test-row:hover { background: #1e1b2e; }
   .test-label { font-size: .84rem; line-height: 1.4; color: #e8e6f0; margin-bottom: 6px; }
   .test-label.pass { color: #4ade80; }
+  .test-label.fail { color: #f87171; }
   .test-label.na { color: #7c77a0; text-decoration: line-through; }
   .test-btns { display: flex; gap: 6px; }
-  .btn-pass, .btn-na { border: none; border-radius: 6px; padding: 5px 12px; font-size: .74rem; font-weight: 600; cursor: pointer; flex-shrink: 0; }
+  .btn-pass, .btn-fail, .btn-na { border: none; border-radius: 6px; padding: 5px 12px; font-size: .74rem; font-weight: 600; cursor: pointer; flex-shrink: 0; }
   .btn-pass { background: #1a2e22; color: #4ade80; }
+  .btn-fail { background: #2e1a1a; color: #f87171; }
   .btn-na { background: #1e2030; color: #7c77a0; }
   .btn-pass.active { background: #4ade80; color: #0a1f12; }
+  .btn-fail.active { background: #f87171; color: #2e0a0a; }
   .btn-na.active { background: #4a4a6a; color: #c4beff; }
-  .na-note { display: none; width: 100%; margin-top: 6px; padding: 8px 12px; background: #1e1b2e; border: 1px solid #3a3560; border-radius: 8px; color: #c4beff; font-size: .82rem; resize: vertical; min-height: 52px; outline: none; font-family: inherit; }
-  .na-note:focus { border-color: #6c63ff; }
-  .na-note.required { border-color: #f87171; }
+  .sc-fail { background: #2e1a1a; color: #f87171; }
+  .result-note { display: none; width: 100%; margin-top: 6px; padding: 8px 12px; background: #1e1b2e; border: 1px solid #3a3560; border-radius: 8px; color: #e8e6f0; font-size: .82rem; resize: vertical; min-height: 52px; outline: none; font-family: inherit; }
+  .result-note.fail-note { border-color: #5a2020; color: #f0d0d0; }
+  .result-note:focus { border-color: #6c63ff; }
+  .result-note.required { border-color: #f87171; }
 
   /* Run notes */
   .run-notes-wrap { margin-top: 20px; }
@@ -221,9 +226,9 @@ function isReadyToSubmit() {
   const total = totalTests();
   const resolved = Object.keys(results).length;
   if (resolved < total) return false;
-  // All must be pass or na — na requires a justification note
+  // Pass is always ok. Fail and N/A require a non-empty note.
   for (const [id, r] of Object.entries(results)) {
-    if (r.result === 'na' && !r.note?.trim()) return false;
+    if ((r.result === 'na' || r.result === 'fail') && !r.note?.trim()) return false;
   }
   return true;
 }
@@ -237,13 +242,15 @@ function buildSections(priorResults) {
       if (prior) {
         results[t.id] = prior;
       }
+      const needsNote = prior && (prior.result === 'na' || prior.result === 'fail');
       return `<div class="test-row${resolved ? ' resolved' : ''}" id="row-${t.id}">
-        <div class="test-label${prior?.result === 'pass' ? ' pass' : prior?.result === 'na' ? ' na' : ''}" id="lbl-${t.id}">${t.label}</div>
+        <div class="test-label${prior?.result ? ' ' + prior.result : ''}" id="lbl-${t.id}">${t.label}</div>
         <div class="test-btns">
           <button class="btn-pass${prior?.result === 'pass' ? ' active' : ''}" onclick="setResult('${t.id}', 'pass')">Pass</button>
+          <button class="btn-fail${prior?.result === 'fail' ? ' active' : ''}" onclick="setResult('${t.id}', 'fail')">Fail</button>
           <button class="btn-na${prior?.result === 'na' ? ' active' : ''}" onclick="setResult('${t.id}', 'na')">N/A</button>
         </div>
-        <textarea class="na-note" id="note-${t.id}" placeholder="Justification required for N/A…" oninput="onNoteInput('${t.id}')" style="display:${prior?.result === 'na' ? 'block' : 'none'}">${prior?.note || ''}</textarea>
+        <textarea class="result-note${prior?.result === 'fail' ? ' fail-note' : ''}" id="note-${t.id}" placeholder="${prior?.result === 'fail' ? 'Describe the issue and why shipping is acceptable…' : 'Justification required for N/A…'}" oninput="onNoteInput('${t.id}')" style="display:${needsNote ? 'block' : 'none'}">${prior?.note || ''}</textarea>
       </div>`;
     }).join('');
 
@@ -273,18 +280,22 @@ function setResult(id, result) {
   if (!results[id]) results[id] = {};
   if (results[id].result === result) {
     delete results[id];
-    document.querySelector(`#row-${id} .btn-pass`)?.classList.remove('active');
-    document.querySelector(`#row-${id} .btn-na`)?.classList.remove('active');
+    ['pass','fail','na'].forEach(r => document.querySelector(`#row-${id} .btn-${r}`)?.classList.remove('active'));
     document.getElementById('lbl-' + id).className = 'test-label';
-    document.getElementById('note-' + id).style.display = 'none';
+    const noteEl = document.getElementById('note-' + id);
+    noteEl.style.display = 'none';
+    noteEl.value = '';
     document.getElementById('row-' + id).classList.remove('resolved');
   } else {
-    results[id] = { label: GOTIME_TESTS.flatMap(s => s.tests).find(t => t.id === id)?.label || id, result, note: results[id]?.note || '' };
-    document.querySelector(`#row-${id} .btn-pass`)?.classList.toggle('active', result === 'pass');
-    document.querySelector(`#row-${id} .btn-na`)?.classList.toggle('active', result === 'na');
+    const label = GOTIME_TESTS.flatMap(s => s.tests).find(t => t.id === id)?.label || id;
+    results[id] = { label, result, note: results[id]?.note || '' };
+    ['pass','fail','na'].forEach(r => document.querySelector(`#row-${id} .btn-${r}`)?.classList.toggle('active', r === result));
     document.getElementById('lbl-' + id).className = 'test-label ' + result;
     const noteEl = document.getElementById('note-' + id);
-    noteEl.style.display = result === 'na' ? 'block' : 'none';
+    const needsNote = result === 'na' || result === 'fail';
+    noteEl.style.display = needsNote ? 'block' : 'none';
+    noteEl.className = `result-note${result === 'fail' ? ' fail-note' : ''}`;
+    noteEl.placeholder = result === 'fail' ? 'Describe the issue and why shipping is acceptable…' : 'Justification required for N/A…';
     if (result === 'pass') {
       results[id].note = '';
       noteEl.value = '';
@@ -304,19 +315,25 @@ function onNoteInput(id) {
     document.getElementById('row-' + id).classList.toggle('resolved', resolved);
     document.getElementById('note-' + id).classList.toggle('required', !resolved);
   }
+  updateCounts();
   updateProgress();
 }
 
 function updateProgress() {
   const total = totalTests();
   const pass = Object.values(results).filter(r => r.result === 'pass').length;
-  const na = Object.values(results).filter(r => r.result === 'na' && r.note?.trim()).length;
-  const resolved = pass + na;
+  const fail = Object.values(results).filter(r => r.result === 'fail' && r.note?.trim()).length;
+  const na   = Object.values(results).filter(r => r.result === 'na'   && r.note?.trim()).length;
+  const resolved = pass + fail + na;
   const pct = total ? (resolved / total) * 100 : 0;
   document.getElementById('bar').style.width = pct + '%';
   document.getElementById('progressLabel').textContent =
-    `${resolved} / ${total} resolved — ${pass} pass, ${na} n/a`;
-  document.getElementById('btnSubmit').disabled = !isReadyToSubmit();
+    `${resolved} / ${total} resolved — ${pass} pass${fail ? ', ' + fail + ' fail' : ''}${na ? ', ' + na + ' n/a' : ''}`;
+  const btn = document.getElementById('btnSubmit');
+  btn.disabled = !isReadyToSubmit();
+  btn.style.background = fail > 0 ? '#D97706' : '#4ade80';
+  btn.style.color = fail > 0 ? '#fff' : '#0a1f12';
+  btn.textContent = fail > 0 ? `Ship It anyway ⚠️ (${fail} fail${fail > 1 ? 's' : ''})` : 'Ship It 🚀';
 }
 
 function updateCounts() {
@@ -324,11 +341,13 @@ function updateCounts() {
     const el = document.getElementById('counts-' + section.id);
     if (!el) return;
     const pass = section.tests.filter(t => results[t.id]?.result === 'pass').length;
-    const na = section.tests.filter(t => results[t.id]?.result === 'na' && results[t.id]?.note?.trim()).length;
-    const left = section.tests.length - pass - na;
+    const fail = section.tests.filter(t => results[t.id]?.result === 'fail' && results[t.id]?.note?.trim()).length;
+    const na   = section.tests.filter(t => results[t.id]?.result === 'na'   && results[t.id]?.note?.trim()).length;
+    const left = section.tests.length - pass - fail - na;
     el.innerHTML = [
       pass ? `<span class="sc sc-pass">${pass} pass</span>` : '',
-      na   ? `<span class="sc sc-na">${na} n/a</span>` : '',
+      fail ? `<span class="sc sc-fail">${fail} fail</span>` : '',
+      na   ? `<span class="sc sc-na">${na} n/a</span>`      : '',
       left ? `<span class="sc sc-left">${left} left</span>` : '',
     ].join('');
   });
