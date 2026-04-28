@@ -3474,7 +3474,7 @@ function renderChangelogSheet() {
 })();
 
 // ─── ONBOARDING ───────────────────────────────────────────────────────────────
-const OB_TOTAL = 5;
+const OB_TOTAL = 6;
 let obStep = 0;
 let obHasInvite = false;
 let obAnniversaries = [];
@@ -3501,7 +3501,7 @@ function renderObSteps() {
 
 function renderObScreen() {
   renderObSteps();
-  [renderObWelcome, renderObBirthday, renderObAnniversary, renderObHousehold, renderObFinish][obStep]?.();
+  [renderObDropAnchor, renderObWelcome, renderObBirthday, renderObAnniversary, renderObHousehold, renderObFinish][obStep]?.();
 }
 
 function obAdvance() { if (obStep < OB_TOTAL - 1) { obStep++; renderObScreen(); } }
@@ -3513,6 +3513,16 @@ function obNavPills(skipLabel, skipFn) {
     <button class="ob-pill" onclick="obBack()">← Back</button>
     <button class="ob-pill" onclick="${skipFn}()">${skipLabel}</button>
   </div>`;
+}
+
+function renderObDropAnchor() {
+  document.getElementById('obCard').innerHTML = `
+    <div class="ob-icon" style="font-size:3rem">⚓</div>
+    <div class="ob-title" style="font-size:1.4rem;line-height:1.3">Are you ready to<br><strong>DROP ANCHOR</strong><br>and get life Tethered?</div>
+    <div class="ob-actions">
+      <button class="ob-btn-primary" onclick="obAdvance()">Drop Anchor</button>
+    </div>
+  `;
 }
 
 function renderObWelcome() {
@@ -3776,7 +3786,8 @@ async function obComplete() {
   await checkPendingInvites();
   render();
   setupRealtime();
-  setTimeout(showCelebration, 150); // fires over the app, not the onboarding card
+  setTimeout(showCelebration, 150);
+  setTimeout(openAboutSheet, 600); // land on About Tether after celebration starts
 }
 
 // ─── CHORE CATALOG ────────────────────────────────────────────────────────────
