@@ -412,8 +412,8 @@ async function init() {
     return;
   }
   const { data: user } = await sb.from('users').select('subscription_tier').eq('id', session.user.id).single();
-  if (!user || !['creator','employee'].includes(user.subscription_tier)) {
-    document.getElementById('gate').textContent = 'Access denied. Creator or Employee account required.';
+  if (!user || !String(user.subscription_tier).match(/creator|employee/)) {
+    document.getElementById('gate').textContent = `Access denied. Tier: ${user?.subscription_tier} — Creator or Employee required.`;
     return;
   }
   currentUserId = session.user.id;
