@@ -4480,23 +4480,21 @@ let _resuming = false;
 document.addEventListener('visibilitychange', async () => {
   if (document.hidden || !currentUser || _resuming) return;
   _resuming = true;
-
-  // Show refreshing indicator and block interactions
   const list = document.getElementById('list');
   if (list) list.style.pointerEvents = 'none';
   showToast('Refreshing…', false, 1500);
-
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session?.user) { _resuming = false; showAuth(); return; }
-  currentUser = session.user;
-  setupRealtime();
-  await loadItems();
-  render();
-  if (groceryTaskId) { loadGroceryItems(); subscribeGrocery(groceryTaskId); }
-
-  // Re-enable interactions
-  if (list) list.style.pointerEvents = '';
-  _resuming = false;
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session?.user) { showAuth(); return; }
+    currentUser = session.user;
+    setupRealtime();
+    await loadItems();
+    render();
+    if (groceryTaskId) { loadGroceryItems(); subscribeGrocery(groceryTaskId); }
+  } finally {
+    if (list) list.style.pointerEvents = '';
+    _resuming = false;
+  }
 });
 
 // ─── BOOT ─────────────────────────────────────────────────────────────────────
