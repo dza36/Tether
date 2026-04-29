@@ -4480,8 +4480,6 @@ let _resuming = false;
 document.addEventListener('visibilitychange', async () => {
   if (document.hidden || !currentUser || _resuming) return;
   _resuming = true;
-  const list = document.getElementById('list');
-  if (list) list.style.pointerEvents = 'none';
   showToast('Refreshing…', false, 1500);
   try {
     const { data: { session } } = await sb.auth.getSession();
@@ -4492,7 +4490,6 @@ document.addEventListener('visibilitychange', async () => {
     render();
     if (groceryTaskId) { loadGroceryItems(); subscribeGrocery(groceryTaskId); }
   } finally {
-    if (list) list.style.pointerEvents = '';
     _resuming = false;
   }
 });
