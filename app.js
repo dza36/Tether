@@ -4492,7 +4492,7 @@ document.addEventListener('visibilitychange', async () => {
   setupRealtime();
   await loadItems();
   render();
-  if (groceryTaskId) loadGroceryItems();
+  if (groceryTaskId) { loadGroceryItems(); subscribeGrocery(groceryTaskId); }
 
   // Re-enable interactions
   if (list) list.style.pointerEvents = '';
