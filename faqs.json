@@ -1,0 +1,73 @@
+{
+  "sections": [
+    {
+      "id": "general",
+      "title": "FAQs",
+      "display": true,
+      "questions": [
+        {
+          "q": "What is Tether?",
+          "a": "Tether is a household coordination app that keeps you anchored to the people, rhythms, and responsibilities that matter most. It brings together tasks, events, and occasions — and shares them with the people in your life who need to know."
+        },
+        {
+          "q": "How is Tether different from a shared calendar?",
+          "a": "A calendar tells you when something is happening. Tether tells you what needs to happen, who's responsible, and whether it got done. Tasks recur automatically, chores reset, grocery lists sync in real time, and events coordinate attendees and bring lists — all in one place."
+        },
+        {
+          "q": "What is a Household?",
+          "a": "Your Household is your daily functioning unit — the people you live with. You have one Household, and everything shared within it is automatic. Tasks, events, and grocery lists are all visible to every member."
+        },
+        {
+          "q": "What is the difference between a Household and a Group?",
+          "a": "Your Household is the people you live with — tight, always-on coordination. Groups are named collections of people beyond your front door (family, friends, teams). Groups are used for inviting people to events in bulk. Think of them as smart distribution lists."
+        },
+        {
+          "q": "How do I invite someone to my Household?",
+          "a": "Go to the profile menu → Household → enter their email and tap Send. They'll see a banner to accept or decline the next time they open Tether."
+        },
+        {
+          "q": "Why can't I see my Household member's tasks?",
+          "a": "Tasks are only shared if they are assigned to a Household member or created within a Household context. Personal tasks remain private unless shared."
+        },
+        {
+          "q": "What are Occasions?",
+          "a": "Occasions are annual, life-significant dates — birthdays, anniversaries, and remembrance days. They surface on your Today tab on the date and in Beyond as they approach. You can create a task or event from any occasion."
+        },
+        {
+          "q": "Do I need a Tether account to be remembered on a Remembrance occasion?",
+          "a": "No. A name and a date is all you need. Remembrance occasions are intentionally personal — no account link required."
+        },
+        {
+          "q": "How does snoozing work?",
+          "a": "Swiping left on an item snoozes it. Items snoozed from Today move to This Week. Items snoozed from This Week move to Beyond. Nothing disappears — it just moves forward."
+        },
+        {
+          "q": "What happens when I complete a recurring task?",
+          "a": "Tether automatically calculates the next due date based on your cadence (daily, weekly, monthly, etc.) and advances the task. Your completion history is preserved — nothing is ever deleted."
+        },
+        {
+          "q": "How do I know if something should be a task or an event?",
+          "a": "If it needs to get done, it's a task. If people are gathering somewhere at a specific time, it's an event. A dentist appointment you keep to yourself is a task. A birthday party you're hosting for twelve people is an event."
+        },
+        {
+          "q": "Can I use Tether by myself, without a Household?",
+          "a": "Yes. Tether works great as a personal task and occasion tracker. A Household just adds shared visibility and coordination with the people you live with — you can create one whenever you're ready."
+        },
+        {
+          "q": "What are the Today, This Week, and Beyond tabs?",
+          "a": "Today shows everything due now or overdue. This Week shows what's coming up in the next seven days. Beyond shows everything further out — including upcoming occasions and annual events. One item lives in exactly one tab at a time."
+        },
+        {
+          "q": "Is anything ever permanently deleted?",
+          "a": "No. Tether never hard-deletes your data. Completed tasks are archived, removed items are soft-deleted, and your history is always preserved. Nothing you've done in Tether disappears."
+        }
+      ]
+    },
+    {
+      "id": "advanced",
+      "title": null,
+      "display": false,
+      "questions": []
+    }
+  ]
+}

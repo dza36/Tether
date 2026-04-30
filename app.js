@@ -2750,6 +2750,52 @@ function toggleAboutSection(id) {
   chevEl.style.transition = 'transform .2s';
 }
 
+// ─── FAQ ──────────────────────────────────────────────────────────────────────
+let _faqData = null;
+
+async function openFaqSheet() {
+  if (!_faqData) {
+    const res = await fetch('/faqs.json?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '0'));
+    _faqData = await res.json();
+  }
+  renderFaqSheet();
+  document.getElementById('faqBg').classList.add('open');
+}
+function closeFaqSheet() { document.getElementById('faqBg').classList.remove('open'); }
+function bgClickFaq(e) { if (e.target === document.getElementById('faqBg')) closeFaqSheet(); }
+
+function renderFaqSheet() {
+  const body = document.getElementById('faqBody');
+  if (!body || !_faqData) return;
+  body.innerHTML = (_faqData.sections || [])
+    .filter(s => s.display)
+    .map(s => `
+      <div class="faq-section">
+        ${s.title ? `<div class="about-section-title" style="padding:12px 0 8px;font-weight:600">${s.title}</div>` : ''}
+        ${s.questions.map((item, i) => `
+          <div class="faq-item" id="faq-item-${s.id}-${i}">
+            <div class="about-section-header" onclick="toggleFaq('${s.id}',${i})" style="border-left:none;padding-left:0">
+              <div style="flex:1;font-weight:500">${item.q}</div>
+              <span class="about-chevron" id="faq-chev-${s.id}-${i}">▶</span>
+            </div>
+            <div class="about-section-body" id="faq-body-${s.id}-${i}" style="display:none;padding:0 0 12px">
+              ${item.a}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `).join('');
+}
+
+function toggleFaq(sectionId, i) {
+  const bodyEl = document.getElementById(`faq-body-${sectionId}-${i}`);
+  const chevEl = document.getElementById(`faq-chev-${sectionId}-${i}`);
+  const isOpen = bodyEl.style.display !== 'none';
+  bodyEl.style.display = isOpen ? 'none' : 'block';
+  chevEl.style.transform = isOpen ? '' : 'rotate(90deg)';
+  chevEl.style.transition = 'transform .2s';
+}
+
 // ─── OCCASIONS ────────────────────────────────────────────────────────────────
 let occasionsList = [];
 let editingOccasionId = null;

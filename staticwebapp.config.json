@@ -1,7 +1,7 @@
 {
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/icon-*", "/manifest*.json", "/about.json", "/app.css", "/app.js", "/supabase.js", "/config.js", "/version.js", "/grocery-data.js"]
+    "exclude": ["/icon-*", "/manifest*.json", "/about.json", "/faqs.json", "/app.css", "/app.js", "/supabase.js", "/config.js", "/version.js", "/grocery-data.js"]
   },
   "globalHeaders": {
     "Cache-Control": "no-cache, no-store, must-revalidate",
