@@ -45,8 +45,9 @@ async function onSignedIn(user) {
   document.getElementById('loadingScreen').classList.remove('open');
   document.getElementById('authScreen').classList.remove('open');
   document.getElementById('mainApp').style.display = '';
-  if (obResult) {
-    initOnboarding(obResult);
+  const isDevBuild = typeof APP_VERSION !== 'undefined' && APP_VERSION.includes('-dev');
+  if (obResult || (window.location.pathname === '/onboarding' && isDevBuild)) {
+    initOnboarding(obResult || { hasInvite: false });
     return;
   }
   await checkPendingInvites();

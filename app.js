@@ -3474,25 +3474,32 @@ function renderChangelogSheet() {
 })();
 
 // ─── ONBOARDING ───────────────────────────────────────────────────────────────
-const OB_TOTAL = 6;
 let obStep = 0;
 let obHasInvite = false;
 let obAnniversaries = [];
 let obHouseholdId = null;
 
-function initOnboarding({ hasInvite }) {
+function obGetParas() { return (_aboutData?.opening?.paragraphs) || []; }
+function obGetTotal() { return obGetParas().length + 4; } // about screens + household + birthday + anniversary + finish
+
+async function initOnboarding({ hasInvite }) {
   obStep = 0;
   obHasInvite = hasInvite;
   obAnniversaries = [];
   obHouseholdId = null;
   document.getElementById('obOverlay').style.display = '';
+  if (!_aboutData) {
+    const res = await fetch('/about.json?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '0'));
+    _aboutData = await res.json();
+  }
   renderObScreen();
 }
 
 function renderObSteps() {
   const el = document.getElementById('obSteps');
+  const total = obGetTotal();
   el.innerHTML = '';
-  for (let i = 0; i < OB_TOTAL; i++) {
+  for (let i = 0; i < total; i++) {
     const dot = document.createElement('div');
     dot.className = 'ob-step' + (i < obStep ? ' done' : i === obStep ? ' active' : '');
     el.appendChild(dot);
@@ -3500,14 +3507,18 @@ function renderObSteps() {
 }
 
 function renderObScreen() {
+  const N = obGetParas().length;
   renderObSteps();
-  [renderObDropAnchor, renderObWelcome, renderObBirthday, renderObAnniversary, renderObHousehold, renderObFinish][obStep]?.();
+  if (obStep < N)          renderObAbout(obStep);
+  else if (obStep === N)   renderObHousehold();
+  else if (obStep === N+1) renderObBirthday();
+  else if (obStep === N+2) renderObAnniversary();
+  else                     renderObFinish();
 }
 
-function obAdvance() { if (obStep < OB_TOTAL - 1) { obStep++; renderObScreen(); } }
+function obAdvance() { if (obStep < obGetTotal() - 1) { obStep++; renderObScreen(); } }
 function obBack()    { if (obStep > 0) { obStep--; renderObScreen(); } }
 
-// shared pill row — baked into each screen that needs it
 function obNavPills(skipLabel, skipFn) {
   return `<div class="ob-pills">
     <button class="ob-pill" onclick="obBack()">← Back</button>
@@ -3515,27 +3526,29 @@ function obNavPills(skipLabel, skipFn) {
   </div>`;
 }
 
-function renderObDropAnchor() {
-  document.getElementById('obCard').innerHTML = `
-    <div class="ob-icon" style="font-size:3rem">⚓</div>
-    <div class="ob-title" style="font-size:1.4rem;line-height:1.3">Are you ready to<br><strong>DROP ANCHOR</strong><br>and get life Tethered?</div>
-    <div class="ob-actions">
-      <button class="ob-btn-primary" onclick="obAdvance()">Drop Anchor</button>
-    </div>
-  `;
-}
-
-function renderObWelcome() {
-  const meta = currentUser.user_metadata || {};
-  const first = (meta.full_name || meta.name || '').split(' ')[0];
-  document.getElementById('obCard').innerHTML = `
-    <div class="ob-icon">⚓</div>
-    <div class="ob-title">Welcome${first ? ', ' + first : ''}!</div>
-    <div class="ob-body">Tether keeps you on top of the things that matter — tasks, events, and the people you share life with.<br><br>Let's get you set up.</div>
-    <div class="ob-actions">
-      <button class="ob-btn-primary" onclick="obAdvance()">Let's go!</button>
-    </div>
-  `;
+function renderObAbout(step) {
+  const o = _aboutData.opening;
+  const paras = o.paragraphs;
+  const p = paras[step];
+  let content = '';
+  if (step === 0) {
+    const parts = p.body.split('\n\n');
+    content = `
+      <div class="about-tagline">${o.tagline}</div>
+      <div class="about-opening-body">${parts.map(b => `<p>${b}</p>`).join('')}</div>
+      <div class="ob-actions"><button class="ob-btn-primary" onclick="obAdvance()">Next</button></div>`;
+  } else {
+    const labelHtml = p.label ? `<span class="about-para-label">${p.label}</span> ` : '';
+    const parts = p.body.split('\n\n');
+    const bodyHtml = parts.map((b, i) => `<p>${i === 0 ? labelHtml : ''}${b}</p>`).join('');
+    content = `
+      <div class="about-opening-body">${bodyHtml}</div>
+      <div class="ob-actions">
+        <button class="ob-btn-primary" onclick="obAdvance()">Next</button>
+        <div class="ob-pills"><button class="ob-pill" onclick="obBack()">← Back</button></div>
+      </div>`;
+  }
+  document.getElementById('obCard').innerHTML = content;
 }
 
 function renderObBirthday() {
@@ -3550,12 +3563,8 @@ function renderObBirthday() {
           ${months.map((m,i)=>`<option value="${String(i+1).padStart(2,'0')}">${m}</option>`).join('')}
         </select>
         <input class="ob-input ob-input-sm" id="obBdDay" type="text" inputmode="numeric" placeholder="Day" maxlength="2">
-        <input class="ob-input ob-input-sm" id="obBdYear" type="text" inputmode="numeric" placeholder="Year" maxlength="4">
+        <input class="ob-input ob-input-sm" id="obBdYear" type="text" inputmode="numeric" placeholder="Year (optional)" maxlength="4">
       </div>
-      <label class="ob-toggle-row">
-        <span>Show birth year to household</span>
-        <input type="checkbox" id="obShowYear" checked>
-      </label>
     </div>
     <div class="ob-actions">
       <button class="ob-btn-primary" onclick="obSaveBirthday()">Save & continue</button>
@@ -3568,10 +3577,15 @@ async function obSaveBirthday() {
   const month = document.getElementById('obBdMonth').value;
   const day   = document.getElementById('obBdDay').value.trim();
   const year  = document.getElementById('obBdYear').value.trim();
-  if (month && day && year) {
-    const dateStr = `${year}-${month}-${String(parseInt(day)).padStart(2,'0')}`;
-    const showYear = document.getElementById('obShowYear').checked;
-    await sb.from('users').update({ birthday: dateStr, show_birth_year: showYear }).eq('id', currentUser.id);
+  if (month && day) {
+    const row = {
+      type: 'birthday', name: 'My Birthday',
+      month: parseInt(month), day: parseInt(day),
+      year: year ? parseInt(year) : null,
+      visibility: 'household', user_id: currentUser.id
+    };
+    const { error } = await sb.from('occasions').insert(row);
+    if (error) { showToast('Could not save birthday'); return; }
   }
   obAdvance();
 }
@@ -3625,7 +3639,18 @@ function obRemoveAnniversary(i) {
 
 async function obSaveAnniversaries() {
   if (obAnniversaries.length) {
-    const { error } = await sb.from('users').update({ other_dates: obAnniversaries }).eq('id', currentUser.id);
+    const rows = obAnniversaries.map(a => {
+      const parts = a.date.split('-');
+      const hasYear = parts.length === 3;
+      return {
+        type: 'anniversary', name: a.name,
+        month: parseInt(hasYear ? parts[1] : parts[0]),
+        day:   parseInt(hasYear ? parts[2] : parts[1]),
+        year:  hasYear ? parseInt(parts[0]) : null,
+        visibility: 'household', user_id: currentUser.id
+      };
+    });
+    const { error } = await sb.from('occasions').insert(rows);
     if (error) { showToast('Could not save: ' + error.message); return; }
   }
   obAdvance();
@@ -3771,10 +3796,11 @@ async function obCreateHouseholdFlow() {
 function renderObFinish() {
   document.getElementById('obCard').innerHTML = `
     <div class="ob-icon">⚓</div>
-    <div class="ob-title">You're tethered!</div>
-    <div class="ob-body">Everything is set. Start adding your recurring tasks, upcoming events, and Tether will keep you on track.</div>
+    <div class="ob-title">You're tethered.</div>
+    <div class="ob-body">For a refresher on anything you just read, visit <strong>About Tether</strong> in your profile options at any time.</div>
     <div class="ob-actions">
       <button class="ob-btn-primary" onclick="obComplete()">Open Tether</button>
+      <div class="ob-pills"><button class="ob-pill" onclick="obBack()">← Back</button></div>
     </div>
   `;
 }
@@ -3782,12 +3808,12 @@ function renderObFinish() {
 async function obComplete() {
   await sb.from('users').update({ onboarded: true }).eq('id', currentUser.id);
   document.getElementById('obOverlay').style.display = 'none';
+  if (window.location.pathname === '/onboarding') history.replaceState(null, '', '/');
   if (obHouseholdId) await loadHousehold();
   await checkPendingInvites();
   render();
   setupRealtime();
   setTimeout(showCelebration, 150);
-  setTimeout(openAboutSheet, 600); // land on About Tether after celebration starts
 }
 
 // ─── CHORE CATALOG ────────────────────────────────────────────────────────────
