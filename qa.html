@@ -116,7 +116,10 @@
 <div id="app">
   <div class="top">
     <h1>Tether QA</h1>
-    <a href="/qa-runs.html">View Past Runs →</a>
+    <div style="display:flex;gap:12px;align-items:center">
+      <a href="/mail" id="mailBadge" style="display:none;color:#fbbf24;font-weight:700;font-size:.8rem;text-decoration:none">📬 You have mail!</a>
+      <a href="/qa-runs.html">View Past Runs →</a>
+    </div>
   </div>
   <div class="version-bar">Version: <span id="versionLabel">—</span></div>
   <div class="platform-row">
@@ -525,6 +528,14 @@ async function init() {
   buildSections();
   updateProgress();
   updateCounts();
+
+  // Mail badge
+  const { count } = await sb.from('feedback').select('*', { count: 'exact', head: true }).eq('read', false);
+  if (count > 0) {
+    const badge = document.getElementById('mailBadge');
+    badge.textContent = `📬 You have mail (${count})`;
+    badge.style.display = '';
+  }
 
   document.querySelectorAll('.btn-platform').forEach(btn => {
     btn.addEventListener('click', () => {

@@ -2796,6 +2796,71 @@ function toggleFaq(sectionId, i) {
   chevEl.style.transition = 'transform .2s';
 }
 
+// ─── FEEDBACK ─────────────────────────────────────────────────────────────────
+let _feedbackCategory = null;
+
+function openFeedbackSheet() {
+  _feedbackCategory = null;
+  renderFeedbackSheet();
+  document.getElementById('feedbackBg').classList.add('open');
+}
+function closeFeedbackSheet() { document.getElementById('feedbackBg').classList.remove('open'); }
+function bgClickFeedback(e) { if (e.target === document.getElementById('feedbackBg')) closeFeedbackSheet(); }
+
+function renderFeedbackSheet(state = 'form') {
+  const body = document.getElementById('feedbackBody');
+  if (state === 'thanks') {
+    body.innerHTML = `
+      <div style="text-align:center;padding:32px 16px">
+        <div style="font-size:2rem;margin-bottom:12px">🙏</div>
+        <div style="font-size:1.1rem;font-weight:600;margin-bottom:8px">Thank you for your feedback!</div>
+        <div class="ob-actions" style="margin-top:24px">
+          <button class="ob-btn-primary" onclick="renderFeedbackSheet('form')">Submit another</button>
+          <button class="ob-pill" style="margin-top:8px;width:100%;justify-content:center" onclick="closeFeedbackSheet()">Exit</button>
+        </div>
+      </div>`;
+    return;
+  }
+  const cats = ['Bug', 'Suggestion', 'Flattery'];
+  body.innerHTML = `
+    <div style="padding:4px 0 16px">
+      <div style="font-size:13px;font-weight:600;color:#7c77a0;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Category (optional)</div>
+      <div style="display:flex;gap:8px;margin-bottom:20px">
+        ${cats.map(c => {
+          const active = _feedbackCategory === c.toLowerCase();
+          return `<button class="ob-pill feedback-cat" data-cat="${c.toLowerCase()}" onclick="selectFeedbackCat('${c.toLowerCase()}',this)" style="flex:1;justify-content:center${active ? ';background:var(--accent);color:#fff;border-color:var(--accent)' : ''}">${c}</button>`;
+        }).join('')}
+      </div>
+      <div style="font-size:13px;font-weight:600;color:#7c77a0;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Message (optional)</div>
+      <textarea id="feedbackMsg" placeholder="What's on your mind?" style="width:100%;min-height:120px;padding:12px;border-radius:12px;border:0.5px solid #CECBF6;background:#F7F6FF;color:#26215C;font-size:15px;font-family:inherit;resize:vertical;outline:none"></textarea>
+      <div class="ob-actions" style="margin-top:16px">
+        <button class="ob-btn-primary" onclick="submitFeedback()">Submit</button>
+      </div>
+    </div>`;
+}
+
+function selectFeedbackCat(cat, el) {
+  _feedbackCategory = _feedbackCategory === cat ? null : cat;
+  document.querySelectorAll('.feedback-cat').forEach(b => {
+    const active = b.dataset.cat === _feedbackCategory;
+    b.style.background = active ? 'var(--accent)' : '';
+    b.style.color = active ? '#fff' : '';
+    b.style.borderColor = active ? 'var(--accent)' : '';
+  });
+}
+
+async function submitFeedback() {
+  const message = document.getElementById('feedbackMsg')?.value.trim() || null;
+  const { error } = await sb.from('feedback').insert({
+    user_id: currentUser.id,
+    category: _feedbackCategory,
+    message,
+    app_version: typeof APP_VERSION !== 'undefined' ? APP_VERSION : null
+  });
+  if (error) { showToast('Could not submit — try again'); return; }
+  renderFeedbackSheet('thanks');
+}
+
 // ─── OCCASIONS ────────────────────────────────────────────────────────────────
 let occasionsList = [];
 let editingOccasionId = null;

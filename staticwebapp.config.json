@@ -1,7 +1,10 @@
 {
+  "routes": [
+    { "route": "/mail", "rewrite": "/mail.html" }
+  ],
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/icon-*", "/manifest*.json", "/about.json", "/faqs.json", "/app.css", "/app.js", "/supabase.js", "/config.js", "/version.js", "/grocery-data.js"]
+    "exclude": ["/icon-*", "/manifest*.json", "/about.json", "/faqs.json", "/app.css", "/app.js", "/supabase.js", "/config.js", "/version.js", "/grocery-data.js", "/mail.html", "/qa.html", "/qa-runs.html", "/gotime.html"]
   },
   "globalHeaders": {
     "Cache-Control": "no-cache, no-store, must-revalidate",

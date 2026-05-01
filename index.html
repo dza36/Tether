@@ -80,7 +80,7 @@
     </div>
   </div>
   <div class="list" id="list"></div>
-  <div class="feedback-bar">Beta feedback? Text Dan → <a href="sms:+16515551234">leave a note</a> · <span id="appVersion"></span></div>
+  <div class="feedback-bar">Beta feedback? → <a href="javascript:void(0)" onclick="openFeedbackSheet()">leave a note</a> · <span id="appVersion"></span></div>
 </div>
 
 <!-- User menu -->
@@ -622,6 +622,18 @@
       <div class="annual-close" onclick="closeFaqSheet()">✕</div>
     </div>
     <div class="annual-body" id="faqBody"></div>
+  </div>
+</div>
+
+<!-- Feedback sheet -->
+<div class="annual-bg" id="feedbackBg" onclick="bgClickFeedback(event)">
+  <div class="annual-sheet">
+    <div class="annual-handle"></div>
+    <div class="annual-header">
+      <div class="annual-title">Leave a Note</div>
+      <div class="annual-close" onclick="closeFeedbackSheet()">✕</div>
+    </div>
+    <div class="annual-body" id="feedbackBody"></div>
   </div>
 </div>
 
