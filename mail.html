@@ -76,10 +76,17 @@ async function init() {
 
 async function loadMail() {
   const { data, error } = await sb.from('feedback')
-    .select('*, users(display_name, email)')
+    .select('*')
     .order('created_at', { ascending: false });
   if (error) { document.getElementById('mailList').innerHTML = '<div class="empty">Could not load feedback.</div>'; return; }
-  allFeedback = data || [];
+  const rows = data || [];
+  const userIds = [...new Set(rows.map(f => f.user_id).filter(Boolean))];
+  let userMap = {};
+  if (userIds.length) {
+    const { data: users } = await sb.from('users').select('id, display_name, email').in('id', userIds);
+    (users || []).forEach(u => { userMap[u.id] = u; });
+  }
+  allFeedback = rows.map(f => ({ ...f, _user: userMap[f.user_id] || null }));
   renderMail();
 }
 
@@ -103,7 +110,7 @@ function msgHTML(f) {
   const catLabel = f.category ? f.category.charAt(0).toUpperCase() + f.category.slice(1) : 'No category';
   const preview  = f.message || '(no message)';
   const time     = new Date(f.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-  const user     = f.users?.display_name || f.users?.email || 'Anonymous';
+  const user     = f._user?.display_name || f._user?.email || 'Anonymous';
   const isOpen   = openId === f.id;
   return `
     <div class="msg" id="msg-${f.id}" onclick="toggleMsg('${f.id}')">
@@ -117,7 +124,7 @@ function msgHTML(f) {
       </div>
       <div class="msg-body${isOpen ? ' open' : ''}">
         <div>${f.message || '<em style="color:#7c77a0">No message provided.</em>'}</div>
-        <div style="margin-top:6px;font-size:.72rem;color:#7c77a0">v${f.app_version || '?'} · ${user}</div>
+        <div style="margin-top:6px;font-size:.72rem;color:#7c77a0">v${f.app_version || '?'} · ${f._user?.display_name || f._user?.email || 'Anonymous'}</div>
         <div class="msg-actions">
           ${f.read
             ? `<button class="act-btn act-unread" onclick="event.stopPropagation();markUnread('${f.id}')">Mark unread</button>`
