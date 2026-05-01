@@ -82,6 +82,9 @@
   .cl-add input:focus{outline:none;border-color:var(--accent)}
   .cl-add button{padding:7px 14px;font-size:12px;font-weight:600;border-radius:10px;border:none;background:var(--accent);color:#fff;cursor:pointer}
   .cl-reset{font-size:11px;color:var(--accent-soft);text-align:right;margin-top:.4rem;cursor:pointer;text-decoration:underline}
+  .item-note-input{width:100%;margin-top:.5rem;padding:7px 10px;font-size:13px;border-radius:10px;border:0.5px solid var(--accent-pale);background:#fff;color:var(--accent-dark);font-family:inherit;outline:none}
+  .item-note-input:focus{border-color:var(--accent)}
+  .item-note-input::placeholder{color:var(--accent-soft);font-style:italic}
   .cl-item-actions{display:flex;gap:8px;margin-top:.75rem;padding-top:.75rem;border-top:0.5px solid var(--accent-pale)}
   .cl-action-btn{flex:1;padding:10px;font-size:13px;font-weight:600;border-radius:10px;border:0.5px solid var(--accent-pale);cursor:pointer;text-align:center}
   .cl-action-edit{background:var(--surface);color:var(--accent)}
@@ -800,6 +803,7 @@
     & .cl-label{color:#E8E5FF}
     & .cl-label.done{color:#6B65A8}
     & .cl-add input{background:#1E1A3C;border-color:#2E2A5E;color:#E8E5FF}
+    & .item-note-input{background:#1E1A3C;border-color:#2E2A5E;color:#E8E5FF}
     & .cl-item-actions{border-color:#2E2A5E}
     & .cl-action-edit{background:#1A1730;color:var(--accent-mid);border-color:#2E2A5E}
     & .cl-action-delete{background:#2A1010;color:#E87070;border-color:#4A1818}

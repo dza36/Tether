@@ -538,6 +538,14 @@ async function resetChecklist(id) {
   await persistItem(item); renderChecklist(id); renderBadge(id);
 }
 
+async function saveItemNote(id, value) {
+  const note = value.trim() || null;
+  const item = items.find(i => i.id === id);
+  if (!item || item.note === note) return;
+  item.note = note;
+  await sb.from('tether_items').update({ note }).eq('id', id);
+}
+
 async function deleteItem(id) {
   const item=items.find(i=>i.id===id); if (!item) return;
   if (!confirm(`Delete "${item.name}"?`)) return;
@@ -751,10 +759,13 @@ function clHTML(item) {
       </svg>
     </div>
   </div>`).join('');
+  const noteVal = (item.note || '').replace(/"/g, '&quot;');
   return `<div class="cl-header"><span class="cl-title">Checklist</span><span class="cl-progress">${done}/${cl.length} done</span></div>`
     +rows
     +`<div class="cl-add"><input id="clinput-${item.id}" type="text" placeholder="Add item..." onkeydown="if(event.key==='Enter')addCheckItem('${item.id}')"/><button onclick="addCheckItem('${item.id}')">Add</button></div>`
-    +(done>0?`<div class="cl-reset" onclick="resetChecklist('${item.id}')">Reset all</div>`:'')+`<div class="cl-item-actions"><button class="cl-action-btn cl-action-edit" onclick="editItem('${item.id}')">✏️ Edit</button><button class="cl-action-btn cl-action-delete" onclick="deleteItem('${item.id}')">🗑 Delete</button></div>`;
+    +(done>0?`<div class="cl-reset" onclick="resetChecklist('${item.id}')">Reset all</div>`:'')
+    +`<input class="item-note-input" value="${noteVal}" placeholder="Add a note…" onblur="saveItemNote('${item.id}',this.value)" onkeydown="if(event.key==='Enter')this.blur()">`
+    +`<div class="cl-item-actions"><button class="cl-action-btn cl-action-edit" onclick="editItem('${item.id}')">✏️ Edit</button><button class="cl-action-btn cl-action-delete" onclick="deleteItem('${item.id}')">🗑 Delete</button></div>`;
 }
 
 function rowHTML(item, isOverdue) {
@@ -4445,8 +4456,11 @@ function renderChorePanelHTML(taskId) {
       </div>
       <span class="chore-cl-name${ci.done?' done':''}">${ci.name}</span>
     </div>`).join('');
+  const task = items.find(i => i.id == taskId);
+  const noteVal = (task?.note || '').replace(/"/g, '&quot;');
   return `<div class="chore-panel-header"><span class="chore-panel-title">Chore List</span><span class="chore-panel-progress">${done}/${total} done</span></div>
     ${rows}
+    <input class="item-note-input" value="${noteVal}" placeholder="Add a note…" onblur="saveItemNote('${taskId}',this.value)" onkeydown="if(event.key==='Enter')this.blur()">
     <div class="chore-panel-actions">
       <button class="chore-all-done-btn" onclick="completeChoreTask('${taskId}')">✓ All Done</button>
       <button class="chore-edit-list-btn" onclick="openChoreEditSheet('${taskId}','edit')">✎ Edit</button>

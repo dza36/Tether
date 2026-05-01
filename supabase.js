@@ -153,6 +153,7 @@ function dbRowToItem(row) {
     isUrgent: row.is_urgent || false,
     eventIcon: row.event_icon || null,
     yearInterval: row.year_interval || 1,
+    note: row.note || null,
   };
 }
 
@@ -182,6 +183,7 @@ function itemToDbRow(item) {
     is_urgent: item.isUrgent || false,
     event_icon: item.eventIcon || null,
     year_interval: item.yearInterval || 1,
+    note: item.note || null,
   };
 }
 
