@@ -69,6 +69,7 @@ function nextMonthlyDay(monthDays, afterDateStr) {
 
 function getDueDate(item) {
   if (item.type==='chore') {
+    if (!item.weekdays?.length && !item.monthDays?.length && !item.days) return new Date((item.date||isoToday())+'T00:00:00');
     if (item.weekdays?.length) return nextFromDays(item.weekdays, item.lastDone===isoToday()?1:0);
     if (item.monthDays?.length) return nextMonthlyDay(item.monthDays, item.lastDone || isoToday());
     const l = new Date((item.lastDone||isoToday())+'T00:00:00');
@@ -189,6 +190,7 @@ function subFor(item) {
   const timeStr = item.startTime ? ` · ${fmtTime(item.startTime)}${item.endTime?' – '+fmtTime(item.endTime):''}` : '';
   if (item.type==="chore") {
     const due = getDueDate(item);
+    if (!item.weekdays?.length && !item.monthDays?.length && !item.days) return item.date ? `Due ${fmtDate(due)}` : 'One-time list · tap to open';
     if (item.weekdays?.length) return `Every ${(item.weekdays||[]).map(d=>wd[d]).join(", ")} · Next due ${fmtDate(due)}`;
     if (item.monthDays?.length) return `Monthly (${item.monthDays.map(ordinal).join(', ')}) · Next due ${fmtDate(due)}`;
     if (item.days === 1) return `Daily · Next due ${fmtDate(due)}`;
@@ -254,6 +256,15 @@ async function completeItem(id) {
   const dueDate = getDueDate(item).toISOString().slice(0,10);
 
   if (item.type==='chore') {
+    if (!item.weekdays?.length && !item.monthDays?.length && !item.days) {
+      item.status = 'completed';
+      await persistItem(item);
+      showToast('✓ Done');
+      recordCompletion(item, dueDate);
+      if (expandedId===id) expandedId=null;
+      setTimeout(render, 50);
+      return;
+    }
     if (item.weekdays?.length) {
       item.lastDone = dueDate;
       const nextDay = nextFromDays(item.weekdays, 1);
@@ -962,205 +973,58 @@ function selectTaskCategory(cat, el) {
 }
 
 function showCategoryForm(cat) {
-  const fields = document.getElementById('taskFormFields');
-  const groceryFields = document.getElementById('groceryFormFields');
-  const choreFields = document.getElementById('choreFormFields');
+  const nameInput = document.getElementById('fName');
+  const nameLabel = document.getElementById('taskNameLabel');
+  const dateLabel = document.getElementById('fDateLabel');
   const btn = document.getElementById('btnSave');
-  fields.style.display = 'none';
-  groceryFields.style.display = 'none';
-  choreFields.style.display = 'none';
   btn.onclick = saveItem;
-  if (cat === 'custom') {
-    fields.style.display = '';
-    validateForm();
-  } else if (cat === 'grocery') {
-    groceryFields.style.display = '';
-    document.getElementById('fGroceryDate').value = isoToday();
-    if (!document.getElementById('fGroceryName').value) document.getElementById('fGroceryName').value = 'Grocery Run';
+  nameInput.value = '';
+  if (cat === 'grocery') {
+    nameLabel.textContent = 'Grocery list name';
+    dateLabel.textContent = 'Shopping date';
+    nameInput.placeholder = 'e.g. Grocery Run';
+    nameInput.value = 'Grocery Run';
     btn.textContent = 'Save & Add Items';
-    btn.onclick = saveGroceryTask;
-    validateGroceryForm();
   } else if (cat === 'chores') {
-    choreFields.style.display = '';
-    if (!document.getElementById('fChoreName').value) document.getElementById('fChoreName').value = 'House Chores';
-    selectedChoreWeekdays = [];
-    selectedChoreCadence = 'weekly';
-    choreMonthDays = [];
-    document.querySelectorAll('#choreDaysGrid .day-pill').forEach(p => p.classList.remove('active'));
-    document.getElementById('choreWeeklyPicker').style.display = '';
-    document.getElementById('choreMonthlyPicker').style.display = 'none';
-    document.getElementById('choreMonthGrid').style.display = 'none';
-    document.querySelectorAll('.cadence-pill').forEach(p => p.classList.remove('active'));
-    document.getElementById('cpWeekly').classList.add('active');
-    renderChoreAssigneeRow();
+    nameLabel.textContent = 'Chore list name';
+    dateLabel.textContent = 'Due date';
+    nameInput.placeholder = 'e.g. House Chores';
+    nameInput.value = 'House Chores';
     btn.textContent = 'Save & Add Items';
-    btn.onclick = saveChoreTask;
-    validateChoreForm();
+  } else {
+    nameLabel.textContent = 'Task name';
+    dateLabel.textContent = 'Due date';
+    nameInput.placeholder = 'e.g. Mow the lawn';
+    btn.textContent = 'Add Task';
   }
+  validateForm();
 }
 
-function validateGroceryForm() {
-  const name = document.getElementById('fGroceryName')?.value.trim();
-  const date = document.getElementById('fGroceryDate')?.value;
-  const btn = document.getElementById('btnSave');
-  if (btn) btn.disabled = !(name && date);
-}
 
-async function saveGroceryTask() {
-  const name = document.getElementById('fGroceryName').value.trim(); if (!name) return;
-  const date = document.getElementById('fGroceryDate').value; if (!date) return;
-  const btn = document.getElementById('btnSave');
-  btn.disabled = true; btn.textContent = 'Saving...';
-  const item = { name, type: 'grocery', checklist: [], status: 'active', date, days: null, lastDone: null, weekdays: null, weekInterval: 1, monthDay: null, monthWeek: null, monthWeekday: null, yearInterval: 1, startTime: null, isUrgent: false };
-  await persistItem(item);
-  btn.disabled = false; btn.textContent = 'Save & Add Items';
-  if (item._dbId) {
-    closeTaskModal();
-    items.push(item);
-    render();
-    openGroceryPanel(item._dbId);
-    setTimeout(() => openQuickAddSheet(), 350);
-  }
-}
-
-// ─── CHORE FORM ───────────────────────────────────────────────────────────────
-function validateChoreForm() {
-  const name = document.getElementById('fChoreName')?.value.trim();
-  const weekdayOk = selectedChoreCadence !== 'weekly' || selectedChoreWeekdays.length > 0;
-  const monthOk = selectedChoreCadence !== 'monthly' || choreMonthDays.length > 0;
-  const btn = document.getElementById('btnSave');
-  if (btn) btn.disabled = !(name && weekdayOk && monthOk);
-}
-
-function renderChoreAssigneeRow() {
-  const field = document.getElementById('choreAssigneeField');
-  const row = document.getElementById('choreAssigneeRow');
+function renderAssigneeRow() {
+  const field = document.getElementById('formAssigneeField');
+  const row = document.getElementById('formAssigneeRow');
   if (!householdMembers?.length) { field.style.display = 'none'; return; }
   field.style.display = '';
   row.innerHTML = householdMembers.map(m => {
     const initials = getInitials(m.display_name || m.email);
     const avatar = m.avatar_url ? `<img src="${m.avatar_url}" alt="${initials}"/>` : `<div class="ca-initials">${initials}</div>`;
     const name = (m.display_name?.split(' ')[0] || m.email.split('@')[0]);
-    const active = choreFormAssigneeId === m.user_id ? ' active' : '';
-    return `<button class="chore-assignee-pill${active}" onclick="selectChoreAssignee('${m.user_id}',this)">${avatar}<span class="ca-name">${name}</span></button>`;
+    const active = formAssigneeId === m.user_id ? ' active' : '';
+    return `<button class="chore-assignee-pill${active}" onclick="selectFormAssignee('${m.user_id}',this)">${avatar}<span class="ca-name">${name}</span></button>`;
   }).join('');
 }
 
-function selectChoreAssignee(userId, el) {
-  choreFormAssigneeId = choreFormAssigneeId === userId ? null : userId;
+function selectFormAssignee(userId, el) {
+  formAssigneeId = formAssigneeId === userId ? null : userId;
   document.querySelectorAll('.chore-assignee-pill').forEach(p => p.classList.remove('active'));
-  if (choreFormAssigneeId) el.classList.add('active');
+  if (formAssigneeId) el.classList.add('active');
 }
 
-function selectChoreCadence(cadence) {
-  selectedChoreCadence = cadence;
-  selectedChoreWeekdays = [];
-  choreMonthDays = [];
-  document.querySelectorAll('.cadence-pill').forEach(p => p.classList.remove('active'));
-  document.getElementById('cp' + cadence.charAt(0).toUpperCase() + cadence.slice(1)).classList.add('active');
-  document.getElementById('choreWeeklyPicker').style.display = cadence === 'weekly' ? '' : 'none';
-  document.getElementById('choreMonthlyPicker').style.display = cadence === 'monthly' ? '' : 'none';
-  document.getElementById('choreMonthGrid').style.display = 'none';
-  document.querySelectorAll('#choreDaysGrid .day-pill').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.month-quick-pills .cadence-pill').forEach(p => p.classList.remove('active'));
-  validateChoreForm();
-}
-
-function toggleChoreWeekDay(el) {
-  const day = parseInt(el.dataset.cday);
-  const idx = selectedChoreWeekdays.indexOf(day);
-  if (idx >= 0) { selectedChoreWeekdays.splice(idx, 1); el.classList.remove('active'); }
-  else { selectedChoreWeekdays.push(day); el.classList.add('active'); }
-  validateChoreForm();
-}
-
-function toggleChoreMonthQuick(day) {
-  const idx = choreMonthDays.indexOf(day);
-  const pills = { 1: 'mqFirst', 15: 'mqFifteenth', 31: 'mqLast' };
-  const el = document.getElementById(pills[day]);
-  if (idx >= 0) {
-    choreMonthDays.splice(idx, 1);
-    if (el) el.classList.remove('active');
-  } else {
-    choreMonthDays.push(day);
-    if (el) el.classList.add('active');
-  }
-  // Sync grid if open
-  if (document.getElementById('choreMonthGrid').style.display !== 'none') renderChoreMonthGrid();
-  validateChoreForm();
-}
-
-function toggleChoreMonthCustom() {
-  const grid = document.getElementById('choreMonthGrid');
-  const isOpen = grid.style.display !== 'none';
-  if (isOpen) {
-    grid.style.display = 'none';
-    document.getElementById('mqCustom').classList.remove('active');
-  } else {
-    grid.style.display = '';
-    document.getElementById('mqCustom').classList.add('active');
-    renderChoreMonthGrid();
-  }
-}
-
-function renderChoreMonthGrid() {
-  const grid = document.getElementById('choreMonthGrid');
-  const cells = [];
-  for (let d = 1; d <= 31; d++) {
-    const active = choreMonthDays.includes(d) ? ' active' : '';
-    const label = d === 31 ? 'Last' : d;
-    cells.push(`<div class="month-day-cell${active}" data-mday="${d}" onclick="toggleChoreMonthCell(this)">${label}</div>`);
-  }
-  // Pad to complete last row
-  const remainder = 31 % 7;
-  if (remainder) for (let i = 0; i < 7 - remainder; i++) cells.push('<div></div>');
-  grid.innerHTML = `<div class="month-day-grid">${cells.join('')}</div>`;
-}
-
-function toggleChoreMonthCell(el) {
-  const day = parseInt(el.dataset.mday);
-  const idx = choreMonthDays.indexOf(day);
-  if (idx >= 0) { choreMonthDays.splice(idx, 1); el.classList.remove('active'); }
-  else { choreMonthDays.push(day); el.classList.add('active'); }
-  // Sync quick pills
-  const pills = { 1: 'mqFirst', 15: 'mqFifteenth', 31: 'mqLast' };
-  if (pills[day]) {
-    const p = document.getElementById(pills[day]);
-    if (p) p.classList.toggle('active', choreMonthDays.includes(day));
-  }
-  validateChoreForm();
-}
-
-async function saveChoreTask() {
-  const name = document.getElementById('fChoreName').value.trim(); if (!name) return;
-  const btn = document.getElementById('btnSave');
-  btn.disabled = true; btn.textContent = 'Saving...';
-  const item = {
-    name, type: 'chore', status: 'active', checklist: [],
-    days: selectedChoreCadence === 'daily' ? 1 : null,
-    weekdays: selectedChoreCadence === 'weekly' ? [...selectedChoreWeekdays].sort((a,b)=>a-b) : null,
-    monthDays: selectedChoreCadence === 'monthly' ? [...choreMonthDays].sort((a,b)=>a-b) : null,
-    lastDone: isoToday(), weekInterval: 1,
-    monthDay: null, monthWeek: null, monthWeekday: null, yearInterval: 1,
-    date: null, dueDate: null, altDueDate: null,
-    startTime: null, endTime: null, isUrgent: false, eventIcon: null,
-    assignedTo: choreFormAssigneeId || null,
-  };
-  await persistItem(item);
-  btn.disabled = false; btn.textContent = 'Save & Add Items';
-  if (item._dbId) {
-    closeTaskModal();
-    items.push(item);
-    render();
-    choreFormAssigneeId = null;
-    setTimeout(() => openChoreEditSheet(item._dbId, 'add'), 350);
-  }
-}
 
 function openTaskModal(){
   closeChooser();
   document.getElementById("fName").value="";
-  document.getElementById("fGroceryName").value="";
   document.getElementById("fDueDate").value=isoToday();
   document.getElementById("fTaskTime").value="";
   document.getElementById("fRecurring").checked=false;
@@ -1174,6 +1038,8 @@ function openTaskModal(){
   document.querySelectorAll(".day-pill").forEach(p=>p.classList.remove("active"));
   document.getElementById("btnSave").textContent="Add Task";
   document.getElementById("btnSave").onclick=saveItem;
+  formAssigneeId = null;
+  renderAssigneeRow();
   selectTaskCategory('custom', document.getElementById('catPillCustom'));
   onDueDateChange();
   validateForm();
@@ -1399,15 +1265,38 @@ async function saveItem(){
     yearInterval: inc==="year" ? num : 1,
     startTime:document.getElementById("fTaskTime")?.value||null,
     isUrgent:document.getElementById("fUrgent")?.checked||false,
+    assignedTo: formAssigneeId || null,
   };
 
+  // Override type and adjust fields based on category
+  if (selectedTaskCategory === 'grocery') {
+    item.type = 'grocery';
+  } else if (selectedTaskCategory === 'chores') {
+    item.type = 'chore';
+    // Translate monthly: chore expects monthDays array, not monthDay scalar
+    if (recurring && inc === 'month' && item.monthDay) {
+      item.monthDays = [item.monthDay];
+      item.monthDay = null;
+      item.monthWeek = null;
+      item.monthWeekday = null;
+    }
+  }
+
   await persistItem(item);
-  btnSave.disabled=false; btnSave.textContent="Add Task";
+  btnSave.disabled=false;
   if(item._dbId){
     closeTaskModal();
     items.push(item);
-    showToast(`⚓ "${name}" added`);
     render();
+    formAssigneeId = null;
+    if (selectedTaskCategory === 'grocery') {
+      openGroceryPanel(item._dbId);
+      setTimeout(() => openQuickAddSheet(), 350);
+    } else if (selectedTaskCategory === 'chores') {
+      setTimeout(() => openChoreEditSheet(item._dbId, 'add'), 350);
+    } else {
+      showToast(`⚓ "${name}" added`);
+    }
   }
 }
 
@@ -3959,10 +3848,7 @@ let choreTaskId = null;
 let choreListItems = [];
 let choreEditSelected = new Set();
 let choreEditMode = 'add';
-let choreFormAssigneeId = null;
-let selectedChoreWeekdays = [];
-let selectedChoreCadence = 'weekly';
-let choreMonthDays = [];
+let formAssigneeId = null;
 
 // ─── GROCERY PANEL ────────────────────────────────────────────────────────────
 let groceryTaskId = null;

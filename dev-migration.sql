@@ -92,6 +92,7 @@ CREATE TABLE tether_items (
   end_time        text,
   is_urgent       boolean DEFAULT false,
   event_icon      text,
+  note            text,
   created_at      timestamptz DEFAULT now()
 );
 

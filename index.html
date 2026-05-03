@@ -197,74 +197,24 @@
       <div class="type-pill" id="catPillChores" onclick="selectTaskCategory('chores',this)">🧹 Chores</div>
     </div>
 
-    <!-- Chore task form (hidden by default) -->
-    <div id="choreFormFields" style="display:none">
-      <div class="field">
-        <label>List name</label>
-        <input type="text" id="fChoreName" placeholder="e.g. Weekly House Chores" oninput="validateChoreForm()"/>
-      </div>
-      <div class="field" id="choreAssigneeField" style="display:none">
-        <label>Assign to</label>
-        <div id="choreAssigneeRow" class="chore-assignee-row"></div>
-      </div>
-      <div class="field">
-        <label>How often</label>
-        <div class="cadence-pills">
-          <div class="cadence-pill" id="cpDaily" onclick="selectChoreCadence('daily')">Daily</div>
-          <div class="cadence-pill active" id="cpWeekly" onclick="selectChoreCadence('weekly')">Weekly</div>
-          <div class="cadence-pill" id="cpMonthly" onclick="selectChoreCadence('monthly')">Monthly</div>
-        </div>
-      </div>
-      <!-- Weekly sub-picker -->
-      <div id="choreWeeklyPicker" class="field">
-        <label>On</label>
-        <div class="days-grid" id="choreDaysGrid">
-          <div class="day-pill" data-cday="0" onclick="toggleChoreWeekDay(this)">Su</div>
-          <div class="day-pill" data-cday="1" onclick="toggleChoreWeekDay(this)">Mo</div>
-          <div class="day-pill" data-cday="2" onclick="toggleChoreWeekDay(this)">Tu</div>
-          <div class="day-pill" data-cday="3" onclick="toggleChoreWeekDay(this)">We</div>
-          <div class="day-pill" data-cday="4" onclick="toggleChoreWeekDay(this)">Th</div>
-          <div class="day-pill" data-cday="5" onclick="toggleChoreWeekDay(this)">Fr</div>
-          <div class="day-pill" data-cday="6" onclick="toggleChoreWeekDay(this)">Sa</div>
-        </div>
-      </div>
-      <!-- Monthly sub-picker -->
-      <div id="choreMonthlyPicker" class="field" style="display:none">
-        <label>On</label>
-        <div class="month-quick-pills">
-          <div class="cadence-pill" id="mqFirst" onclick="toggleChoreMonthQuick(1)">1st</div>
-          <div class="cadence-pill" id="mqFifteenth" onclick="toggleChoreMonthQuick(15)">15th</div>
-          <div class="cadence-pill" id="mqLast" onclick="toggleChoreMonthQuick(31)">Last</div>
-          <div class="cadence-pill" id="mqCustom" onclick="toggleChoreMonthCustom()">Custom…</div>
-        </div>
-        <div id="choreMonthGrid" style="display:none;margin-top:10px"></div>
-      </div>
-    </div>
-
-    <!-- Grocery task form (hidden by default) -->
-    <div id="groceryFormFields" style="display:none">
-      <div class="field">
-        <label>List name</label>
-        <input type="text" id="fGroceryName" placeholder="e.g. Weekly Grocery Run" oninput="validateGroceryForm()"/>
-      </div>
-      <div class="field">
-        <label>Shopping date</label>
-        <input type="date" id="fGroceryDate" oninput="validateGroceryForm()"/>
-      </div>
-    </div>
-
-    <!-- Custom task form (hidden when grocery/chores selected) -->
+    <!-- Unified task/grocery/chore form -->
     <div id="taskFormFields">
 
     <!-- Name -->
     <div class="field">
-      <label>Task name</label>
+      <label id="taskNameLabel">Task name</label>
       <input type="text" id="fName" placeholder="e.g. Mow the lawn" oninput="validateForm()"/>
+    </div>
+
+    <!-- Assign to (shown when household members exist) -->
+    <div class="field" id="formAssigneeField" style="display:none">
+      <label>Assign to</label>
+      <div id="formAssigneeRow" class="chore-assignee-row"></div>
     </div>
 
     <!-- Due date -->
     <div class="field" id="fDueDateField">
-      <label>Due date</label>
+      <label id="fDateLabel">Due date</label>
       <input type="date" id="fDueDate" oninput="onDueDateChange();validateForm()"/>
     </div>
 
