@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Shape What We Build · Tether</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js?v=0"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#0f0e17;color:#e8e6f0;padding:24px 16px 120px;max-width:600px;margin:0 auto}
+#gate{display:flex;align-items:center;justify-content:center;min-height:60vh;text-align:center;color:#7c77a0;font-size:.9rem}
+.top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
+h1{font-size:1.4rem;font-weight:700;color:#c4beff}
+.subtitle{font-size:.8rem;color:#7c77a0;margin-top:3px}
+.back{font-size:.8rem;color:#6c63ff;text-decoration:none;white-space:nowrap;padding-top:4px}
+.back:hover{text-decoration:underline}
+.tabs{display:flex;gap:6px;margin:16px 0 12px}
+.tab{flex:1;padding:8px 4px;text-align:center;font-size:.78rem;font-weight:600;border-radius:10px;cursor:pointer;border:1px solid #2a2540;color:#7c77a0;background:transparent;transition:all .15s;position:relative}
+.tab.active{background:#1e1b2e;border-color:#6c63ff;color:#c4beff}
+.tab-badge{position:absolute;top:-5px;right:-5px;background:#6c63ff;color:#fff;font-size:.6rem;font-weight:700;padding:1px 5px;border-radius:8px;min-width:16px;text-align:center}
+.board-card{background:#1a1726;border-radius:14px;margin-bottom:10px;overflow:hidden}
+.board-card-header{padding:14px 16px;cursor:pointer;display:flex;align-items:flex-start;gap:10px}
+.board-card-header:hover{background:#1e1b2e}
+.board-card-info{flex:1;min-width:0}
+.board-card-title{font-size:.95rem;font-weight:700;color:#e8e6f0;margin-bottom:3px}
+.board-card-desc{font-size:.8rem;color:#a09ac0;margin-bottom:8px;line-height:1.4}
+.board-card-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.vote-pill{font-size:.72rem;font-weight:600;padding:3px 9px;border-radius:8px}
+.vote-pill.like{background:#1a2230;color:#60a5fa}
+.vote-pill.need{background:#2a1a2e;color:#c084fc}
+.score-badge{font-size:.7rem;font-weight:700;color:#7c77a0;margin-left:auto}
+.chevron{font-size:1.1rem;color:#7c77a0;transition:transform .2s;flex-shrink:0;margin-top:2px}
+.chevron.open{transform:rotate(90deg)}
+.submissions-list{border-top:1px solid #2a2540}
+.submission{padding:12px 16px;border-bottom:1px solid #1e1b2e}
+.submission:last-child{border-bottom:none}
+.sub-content{font-size:.88rem;color:#c4beff;line-height:1.5;margin-bottom:8px}
+.sub-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px}
+.sub-author{font-size:.72rem;color:#7c77a0}
+.sub-votes{display:flex;gap:6px}
+.vote-btn{border:1px solid #2a2540;border-radius:8px;padding:4px 10px;font-size:.75rem;font-weight:600;cursor:pointer;background:#1a1726;color:#7c77a0;transition:all .15s}
+.vote-btn:hover{border-color:#6c63ff;color:#c4beff}
+.vote-btn.active-like{background:#1a2230;border-color:#60a5fa;color:#60a5fa}
+.vote-btn.active-need{background:#2a1a2e;border-color:#c084fc;color:#c084fc}
+.inbox-card{background:#1a1726;border-radius:14px;margin-bottom:10px;padding:14px 16px}
+.inbox-meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.inbox-author{font-size:.75rem;font-weight:600;color:#a09ac0}
+.inbox-date{font-size:.72rem;color:#7c77a0}
+.inbox-content{font-size:.88rem;color:#c4beff;line-height:1.5;margin-bottom:12px}
+.inbox-actions{display:flex;gap:8px}
+.triage-btn{border:none;border-radius:8px;padding:6px 14px;font-size:.78rem;font-weight:700;cursor:pointer;transition:opacity .15s}
+.triage-btn:hover{opacity:.8}
+.triage-btn.list{background:#1a2e22;color:#4ade80}
+.triage-btn.merge{background:#1a2230;color:#60a5fa}
+.triage-btn.notnow{background:#1e1b2e;color:#7c77a0}
+.triage-btn.promote{background:#1a2e22;color:#4ade80}
+.empty{text-align:center;color:#7c77a0;padding:60px 0;font-size:.9rem}
+.empty-small{color:#7c77a0;font-size:.85rem;padding:12px 0;text-align:center}
+.fab{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#6c63ff;color:#fff;border:none;border-radius:28px;padding:14px 28px;font-size:.9rem;font-weight:700;cursor:pointer;box-shadow:0 4px 20px rgba(108,99,255,.4);transition:all .15s;white-space:nowrap;z-index:50}
+.fab:hover{background:#5a52e0;box-shadow:0 6px 24px rgba(108,99,255,.5)}
+.fab:active{transform:translateX(-50%) scale(.97)}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;z-index:100}
+.modal-bg.open{opacity:1;pointer-events:all}
+.modal{background:#1a1726;border-radius:20px 20px 0 0;padding:20px 20px 40px;width:100%;max-width:600px;transform:translateY(20px);transition:transform .2s}
+.modal-bg.open .modal{transform:translateY(0)}
+.modal-handle{width:36px;height:4px;background:#2a2540;border-radius:2px;margin:0 auto 16px}
+.modal h2{font-size:1.1rem;font-weight:700;color:#c4beff;margin-bottom:8px}
+.modal-note{font-size:.8rem;color:#7c77a0;margin-bottom:16px;line-height:1.5}
+.modal textarea,.modal input[type=text]{width:100%;background:#0f0e17;border:1px solid #2a2540;border-radius:12px;padding:12px 14px;font-size:.9rem;color:#e8e6f0;font-family:inherit;resize:none;margin-bottom:12px}
+.modal textarea:focus,.modal input[type=text]:focus{outline:none;border-color:#6c63ff}
+.modal-sub-label{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#7c77a0;margin-bottom:6px}
+.modal-sub-content{font-size:.85rem;color:#a09ac0;background:#0f0e17;border-radius:10px;padding:10px 12px;margin-bottom:14px;line-height:1.5}
+.btn-primary{width:100%;background:#6c63ff;color:#fff;border:none;border-radius:12px;padding:13px;font-size:.95rem;font-weight:700;cursor:pointer;margin-bottom:8px;transition:opacity .15s}
+.btn-primary:hover{opacity:.9}
+.btn-secondary{width:100%;background:#1e1b2e;color:#c4beff;border:1px solid #2a2540;border-radius:12px;padding:13px;font-size:.95rem;font-weight:600;cursor:pointer;margin-bottom:8px}
+.btn-ghost{width:100%;background:transparent;color:#7c77a0;border:none;border-radius:12px;padding:10px;font-size:.88rem;cursor:pointer}
+.merge-option{padding:12px 14px;background:#0f0e17;border-radius:10px;margin-bottom:8px;cursor:pointer;border:1px solid #2a2540;transition:border-color .15s}
+.merge-option:hover{border-color:#6c63ff}
+.merge-title{font-size:.9rem;font-weight:600;color:#e8e6f0;margin-bottom:2px}
+.merge-count{font-size:.75rem;color:#7c77a0}
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#4ade80;color:#0a1f12;padding:10px 20px;border-radius:10px;font-weight:700;font-size:.88rem;opacity:0;transition:opacity .3s;pointer-events:none;z-index:200}
+.toast.show{opacity:1}
+.points-bar{background:#1a1726;border-radius:12px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+.points-label{font-size:.8rem;color:#7c77a0}
+.points-value{font-size:1rem;font-weight:700;color:#c4beff}
+</style>
+</head>
+<body>
+<div id="gate">Loading…</div>
+<div id="app" style="display:none">
+  <div class="top">
+    <div>
+      <h1>✨ Shape what we build</h1>
+      <div class="subtitle">Vote on features · Suggest new ones</div>
+    </div>
+    <a class="back" href="/">← Home</a>
+  </div>
+
+  <div id="pointsBar" class="points-bar" style="display:none">
+    <span class="points-label">Your community points</span>
+    <span class="points-value" id="pointsValue">0</span>
+  </div>
+
+  <div id="adminTabs" class="tabs" style="display:none">
+    <div class="tab active" onclick="showTab('board')">Board</div>
+    <div class="tab" onclick="showTab('inbox')">Inbox<span class="tab-badge" id="inboxBadge" style="display:none">0</span></div>
+    <div class="tab" onclick="showTab('notNow')">Not Now<span class="tab-badge" id="notNowBadge" style="display:none">0</span></div>
+  </div>
+
+  <div id="boardView">
+    <div id="boardList"></div>
+    <div class="empty" id="boardEmpty" style="display:none">No features on the board yet — be the first to suggest one!</div>
+  </div>
+
+  <div id="inboxView" style="display:none">
+    <div id="inboxList"></div>
+    <div class="empty" id="inboxEmpty" style="display:none">Inbox is empty.</div>
+  </div>
+
+  <div id="notNowView" style="display:none">
+    <div id="notNowList"></div>
+    <div class="empty" id="notNowEmpty" style="display:none">Nothing here yet.</div>
+  </div>
+</div>
+
+<button class="fab" id="fabBtn" onclick="openSubmitModal()" style="display:none">+ Suggest a feature</button>
+
+<!-- Submit modal -->
+<div class="modal-bg" id="submitBg" onclick="bgClick('submitBg',event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>Suggest a feature</h2>
+    <textarea id="submitText" placeholder="Describe the feature you'd like to see…" rows="5"></textarea>
+    <button class="btn-primary" onclick="submitSuggestion()">Submit</button>
+    <button class="btn-ghost" onclick="closeModal('submitBg')">Cancel</button>
+  </div>
+</div>
+
+<!-- Anonymous prompt -->
+<div class="modal-bg" id="anonBg">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>Submit anonymously?</h2>
+    <p class="modal-note">Choose whether your name shows on your submissions. You can change this at any time in Settings.</p>
+    <button class="btn-primary" onclick="setAnon(false)">Show my name</button>
+    <button class="btn-secondary" onclick="setAnon(true)">Stay anonymous</button>
+  </div>
+</div>
+
+<!-- List modal (admin) -->
+<div class="modal-bg" id="listBg" onclick="bgClick('listBg',event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>Add to board</h2>
+    <div class="modal-sub-label">Submission</div>
+    <div class="modal-sub-content" id="listSubContent"></div>
+    <input type="text" id="listTitle" placeholder="Feature name (plain language)"/>
+    <textarea id="listDesc" placeholder="Description (optional)" rows="3"></textarea>
+    <button class="btn-primary" onclick="confirmList()">Add to board</button>
+    <button class="btn-ghost" onclick="closeModal('listBg')">Cancel</button>
+  </div>
+</div>
+
+<!-- Merge modal (admin) -->
+<div class="modal-bg" id="mergeBg" onclick="bgClick('mergeBg',event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>Merge with…</h2>
+    <div id="mergeList"></div>
+    <button class="btn-ghost" onclick="closeModal('mergeBg')">Cancel</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+let currentUser = null;
+let currentProfile = null;
+let isAdmin = false;
+let boardData = [];
+let userMap = {};
+let pendingSuggestions = [];
+let notNowSuggestions = [];
+let triageId = null;
+
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session?.user) {
+    document.getElementById('gate').innerHTML = 'Please <a href="/" style="color:#6c63ff">sign in</a> to participate.';
+    return;
+  }
+  currentUser = session.user;
+
+  const { data: profile } = await sb.from('users')
+    .select('display_name, avatar_url, subscription_tier, anonymous_submissions, community_points')
+    .eq('id', currentUser.id).single();
+  currentProfile = profile || {};
+  isAdmin = ['founder', 'employee'].includes(currentProfile.subscription_tier);
+
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('fabBtn').style.display = '';
+
+  if ((currentProfile.community_points || 0) > 0) {
+    document.getElementById('pointsBar').style.display = 'flex';
+    document.getElementById('pointsValue').textContent = currentProfile.community_points + ' pts';
+  }
+
+  if (isAdmin) document.getElementById('adminTabs').style.display = 'flex';
+
+  await loadBoard();
+  if (isAdmin) await loadInbox();
+}
+
+// ─── BOARD ────────────────────────────────────────────────────────────────────
+
+async function loadBoard() {
+  const { data, error } = await sb.from('board_items')
+    .select('*, suggestions(id, content, anonymous, user_id, status, created_at, suggestion_votes(vote_type, user_id))')
+    .neq('status', 'declined')
+    .order('created_at', { ascending: false });
+
+  if (error) { showToast('Error loading board'); return; }
+
+  boardData = (data || []).map(item => ({
+    ...item,
+    suggestions: (item.suggestions || []).filter(s => ['listed','merged'].includes(s.status))
+  })).filter(item => item.suggestions.length > 0);
+
+  // Enrich user display names
+  const userIds = [...new Set(boardData.flatMap(b => b.suggestions.map(s => s.user_id)))];
+  if (userIds.length) {
+    const { data: profiles } = await sb.from('users').select('id, display_name, avatar_url').in('id', userIds);
+    userMap = Object.fromEntries((profiles || []).map(u => [u.id, u]));
+  }
+
+  boardData.sort((a, b) => boardScore(b) - boardScore(a));
+  renderBoard();
+}
+
+function scoreOf(suggestions) {
+  let likes = 0, needs = 0;
+  suggestions.forEach(s => (s.suggestion_votes || []).forEach(v => {
+    if (v.vote_type === 'like') likes++; else needs++;
+  }));
+  return { likes, needs, score: likes + needs * 3 };
+}
+
+function boardScore(item) { return scoreOf(item.suggestions).score; }
+
+function myVote(suggestion) {
+  return (suggestion.suggestion_votes || []).find(v => v.user_id === currentUser.id)?.vote_type || null;
+}
+
+function renderBoard() {
+  const list = document.getElementById('boardList');
+  const empty = document.getElementById('boardEmpty');
+  if (!boardData.length) { list.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+
+  list.innerHTML = boardData.map(item => {
+    const { likes, needs, score } = scoreOf(item.suggestions);
+    return `
+      <div class="board-card" id="card-${item.id}">
+        <div class="board-card-header" onclick="toggleCard('${item.id}')">
+          <div class="board-card-info">
+            <div class="board-card-title">${esc(item.title)}</div>
+            ${item.description ? `<div class="board-card-desc">${esc(item.description)}</div>` : ''}
+            <div class="board-card-meta">
+              <span class="vote-pill like">👍 ${likes} like it</span>
+              <span class="vote-pill need">🔥 ${needs} need it</span>
+              <span class="score-badge">Score ${score}</span>
+            </div>
+          </div>
+          <div class="chevron" id="chev-${item.id}">›</div>
+        </div>
+        <div class="submissions-list" id="subs-${item.id}" style="display:none">
+          ${item.suggestions.map(s => renderSub(s)).join('')}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderSub(s) {
+  const mv = myVote(s);
+  const likes = (s.suggestion_votes || []).filter(v => v.vote_type === 'like').length;
+  const needs = (s.suggestion_votes || []).filter(v => v.vote_type === 'need').length;
+  const isMine = s.user_id === currentUser.id;
+  const author = isMine ? 'You' : (s.anonymous ? 'Anonymous' : (userMap[s.user_id]?.display_name || 'User'));
+  return `
+    <div class="submission" id="sub-${s.id}">
+      <div class="sub-content">${esc(s.content)}</div>
+      <div class="sub-footer">
+        <span class="sub-author">${esc(author)}</span>
+        <div class="sub-votes">
+          <button class="vote-btn ${mv === 'like' ? 'active-like' : ''}" onclick="vote('${s.id}','like')">
+            👍 Like it${likes ? ' · '+likes : ''}
+          </button>
+          <button class="vote-btn ${mv === 'need' ? 'active-need' : ''}" onclick="vote('${s.id}','need')">
+            🔥 Need it${needs ? ' · '+needs : ''}
+          </button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function toggleCard(id) {
+  const subs = document.getElementById('subs-'+id);
+  const chev = document.getElementById('chev-'+id);
+  const open = subs.style.display !== 'none';
+  subs.style.display = open ? 'none' : '';
+  chev.classList.toggle('open', !open);
+}
+
+async function vote(suggestionId, voteType) {
+  const s = boardData.flatMap(b => b.suggestions).find(s => s.id === suggestionId);
+  if (!s) return;
+  const current = myVote(s);
+
+  if (current === voteType) {
+    const { error } = await sb.from('suggestion_votes')
+      .delete().eq('suggestion_id', suggestionId).eq('user_id', currentUser.id);
+    if (!error) s.suggestion_votes = s.suggestion_votes.filter(v => v.user_id !== currentUser.id);
+  } else {
+    const { error } = await sb.from('suggestion_votes')
+      .upsert({ suggestion_id: suggestionId, user_id: currentUser.id, vote_type: voteType },
+               { onConflict: 'suggestion_id,user_id' });
+    if (!error) {
+      const existing = s.suggestion_votes.find(v => v.user_id === currentUser.id);
+      if (existing) existing.vote_type = voteType;
+      else s.suggestion_votes.push({ user_id: currentUser.id, vote_type: voteType });
+    }
+  }
+
+  const parentItem = boardData.find(b => b.suggestions.some(s => s.id === suggestionId));
+  boardData.sort((a, b) => boardScore(b) - boardScore(a));
+  renderBoard();
+
+  // Re-open the card that was being voted on
+  if (parentItem) {
+    document.getElementById('subs-'+parentItem.id).style.display = '';
+    document.getElementById('chev-'+parentItem.id).classList.add('open');
+  }
+}
+
+// ─── SUBMIT ───────────────────────────────────────────────────────────────────
+
+function openSubmitModal() {
+  const pref = currentProfile.anonymous_submissions;
+  if (pref === null || pref === undefined) {
+    document.getElementById('anonBg').classList.add('open');
+    return;
+  }
+  document.getElementById('submitBg').classList.add('open');
+  setTimeout(() => document.getElementById('submitText').focus(), 300);
+}
+
+async function setAnon(anon) {
+  document.getElementById('anonBg').classList.remove('open');
+  await sb.from('users').update({ anonymous_submissions: anon }).eq('id', currentUser.id);
+  currentProfile.anonymous_submissions = anon;
+  document.getElementById('submitBg').classList.add('open');
+  setTimeout(() => document.getElementById('submitText').focus(), 300);
+}
+
+async function submitSuggestion() {
+  const content = document.getElementById('submitText').value.trim();
+  if (!content) return;
+  const { error } = await sb.from('suggestions').insert({
+    user_id: currentUser.id,
+    content,
+    anonymous: currentProfile.anonymous_submissions ?? false
+  });
+  if (error) { showToast('Error — try again'); return; }
+  closeModal('submitBg');
+  document.getElementById('submitText').value = '';
+  showToast('Submitted! Thanks for the suggestion.');
+}
+
+// ─── ADMIN INBOX ──────────────────────────────────────────────────────────────
+
+async function loadInbox() {
+  const [{ data: pending }, { data: notNow }] = await Promise.all([
+    sb.from('suggestions').select('*').eq('status','pending').order('created_at', { ascending: true }),
+    sb.from('suggestions').select('*').eq('status','not_now').order('created_at', { ascending: false })
+  ]);
+
+  pendingSuggestions = pending || [];
+  notNowSuggestions = notNow || [];
+
+  // Enrich user display names for inbox
+  const ids = [...new Set([...pendingSuggestions, ...notNowSuggestions].map(s => s.user_id))];
+  if (ids.length) {
+    const { data: profiles } = await sb.from('users').select('id, display_name').in('id', ids);
+    (profiles || []).forEach(u => { userMap[u.id] = userMap[u.id] || u; });
+  }
+
+  const ib = document.getElementById('inboxBadge');
+  ib.textContent = pendingSuggestions.length;
+  ib.style.display = pendingSuggestions.length ? '' : 'none';
+
+  const nb = document.getElementById('notNowBadge');
+  nb.textContent = notNowSuggestions.length;
+  nb.style.display = notNowSuggestions.length ? '' : 'none';
+
+  renderInbox();
+  renderNotNow();
+}
+
+function renderInbox() {
+  const list = document.getElementById('inboxList');
+  const empty = document.getElementById('inboxEmpty');
+  if (!pendingSuggestions.length) { list.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  list.innerHTML = pendingSuggestions.map(s => inboxCard(s, false)).join('');
+}
+
+function renderNotNow() {
+  const list = document.getElementById('notNowList');
+  const empty = document.getElementById('notNowEmpty');
+  if (!notNowSuggestions.length) { list.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  list.innerHTML = notNowSuggestions.map(s => inboxCard(s, true)).join('');
+}
+
+function inboxCard(s, isNotNow) {
+  const author = s.anonymous ? '🕵️ Anonymous' : (userMap[s.user_id]?.display_name || 'User');
+  const actions = isNotNow
+    ? `<button class="triage-btn promote" onclick="openListModal('${s.id}')">List</button>`
+    : `<button class="triage-btn list" onclick="openListModal('${s.id}')">List</button>
+       <button class="triage-btn merge" onclick="openMergeModal('${s.id}')">Merge</button>
+       <button class="triage-btn notnow" onclick="markNotNow('${s.id}')">Not now</button>`;
+  return `
+    <div class="inbox-card" id="icard-${s.id}">
+      <div class="inbox-meta">
+        <span class="inbox-author">${esc(author)}</span>
+        <span class="inbox-date">${fmtDate(s.created_at)}</span>
+      </div>
+      <div class="inbox-content">${esc(s.content)}</div>
+      <div class="inbox-actions">${actions}</div>
+    </div>`;
+}
+
+function openListModal(id) {
+  triageId = id;
+  const s = [...pendingSuggestions, ...notNowSuggestions].find(s => s.id === id);
+  document.getElementById('listSubContent').textContent = s?.content || '';
+  document.getElementById('listTitle').value = '';
+  document.getElementById('listDesc').value = '';
+  document.getElementById('listBg').classList.add('open');
+  setTimeout(() => document.getElementById('listTitle').focus(), 300);
+}
+
+async function confirmList() {
+  const title = document.getElementById('listTitle').value.trim();
+  if (!title || !triageId) return;
+  const description = document.getElementById('listDesc').value.trim() || null;
+
+  const { data: newItem, error } = await sb.from('board_items')
+    .insert({ title, description, created_by: currentUser.id }).select().single();
+  if (error) { showToast('Error — try again'); return; }
+
+  await sb.from('suggestions').update({ status: 'listed', board_item_id: newItem.id }).eq('id', triageId);
+  closeModal('listBg');
+  showToast('Added to board!');
+  await Promise.all([loadBoard(), loadInbox()]);
+}
+
+function openMergeModal(id) {
+  triageId = id;
+  const list = document.getElementById('mergeList');
+  if (!boardData.length) {
+    list.innerHTML = '<div class="empty-small">No board items yet — use List instead.</div>';
+  } else {
+    list.innerHTML = boardData.map(item => `
+      <div class="merge-option" onclick="confirmMerge('${item.id}')">
+        <div class="merge-title">${esc(item.title)}</div>
+        <div class="merge-count">${item.suggestions.length} submission${item.suggestions.length !== 1 ? 's' : ''}</div>
+      </div>`).join('');
+  }
+  document.getElementById('mergeBg').classList.add('open');
+}
+
+async function confirmMerge(boardItemId) {
+  if (!triageId) return;
+  await sb.from('suggestions').update({ status: 'merged', board_item_id: boardItemId }).eq('id', triageId);
+  closeModal('mergeBg');
+  showToast('Merged!');
+  await Promise.all([loadBoard(), loadInbox()]);
+}
+
+async function markNotNow(id) {
+  await sb.from('suggestions').update({ status: 'not_now' }).eq('id', id);
+  showToast('Marked as not now');
+  await loadInbox();
+}
+
+// ─── TABS ─────────────────────────────────────────────────────────────────────
+
+function showTab(tab) {
+  const tabs = ['board','inbox','notNow'];
+  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', tabs[i] === tab));
+  document.getElementById('boardView').style.display   = tab === 'board'   ? '' : 'none';
+  document.getElementById('inboxView').style.display   = tab === 'inbox'   ? '' : 'none';
+  document.getElementById('notNowView').style.display  = tab === 'notNow'  ? '' : 'none';
+}
+
+// ─── UTILITIES ────────────────────────────────────────────────────────────────
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function bgClick(id, e) {
+  if (e.target === document.getElementById(id)) closeModal(id);
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmtDate(iso) {
+  return new Date(iso).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+}
+
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+init();
+</script>
+</body>
+</html>

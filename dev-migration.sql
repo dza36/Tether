@@ -546,3 +546,6 @@ CREATE POLICY "suggestion_votes: manage own"
   ON suggestion_votes FOR ALL USING (user_id = auth.uid());
 CREATE POLICY "suggestion_votes: read all"
   ON suggestion_votes FOR SELECT USING (true);
+
+CREATE POLICY "users: admin read all"
+  ON users FOR SELECT USING (is_admin());
