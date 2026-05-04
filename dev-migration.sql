@@ -472,3 +472,77 @@ CREATE POLICY "occasions: read household"
       WHERE household_id = ANY(get_my_household_ids())
     )
   );
+
+-- ─────────────────────────────────────────────
+-- COMMUNITY SUGGESTIONS
+-- ─────────────────────────────────────────────
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS anonymous_submissions boolean DEFAULT NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS community_points integer DEFAULT 0;
+
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean LANGUAGE sql SECURITY DEFINER STABLE AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM users
+    WHERE id = auth.uid()
+    AND subscription_tier IN ('founder', 'employee')
+  )
+$$;
+
+CREATE TABLE board_items (
+  id          uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  title       text NOT NULL,
+  description text,
+  status      text NOT NULL DEFAULT 'active'
+              CHECK (status IN ('active', 'in_progress', 'shipped', 'declined')),
+  created_by  uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at  timestamptz DEFAULT now(),
+  updated_at  timestamptz DEFAULT now()
+);
+
+CREATE TABLE suggestions (
+  id            uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id       uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  content       text NOT NULL,
+  anonymous     boolean NOT NULL DEFAULT false,
+  status        text NOT NULL DEFAULT 'pending'
+                CHECK (status IN ('pending', 'listed', 'merged', 'not_now')),
+  board_item_id uuid REFERENCES board_items(id) ON DELETE SET NULL,
+  created_at    timestamptz DEFAULT now()
+);
+
+CREATE TABLE suggestion_votes (
+  id            uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  suggestion_id uuid NOT NULL REFERENCES suggestions(id) ON DELETE CASCADE,
+  user_id       uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  vote_type     text NOT NULL CHECK (vote_type IN ('like', 'need')),
+  created_at    timestamptz DEFAULT now(),
+  UNIQUE(suggestion_id, user_id)
+);
+
+CREATE OR REPLACE TRIGGER set_board_items_updated_at
+  BEFORE UPDATE ON board_items
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+ALTER TABLE board_items      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE suggestions      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE suggestion_votes ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "board_items: read active"
+  ON board_items FOR SELECT USING (status != 'declined' OR is_admin());
+CREATE POLICY "board_items: admin all"
+  ON board_items FOR ALL USING (is_admin());
+
+CREATE POLICY "suggestions: insert own"
+  ON suggestions FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "suggestions: read own"
+  ON suggestions FOR SELECT USING (user_id = auth.uid());
+CREATE POLICY "suggestions: read public"
+  ON suggestions FOR SELECT USING (status IN ('listed', 'merged'));
+CREATE POLICY "suggestions: admin all"
+  ON suggestions FOR ALL USING (is_admin());
+
+CREATE POLICY "suggestion_votes: manage own"
+  ON suggestion_votes FOR ALL USING (user_id = auth.uid());
+CREATE POLICY "suggestion_votes: read all"
+  ON suggestion_votes FOR SELECT USING (true);
