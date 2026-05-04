@@ -279,6 +279,11 @@ RETURNS uuid[] LANGUAGE sql SECURITY DEFINER STABLE AS $$
   SELECT ARRAY(SELECT item_id FROM event_guests WHERE user_id = auth.uid())
 $$;
 
+CREATE OR REPLACE FUNCTION public.get_my_created_event_ids()
+RETURNS uuid[] LANGUAGE sql SECURITY DEFINER STABLE AS $$
+  SELECT ARRAY(SELECT id FROM items WHERE created_by = auth.uid())
+$$;
+
 -- ─────────────────────────────────────────────
 -- ROW LEVEL SECURITY
 -- ─────────────────────────────────────────────
@@ -396,7 +401,7 @@ CREATE POLICY "event_guests: all own"
   ON event_guests FOR ALL USING (user_id = auth.uid());
 CREATE POLICY "event_guests: read for event creator"
   ON event_guests FOR SELECT USING (
-    user_id = auth.uid() OR item_id IN (SELECT id FROM items WHERE created_by = auth.uid())
+    user_id = auth.uid() OR item_id = ANY(get_my_created_event_ids())
   );
 CREATE POLICY "event_guests: insert for event creator"
   ON event_guests FOR INSERT WITH CHECK (
