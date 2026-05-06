@@ -3615,15 +3615,17 @@ let obStep = 0;
 let obHasInvite = false;
 let obAnniversaries = [];
 let obHouseholdId = null;
+let obDisplayName = '';
 
 function obGetParas() { return (_aboutData?.opening?.paragraphs) || []; }
-function obGetTotal() { return obGetParas().length + 4; } // about screens + household + birthday + anniversary + finish
+function obGetTotal() { return obGetParas().length + 5; } // about + household + name + birthday + anniversary + finish
 
-async function initOnboarding({ hasInvite }) {
+async function initOnboarding({ hasInvite, displayName }) {
   obStep = 0;
   obHasInvite = hasInvite;
   obAnniversaries = [];
   obHouseholdId = null;
+  obDisplayName = displayName || currentUser?.user_metadata?.full_name || currentUser?.user_metadata?.name || '';
   document.getElementById('obOverlay').style.display = '';
   if (!_aboutData) {
     const res = await fetch('/about.json?v=' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '0'));
@@ -3648,8 +3650,9 @@ function renderObScreen() {
   renderObSteps();
   if (obStep < N)          renderObAbout(obStep);
   else if (obStep === N)   renderObHousehold();
-  else if (obStep === N+1) renderObBirthday();
-  else if (obStep === N+2) renderObAnniversary();
+  else if (obStep === N+1) renderObName();
+  else if (obStep === N+2) renderObBirthday();
+  else if (obStep === N+3) renderObAnniversary();
   else                     renderObFinish();
 }
 
@@ -3686,6 +3689,42 @@ function renderObAbout(step) {
       </div>`;
   }
   document.getElementById('obCard').innerHTML = content;
+}
+
+function renderObName() {
+  document.getElementById('obCard').innerHTML = `
+    <div class="ob-title">What should we call you?</div>
+    <div class="ob-body">This is how you'll appear to your household and contacts.</div>
+    <div class="ob-fields">
+      <input class="ob-input" id="obNameInput" type="text" placeholder="Your name" maxlength="60"
+        value="${obDisplayName.replace(/"/g, '&quot;')}"
+        onkeydown="if(event.key==='Enter')obSaveName()">
+    </div>
+    <div class="ob-actions">
+      <button class="ob-btn-primary" onclick="obSaveName()">Continue</button>
+      <div class="ob-pills"><button class="ob-pill" onclick="obBack()">← Back</button></div>
+    </div>
+  `;
+  setTimeout(() => {
+    const input = document.getElementById('obNameInput');
+    if (input) { input.focus(); input.select(); }
+  }, 50);
+}
+
+async function obSaveName() {
+  const name = document.getElementById('obNameInput')?.value.trim();
+  if (!name) { showToast('Please enter your name'); return; }
+  const { error } = await sb.from('users').update({ display_name: name }).eq('id', currentUser.id);
+  if (error) { showToast('Could not save name'); return; }
+  obDisplayName = name;
+  const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  const avatarEl = document.getElementById('avatarBtn');
+  const menuAvatarEl = document.getElementById('menuAvatarLg');
+  if (avatarEl && !avatarEl.querySelector('img')) avatarEl.textContent = initials;
+  if (menuAvatarEl && !menuAvatarEl.querySelector('img')) menuAvatarEl.textContent = initials;
+  const menuNameEl = document.getElementById('menuName');
+  if (menuNameEl) menuNameEl.textContent = name;
+  obAdvance();
 }
 
 function renderObBirthday() {
