@@ -461,6 +461,20 @@ CREATE POLICY "contacts: all own"
     requester_id = auth.uid() OR recipient_id = auth.uid()
   );
 
+-- Allows looking up any user by email to send a contact request.
+-- SECURITY DEFINER bypasses RLS; returns only id/display_name/avatar_url.
+CREATE OR REPLACE FUNCTION lookup_user_by_email(target_email text)
+RETURNS TABLE(id uuid, display_name text, avatar_url text)
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT id, display_name, avatar_url
+  FROM users
+  WHERE lower(email) = lower(target_email)
+  LIMIT 1;
+$$;
+
 ALTER TABLE occasions ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "occasions: all own"
   ON occasions FOR ALL USING (user_id = auth.uid());

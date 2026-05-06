@@ -1889,77 +1889,204 @@ async function renderGroupsSheet(groupId) {
 }
 
 // ─── CONTACTS SHEET ───────────────────────────────────────────────────────────
+let addContactFormOpen = false;
+let pendingContactCount = 0;
+
 function openContactsSheet() {
   document.getElementById('contactsBg').classList.add('open');
   renderContactsSheet();
 }
 function closeContactsSheet() {
+  addContactFormOpen = false;
   document.getElementById('contactsBg').classList.remove('open');
 }
 function bgClickContactsSheet(e) {
   if (e.target === document.getElementById('contactsBg')) closeContactsSheet();
+}
+function toggleAddContactForm() {
+  addContactFormOpen = !addContactFormOpen;
+  renderContactsSheet();
+  if (addContactFormOpen) setTimeout(() => document.getElementById('addContactEmail')?.focus(), 50);
 }
 
 async function renderContactsSheet() {
   const body = document.getElementById('contactsBody');
   body.innerHTML = `<div class="social-loading">Loading…</div>`;
 
-  // Load all accepted contacts
-  const { data: contactRows, error } = await sb.from('contacts')
-    .select('recipient_id')
-    .eq('requester_id', currentUser.id)
-    .eq('status', 'accepted');
+  const [pendingRes, acceptedRes] = await Promise.all([
+    sb.from('contacts').select('id, requester_id').eq('recipient_id', currentUser.id).eq('status', 'pending'),
+    sb.from('contacts').select('requester_id, recipient_id')
+      .or(`requester_id.eq.${currentUser.id},recipient_id.eq.${currentUser.id}`)
+      .eq('status', 'accepted'),
+  ]);
 
-  if (error || !contactRows?.length) {
-    body.innerHTML = `<div class="social-empty">No contacts yet</div>`;
+  const pendingRows  = pendingRes.data  || [];
+  const acceptedRows = acceptedRes.data || [];
+
+  const requesterIds = pendingRows.map(r => r.requester_id);
+  const contactIds   = acceptedRows.map(r =>
+    r.requester_id === currentUser.id ? r.recipient_id : r.requester_id
+  );
+  const allIds = [...new Set([...requesterIds, ...contactIds])];
+
+  const [profilesRes, groupsRes, membersRes] = await Promise.all([
+    allIds.length
+      ? sb.from('users').select('id, display_name, avatar_url, email').in('id', allIds).order('display_name')
+      : Promise.resolve({ data: [] }),
+    sb.from('groups').select('id, name').eq('created_by', currentUser.id).order('name'),
+    contactIds.length
+      ? sb.from('group_members').select('group_id, user_id').in('user_id', contactIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  const profiles    = profilesRes.data  || [];
+  const groups      = groupsRes.data    || [];
+  const memberships = membersRes.data   || [];
+  const profileMap  = {};
+  profiles.forEach(p => profileMap[p.id] = p);
+
+  let html = '';
+
+  if (addContactFormOpen) {
+    html += `<div class="social-add-form">
+      <input class="social-add-input" id="addContactEmail" type="email" placeholder="Enter email address" autocomplete="email"
+        onkeydown="if(event.key==='Enter')sendContactRequest()">
+      <div class="social-add-status" id="addContactStatus"></div>
+      <div class="social-add-actions">
+        <button class="social-req-btn social-req-accept" onclick="sendContactRequest()">Send Request</button>
+        <button class="social-req-btn social-req-decline" onclick="toggleAddContactForm()">Cancel</button>
+      </div>
+    </div>`;
+  }
+
+  if (pendingRows.length) {
+    html += `<div class="social-section-label">Requests</div>`;
+    pendingRows.forEach(r => {
+      const u = profileMap[r.requester_id];
+      if (!u) return;
+      const initials = getInitials(u.display_name || u.email);
+      const avatar = u.avatar_url ? `<img src="${u.avatar_url}" alt="${initials}"/>` : initials;
+      html += `<div class="social-row" style="cursor:default">
+        <div class="social-avatar">${avatar}</div>
+        <div class="social-row-info">
+          <div class="social-row-name">${u.display_name || u.email}</div>
+          <div class="social-row-meta">${u.email}</div>
+        </div>
+        <div class="social-req-actions">
+          <button class="social-req-btn social-req-accept" data-id="${r.id}" onclick="acceptContactRequest(this)">Accept</button>
+          <button class="social-req-btn social-req-decline" data-id="${r.id}" onclick="declineContactRequest(this)">Decline</button>
+        </div>
+      </div>`;
+    });
+  }
+
+  if (contactIds.length) {
+    const contactProfiles = contactIds.map(id => profileMap[id]).filter(Boolean);
+    const rendered = new Set();
+
+    groups.forEach(g => {
+      const members = contactProfiles.filter(p =>
+        memberships.some(m => m.group_id === g.id && m.user_id === p.id)
+      );
+      if (!members.length) return;
+      html += `<div class="social-section-label">${g.name}</div>`;
+      members.forEach(u => { html += contactRowHTML(u); rendered.add(u.id); });
+    });
+
+    const ungrouped = contactProfiles.filter(p => !rendered.has(p.id));
+    if (ungrouped.length) {
+      if (groups.length) html += `<div class="social-section-label">Not in a group</div>`;
+      ungrouped.forEach(u => { html += contactRowHTML(u); });
+    }
+  }
+
+  if (!html) {
+    html = `<div class="social-empty">No contacts yet<br><span style="font-size:13px;margin-top:6px;display:block">Tap + Add to send a contact request</span></div>`;
+  }
+
+  body.innerHTML = html;
+}
+
+async function sendContactRequest() {
+  const input    = document.getElementById('addContactEmail');
+  const statusEl = document.getElementById('addContactStatus');
+  const email    = input?.value.trim().toLowerCase();
+  if (!email) { showToast('Enter an email address'); return; }
+  if (statusEl) statusEl.textContent = 'Looking up…';
+
+  const { data: found, error } = await sb.rpc('lookup_user_by_email', { target_email: email });
+  if (error || !found?.length) {
+    if (statusEl) statusEl.textContent = '';
+    showToast('No Tether account found for that email');
+    return;
+  }
+  const target = found[0];
+
+  if (target.id === currentUser.id) {
+    if (statusEl) statusEl.textContent = '';
+    showToast('That\'s your own account');
     return;
   }
 
-  const contactIds = contactRows.map(r => r.recipient_id);
+  const { data: existing } = await sb.from('contacts')
+    .select('status')
+    .or(`and(requester_id.eq.${currentUser.id},recipient_id.eq.${target.id}),and(requester_id.eq.${target.id},recipient_id.eq.${currentUser.id})`)
+    .limit(1);
 
-  // Load profiles and group memberships in parallel
-  const [profilesRes, groupsRes, membersRes] = await Promise.all([
-    sb.from('users').select('id, display_name, avatar_url, email').in('id', contactIds).order('display_name'),
-    sb.from('groups').select('id, name').eq('created_by', currentUser.id).order('name'),
-    sb.from('group_members').select('group_id, user_id').in('user_id', contactIds),
-  ]);
-
-  const profiles   = profilesRes.data  || [];
-  const groups     = groupsRes.data    || [];
-  const memberships= membersRes.data   || [];
-
-  // Build map: userId → [groupName, ...]
-  const userGroups = {};
-  memberships.forEach(m => {
-    const g = groups.find(g => g.id === m.group_id);
-    if (!g) return;
-    if (!userGroups[m.user_id]) userGroups[m.user_id] = [];
-    userGroups[m.user_id].push(g.name);
-  });
-
-  // Build sections: one per group (members of that group), then ungrouped
-  const rendered = new Set();
-  let html = '';
-
-  groups.forEach(g => {
-    const members = profiles.filter(p =>
-      memberships.some(m => m.group_id === g.id && m.user_id === p.id)
-    );
-    if (!members.length) return;
-    html += `<div class="social-section-label">${g.name}</div>`;
-    members.forEach(u => {
-      html += contactRowHTML(u);
-      rendered.add(u.id);
-    });
-  });
-
-  const ungrouped = profiles.filter(p => !rendered.has(p.id));
-  if (ungrouped.length) {
-    html += `<div class="social-section-label">Not in a group</div>`;
-    ungrouped.forEach(u => { html += contactRowHTML(u); });
+  if (existing?.length) {
+    if (statusEl) statusEl.textContent = '';
+    const s = existing[0].status;
+    if (s === 'accepted') { showToast('Already a contact'); return; }
+    if (s === 'pending')  { showToast('Request already sent'); return; }
   }
 
-  body.innerHTML = html || `<div class="social-empty">No contacts yet</div>`;
+  const { error: insertErr } = await sb.from('contacts').insert({
+    requester_id: currentUser.id,
+    recipient_id: target.id,
+    status: 'pending',
+  });
+  if (insertErr) { if (statusEl) statusEl.textContent = ''; showToast('Could not send request'); return; }
+
+  addContactFormOpen = false;
+  showToast(`Request sent to ${target.display_name || email}`);
+  renderContactsSheet();
+}
+
+async function acceptContactRequest(el) {
+  const id = el.dataset.id;
+  const { error } = await sb.from('contacts').update({ status: 'accepted' }).eq('id', id);
+  if (error) { showToast('Could not accept request'); return; }
+  pendingContactCount = Math.max(0, pendingContactCount - 1);
+  refreshNotifBadge();
+  renderContactsSheet();
+}
+
+async function declineContactRequest(el) {
+  const id = el.dataset.id;
+  const { error } = await sb.from('contacts').update({ status: 'declined' }).eq('id', id);
+  if (error) { showToast('Could not decline request'); return; }
+  pendingContactCount = Math.max(0, pendingContactCount - 1);
+  refreshNotifBadge();
+  renderContactsSheet();
+}
+
+async function checkPendingContactRequests() {
+  const { count } = await sb.from('contacts')
+    .select('*', { count: 'exact', head: true })
+    .eq('recipient_id', currentUser.id)
+    .eq('status', 'pending');
+  pendingContactCount = count ?? 0;
+  refreshNotifBadge();
+}
+
+function refreshNotifBadge() {
+  const badge = document.getElementById('notifBadge');
+  if (!badge) return;
+  if (pendingInvite || pendingContactCount > 0) {
+    badge.classList.add('show');
+  } else {
+    badge.classList.remove('show');
+  }
 }
 
 function contactRowHTML(u) {
@@ -2068,12 +2195,11 @@ async function checkPendingInvites() {
     const householdName = invites[0].households?.name || 'a household';
     document.getElementById('inviteBannerSub').textContent = `Invited to join "${householdName}"`;
     document.getElementById('inviteBanner').classList.add('show');
-    document.getElementById('notifBadge').classList.add('show');
   } else {
     pendingInvite = null;
     document.getElementById('inviteBanner').classList.remove('show');
-    document.getElementById('notifBadge').classList.remove('show');
   }
+  refreshNotifBadge();
 }
 
 async function acceptPendingInvite() {
@@ -2087,7 +2213,7 @@ async function acceptPendingInvite() {
     .insert({ household_id: pendingInvite.household_id, user_id: currentUser.id, role: 'adult' });
   pendingInvite = null;
   document.getElementById('inviteBanner').classList.remove('show');
-  document.getElementById('notifBadge').classList.remove('show');
+  refreshNotifBadge();
   await loadHousehold();
   await loadItems();
   showToast('🏠 Welcome to the household!');
@@ -2101,7 +2227,7 @@ async function declinePendingInvite() {
     .eq('id', pendingInvite.id);
   pendingInvite = null;
   document.getElementById('inviteBanner').classList.remove('show');
-  document.getElementById('notifBadge').classList.remove('show');
+  refreshNotifBadge();
   showToast('Invite declined');
 }
 
@@ -3821,7 +3947,7 @@ async function obComplete() {
   document.getElementById('obOverlay').style.display = 'none';
   if (window.location.pathname === '/onboarding') history.replaceState(null, '', '/');
   if (obHouseholdId) await loadHousehold();
-  await checkPendingInvites();
+  await Promise.all([checkPendingInvites(), checkPendingContactRequests()]);
   render();
   setupRealtime();
   setTimeout(showCelebration, 150);

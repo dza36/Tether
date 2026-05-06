@@ -50,7 +50,7 @@ async function onSignedIn(user) {
     initOnboarding(obResult || { hasInvite: false });
     return;
   }
-  await checkPendingInvites();
+  await Promise.all([checkPendingInvites(), checkPendingContactRequests()]);
   render();
   setupRealtime();
 }
