@@ -3973,7 +3973,7 @@ function renderObFinish() {
   document.getElementById('obCard').innerHTML = `
     <div class="ob-icon">⚓</div>
     <div class="ob-title">You're tethered.</div>
-    <div class="ob-body">For a refresher on anything you just read, visit <strong>About Tether</strong> in your profile options at any time.</div>
+    <div class="ob-body">For additional details about Tether, visit <strong>About Tether</strong> in your profile at any time.</div>
     <div class="ob-actions">
       <button class="ob-btn-primary" onclick="obComplete()">Open Tether</button>
       <div class="ob-pills"><button class="ob-pill" onclick="obBack()">← Back</button></div>
