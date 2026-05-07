@@ -171,10 +171,12 @@ const TEST_PLAN = [
       { id: 'ob-3', label: 'Birthday step — Save & continue saves to DB and advances' },
       { id: 'ob-4', label: 'Anniversary step — Skip advances without saving' },
       { id: 'ob-5', label: 'Anniversary step — Add saves correctly, Done advances' },
-      { id: 'ob-6', label: 'Household step — Skip for now advances without creating household' },
-      { id: 'ob-7', label: 'Household step — Create household saves name, user shown as member' },
-      { id: 'ob-8', label: 'Onboarding completes → lands on main app, onboarded=true in DB' },
-      { id: 'ob-9', label: 'Hard refresh after onboarding → does not re-trigger onboarding' },
+      { id: 'ob-6', label: 'Name step — OAuth user: name auto-filled, editable, saves to users.display_name' },
+      { id: 'ob-7', label: 'Name step — Magic link user: blank field, cannot advance without entering name' },
+      { id: 'ob-8', label: 'Household step — Skip for now advances without creating household' },
+      { id: 'ob-9', label: 'Household step — Create household saves name, user shown as member' },
+      { id: 'ob-10', label: 'Onboarding completes → lands on main app, onboarded=true in DB' },
+      { id: 'ob-11', label: 'Hard refresh after onboarding → does not re-trigger onboarding' },
     ]
   },
   {
@@ -282,8 +284,51 @@ const TEST_PLAN = [
     tests: [
       { id: 'hh-1', label: 'Household sheet opens from profile menu' },
       { id: 'hh-2', label: 'Create household → name saved, user shown as member' },
-      { id: 'hh-3', label: 'Invite by email → invite sent (verify in DB if needed)' },
-      { id: 'hh-4', label: 'Assigned-to avatar shown on task rows in household context' },
+      { id: 'hh-3', label: 'Invite by email → invite sent, appears in Pending Invites list' },
+      { id: 'hh-4', label: 'Cancel pending invite → invite removed from list' },
+      { id: 'hh-5', label: 'Resend invite → old invite gone, new invite email received' },
+      { id: 'hh-6', label: 'Leave household (non-admin) → removed from household, sheet resets' },
+      { id: 'hh-7', label: 'Leave household (admin with other members) → blocked with toast' },
+      { id: 'hh-8', label: 'Assigned-to avatar shown on task rows in household context' },
+    ]
+  },
+  {
+    id: 'multiuser', title: 'Multi-User',
+    tests: [],
+    subsections: [
+      {
+        id: 'mu-contacts', title: 'Contacts',
+        tests: [
+          { id: 'mu-c-1', label: '[A] Sends contact request to B → request appears in B\'s Contacts sheet under Requests' },
+          { id: 'mu-c-2', label: '[B] Receives contact request email notification' },
+          { id: 'mu-c-3', label: '[B] Accepts request → both A and B see each other in contacts list' },
+          { id: 'mu-c-4', label: '[A] Notification badge clears after B accepts' },
+          { id: 'mu-c-5', label: '[B] Declines request → request disappears from both sides' },
+          { id: 'mu-c-6', label: '[A] Re-sends request to B who already has one pending → "Request already sent" blocked' },
+        ]
+      },
+      {
+        id: 'mu-household', title: 'Household',
+        tests: [
+          { id: 'mu-hh-1', label: '[A] Invites B by email → invite email received by B' },
+          { id: 'mu-hh-2', label: '[B] Sees invite banner on sign-in, accepts → B appears as member in A\'s household sheet' },
+          { id: 'mu-hh-3', label: '[A] A\'s tasks visible to B after joining household' },
+          { id: 'mu-hh-4', label: '[A] Cancels pending invite → invite removed from list, no email re-sent' },
+          { id: 'mu-hh-5', label: '[A] Resends invite → new email received by B' },
+          { id: 'mu-hh-6', label: '[B] Leaves household → B no longer shown as member in A\'s sheet' },
+        ]
+      },
+      {
+        id: 'mu-events', title: 'Events',
+        tests: [
+          { id: 'mu-ev-1', label: '[A] Invites B to event → event appears in B\'s Pending tab' },
+          { id: 'mu-ev-2', label: '[B] RSVPs Going → status visible to A on event detail' },
+          { id: 'mu-ev-3', label: '[B] RSVPs Can\'t make it → removed from active attendees on A\'s view' },
+          { id: 'mu-ev-4', label: '[A] Adds bring list item → item visible to B on event detail' },
+          { id: 'mu-ev-5', label: '[B] Claims bring list item → shown as claimed by B on A\'s view' },
+          { id: 'mu-ev-6', label: '[B] Unclaims item → reverts to unclaimed on A\'s view' },
+        ]
+      },
     ]
   },
   {
