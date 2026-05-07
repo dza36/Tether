@@ -2344,11 +2344,19 @@ async function renderHouseholdContent() {
       .eq('status', 'pending')
       .eq('request_type', 'invite'),
     sb.from('household_invites')
-      .select('id, invited_user_id, users!household_invites_invited_user_id_fkey(display_name, email)')
+      .select('id, invited_user_id')
       .eq('household_id', currentHousehold.id)
       .eq('status', 'pending')
       .eq('request_type', 'join_request')
   ]);
+
+  // Look up join requester profiles separately (FK points to auth.users, not public.users)
+  const joinRequesterIds = (joinRequests || []).map(r => r.invited_user_id).filter(Boolean);
+  const { data: joinProfiles } = joinRequesterIds.length
+    ? await sb.from('users').select('id, display_name, email').in('id', joinRequesterIds)
+    : { data: [] };
+  const joinProfileMap = {};
+  (joinProfiles || []).forEach(p => joinProfileMap[p.id] = p);
 
   const membersHTML = householdMembers.map(m => {
     const isYou = m.user_id === currentUser.id;
@@ -2374,7 +2382,8 @@ async function renderHouseholdContent() {
 
   const joinRequestHTML = joinRequests?.length
     ? joinRequests.map(r => {
-        const name = r.users?.display_name || r.users?.email || 'Someone';
+        const profile = joinProfileMap[r.invited_user_id];
+        const name = profile?.display_name || profile?.email || 'Someone';
         return `
         <div class="pending-invite-row">
           <div class="pending-invite-email">${name} wants to join</div>
