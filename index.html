@@ -112,6 +112,9 @@
     <div class="menu-item" onclick="showToast('Notifications coming soon')">
       <span class="menu-icon">🔔</span> Notifications
     </div>
+    <div class="menu-item" onclick="window.location.href='/suggestions';closeUserMenu();">
+      <span class="menu-icon">🗳️</span> Shape what we build
+    </div>
     <div class="menu-item" onclick="openFaqSheet();closeUserMenu();">
       <span class="menu-icon">❓</span> FAQs
     </div>
@@ -146,6 +149,7 @@
     <div class="social-handle"></div>
     <div class="social-header">
       <div class="social-title">Contacts</div>
+      <button class="social-add-btn" onclick="toggleAddContactForm()">+ Add</button>
       <div class="social-close" onclick="closeContactsSheet()">✕</div>
     </div>
     <div class="social-body" id="contactsBody"></div>
