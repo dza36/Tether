@@ -2426,8 +2426,19 @@ async function cancelHouseholdInvite(el) {
 async function resendHouseholdInvite(el) {
   const id    = el.dataset.id;
   const email = el.dataset.email;
-  await sb.from('household_invites').update({ status: 'cancelled' }).eq('id', id);
-  await sendHouseholdInvite(email);
+  const { error: cancelErr } = await sb.from('household_invites')
+    .update({ status: 'cancelled' }).eq('id', id);
+  if (cancelErr) { showToast('Could not resend invite'); return; }
+  const { data: existingUsers } = await sb.from('users').select('id').eq('email', email).limit(1);
+  const { error: insertErr } = await sb.from('household_invites').insert({
+    household_id: currentHousehold.id,
+    invited_by: currentUser.id,
+    invited_email: email,
+    invited_user_id: existingUsers?.[0]?.id || null,
+    status: 'pending',
+  });
+  if (insertErr) { showToast('Could not resend invite'); return; }
+  showToast('Invite resent to ' + email);
   renderHouseholdContent();
 }
 

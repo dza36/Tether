@@ -13,7 +13,7 @@ CREATE TYPE rsvp_status       AS ENUM ('pending', 'going', 'not_going', 'maybe')
 CREATE TYPE household_role    AS ENUM ('admin', 'adult', 'child');
 CREATE TYPE visibility_level  AS ENUM ('full', 'summary');
 CREATE TYPE invite_type       AS ENUM ('household', 'event');
-CREATE TYPE invite_status     AS ENUM ('pending', 'accepted', 'declined', 'expired');
+CREATE TYPE invite_status     AS ENUM ('pending', 'accepted', 'declined', 'expired', 'cancelled');
 CREATE TYPE item_type         AS ENUM ('chore', 'shopping_list', 'event', 'appointment', 'general');
 CREATE TYPE item_visibility   AS ENUM ('household', 'adults_only', 'assigned_only', 'private');
 CREATE TYPE subscription_tier AS ENUM ('free', 'pro', 'lifetime', 'founder', 'employee', 'creator');
