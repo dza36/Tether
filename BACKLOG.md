@@ -38,7 +38,14 @@ Features and fixes agreed upon, not yet built. Roughly prioritized within each s
 
 - **Push / email notifications** — Configurable per user. Needed for event invites, contact requests, RSVP updates. Platform TBD (Supabase Edge Functions + FCM / SendGrid likely). Notifications placeholder already in profile menu.
 - **App file splitting** — `app.js` approaching 2,500+ lines, split around 3,000–4,000. Natural seams: `core.js` / `render.js` / `tasks.js` / `events.js` / `social.js` / `household.js`. No build step required — multiple `<script>` tags in order.
-- **Dev/UAT/Prod environments** — Separate Supabase projects per environment. Currently all dev goes directly to prod DB. Needed before broader beta.
+
+---
+
+## Pre-Beta Launch
+
+- **Walkthrough video** — Record a full feature walkthrough covering tasks, events, household, contacts, and occasions.
+- **Voiceover** — Add narration to the walkthrough video.
+- **Host video** — Publish walkthrough online (YouTube unlisted or similar) to share with beta invitees.
 
 ---
 
