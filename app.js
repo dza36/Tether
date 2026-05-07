@@ -2427,7 +2427,8 @@ async function declineJoinRequest(inviteId) {
 
 async function cancelHouseholdInvite(el) {
   const id = el.dataset.id;
-  await sb.from('household_invites').update({ status: 'cancelled' }).eq('id', id);
+  const { error } = await sb.from('household_invites').delete().eq('id', id);
+  if (error) { showToast('Could not cancel invite'); return; }
   showToast('Invite cancelled');
   renderHouseholdContent();
 }
@@ -2435,8 +2436,7 @@ async function cancelHouseholdInvite(el) {
 async function resendHouseholdInvite(el) {
   const id    = el.dataset.id;
   const email = el.dataset.email;
-  const { error: cancelErr } = await sb.from('household_invites')
-    .update({ status: 'cancelled' }).eq('id', id);
+  const { error: cancelErr } = await sb.from('household_invites').delete().eq('id', id);
   if (cancelErr) { showToast('Could not resend invite'); return; }
   const { data: existingUsers } = await sb.from('users').select('id').eq('email', email).limit(1);
   const { error: insertErr } = await sb.from('household_invites').insert({
