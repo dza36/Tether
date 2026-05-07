@@ -480,6 +480,8 @@
   .hh-jr-decline{background:var(--surface);color:var(--accent-soft);border:0.5px solid var(--accent-pale)}
   .hh-jr-decline:active{background:#EEEDFE}
   .btn-create-household{width:100%;padding:14px;font-size:15px;font-weight:700;border-radius:14px;border:none;background:var(--accent);color:#fff;cursor:pointer}
+  .hh-leave-btn{width:100%;padding:12px;font-size:14px;font-weight:600;border-radius:12px;border:1.5px solid #E24B4A;background:transparent;color:#E24B4A;cursor:pointer}
+  .hh-leave-btn:active{background:#FFF0F0}
   .btn-create-household:active{transform:scale(.98)}
   .create-form input{width:100%;padding:13px 14px;font-size:15px;border-radius:12px;border:0.5px solid var(--accent-pale);background:var(--surface);color:var(--accent-dark);font-family:inherit;margin-bottom:10px}
   .create-form input:focus{outline:none;border-color:var(--accent)}
@@ -908,6 +910,8 @@
     & .pending-invite-email{color:#E8E5FF}
     & .pending-invite-tag{background:#1E1A3C;border-color:#2E2A5E;color:#6B65A8}
     & .hh-jr-decline{background:#1E1A3C;color:#6B65A8;border-color:#2E2A5E}
+    & .hh-leave-btn{border-color:#C0392B;color:#E24B4A}
+    & .hh-leave-btn:active{background:#2A1A1A}
     & .create-form input{background:#1E1A3C;border-color:#2E2A5E;color:#E8E5FF}
     & .household-sub{color:#6B65A8}
     & .social-bg{background:rgba(0,0,0,.75)}
@@ -1200,6 +1204,9 @@ html[data-theme="dark"] {
   & .invite-input-row input{background:#1E1A3C;border-color:#2E2A5E;color:#E8E5FF}
   & .pending-invite-email{color:#E8E5FF}
   & .pending-invite-tag{background:#1E1A3C;border-color:#2E2A5E;color:#6B65A8}
+  & .hh-jr-decline{background:#1E1A3C;color:#6B65A8;border-color:#2E2A5E}
+  & .hh-leave-btn{border-color:#C0392B;color:#E24B4A}
+  & .hh-leave-btn:active{background:#2A1A1A}
   & .create-form input{background:#1E1A3C;border-color:#2E2A5E;color:#E8E5FF}
   & .household-sub{color:#6B65A8}
   & .social-bg{background:rgba(0,0,0,.75)}

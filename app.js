@@ -2339,7 +2339,7 @@ async function renderHouseholdContent() {
   // Load pending outbound invites and join requests in parallel
   const [{ data: pendingInvites }, { data: joinRequests }] = await Promise.all([
     sb.from('household_invites')
-      .select('invited_email, status')
+      .select('id, invited_email, invited_user_id, status')
       .eq('household_id', currentHousehold.id)
       .eq('status', 'pending')
       .eq('request_type', 'invite'),
@@ -2365,7 +2365,10 @@ async function renderHouseholdContent() {
     ? pendingInvites.map(i => `
         <div class="pending-invite-row">
           <div class="pending-invite-email">${i.invited_email}</div>
-          <div class="pending-invite-tag">Pending</div>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button class="hh-jr-btn hh-jr-accept" data-id="${i.id}" data-email="${i.invited_email}" onclick="resendHouseholdInvite(this)">Resend</button>
+            <button class="hh-jr-btn hh-jr-decline" data-id="${i.id}" onclick="cancelHouseholdInvite(this)">Cancel</button>
+          </div>
         </div>`).join('')
     : '';
 
@@ -2394,6 +2397,9 @@ async function renderHouseholdContent() {
     <div class="invite-input-row">
       <input type="email" id="inviteEmailInput" placeholder="their@email.com" autocomplete="off"/>
       <button onclick="handleSendInvite()">Send</button>
+    </div>
+    <div style="margin-top:1.25rem;padding-top:1rem;border-top:0.5px solid #EEEDFE">
+      <button class="hh-leave-btn" onclick="leaveHousehold()">Leave Household</button>
     </div>`;
 }
 
@@ -2408,6 +2414,39 @@ async function declineJoinRequest(inviteId) {
   await sb.from('household_invites').update({ status: 'declined' }).eq('id', inviteId);
   showToast('Request declined');
   renderHouseholdContent();
+}
+
+async function cancelHouseholdInvite(el) {
+  const id = el.dataset.id;
+  await sb.from('household_invites').update({ status: 'cancelled' }).eq('id', id);
+  showToast('Invite cancelled');
+  renderHouseholdContent();
+}
+
+async function resendHouseholdInvite(el) {
+  const id    = el.dataset.id;
+  const email = el.dataset.email;
+  await sb.from('household_invites').update({ status: 'cancelled' }).eq('id', id);
+  await sendHouseholdInvite(email);
+  renderHouseholdContent();
+}
+
+async function leaveHousehold() {
+  const me = householdMembers.find(m => m.user_id === currentUser.id);
+  if (me?.role === 'admin' && householdMembers.length > 1) {
+    showToast('Transfer admin to another member before leaving');
+    return;
+  }
+  const { error } = await sb.from('household_members')
+    .delete()
+    .eq('household_id', currentHousehold.id)
+    .eq('user_id', currentUser.id);
+  if (error) { showToast('Could not leave household'); return; }
+  currentHousehold = null;
+  householdMembers = [];
+  closeHouseholdSheet();
+  showToast('You have left the household');
+  render();
 }
 
 function handleCreateHousehold() {
