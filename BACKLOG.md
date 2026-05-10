@@ -22,6 +22,8 @@ Features and fixes agreed upon, not yet built. Roughly prioritized within each s
 ## Social
 
 - **Add contacts by email** — "Add contact" flow: enter email → pending request sent → recipient sees pending invite → Accept / Decline / Block.
+- **Delete contact** — Remove a contact from your contacts list. Soft delete via status field.
+- **Resend contact request email** — If the notification email failed or wasn't received, allow resending without cancelling and re-creating the request.
 - **Block system** — Asymmetric visibility. Blocked user can't see blocker anywhere. Full spec in `memory/project_social_graph.md`.
 
 ---
@@ -29,6 +31,7 @@ Features and fixes agreed upon, not yet built. Roughly prioritized within each s
 ## Household
 
 - **Onboarding** — First-run experience for new users. Explain swipe gestures, prompt first item. Light — not a 5-screen tutorial.
+- **Pull profile photo from OAuth** — Store and display avatar from Google/Microsoft sign-in. Currently shows initials only.
 - **Kids logins + parental controls** — Household sub-accounts for kids with restricted contacts.
 - **Avatar color picker** — For users without an OAuth profile photo: pick from ~8 curated colors, shown with initials.
 
