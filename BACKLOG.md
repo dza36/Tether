@@ -24,6 +24,9 @@ Features and fixes agreed upon, not yet built. Roughly prioritized within each s
 - **Add contacts by email** — "Add contact" flow: enter email → pending request sent → recipient sees pending invite → Accept / Decline / Block.
 - **Delete contact** — Remove a contact from your contacts list. Soft delete via status field.
 - **Resend contact request email** — If the notification email failed or wasn't received, allow resending without cancelling and re-creating the request.
+- **Group creation** — Create group UI with two types:
+  - **Shared group** — Creator invites members by email/contact. All members are notified, see the group, and see each other. Joining auto-adds all members as contacts. Use case: Extended Family, Closest Friends, Book Club.
+  - **Personal group** — Private label visible only to the creator. Organizes contacts for quick bulk inviting to events without notifying or connecting anyone. Use case: "People from work", "Neighbors".
 - **Block system** — Asymmetric visibility. Blocked user can't see blocker anywhere. Full spec in `memory/project_social_graph.md`.
 
 ---
