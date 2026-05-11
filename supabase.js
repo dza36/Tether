@@ -57,6 +57,7 @@ async function onSignedIn(user) {
   await Promise.all([checkPendingInvites(), checkPendingContactRequests()]);
   render();
   setupRealtime();
+  restoreLastState();
 }
 
 async function checkOnboarding() {
