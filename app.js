@@ -1832,6 +1832,7 @@ function bgClickGroupsSheet(e) {
 }
 
 async function renderGroupsSheet(groupId) {
+  console.log('[Groups] renderGroupsSheet called, groupId:', groupId, 'currentUser:', !!currentUser);
   const body    = document.getElementById('groupsBody');
   const title   = document.getElementById('groupsTitle');
   const backBtn = document.getElementById('groupsBack');
@@ -1856,6 +1857,7 @@ async function renderGroupsSheet(groupId) {
   title.textContent = 'Groups';
   body.innerHTML = `<div class="social-loading">Loading…</div>`;
 
+  console.log('[Groups] about to fire queries');
   const [pendingRes, createdRes, membershipRes] = await Promise.all([
     sb.from('group_members').select('id, group_id, groups(name, type)')
       .or(`user_id.eq.${currentUser.id},invited_email.eq.${currentUser.email}`)
@@ -1864,6 +1866,7 @@ async function renderGroupsSheet(groupId) {
     sb.from('group_members').select('group_id').eq('user_id', currentUser.id).eq('status', 'accepted'),
   ]);
 
+  console.log('[Groups] queries resolved — pending:', pendingRes.error||'ok', 'created:', createdRes.error||'ok', 'membership:', membershipRes.error||'ok');
   const pendingInvites = pendingRes.data  || [];
   const createdGroups  = createdRes.data  || [];
   const memberGroupIds = (membershipRes.data || []).map(m => m.group_id);
