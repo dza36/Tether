@@ -5070,9 +5070,10 @@ document.addEventListener('visibilitychange', async () => {
   if (hiddenMs > 3 * 60 * 1000) { window.location.reload(); return; }
 
   // Health check on every wake — if Supabase client is broken, reload immediately
-  // rather than letting the user hit a broken app
+  console.log('[Visibility] wake after', hiddenMs, 'ms — running health check');
   const { error: healthErr } = await sb.from('users')
     .select('id').eq('id', currentUser.id).limit(1).maybeSingle();
+  console.log('[Visibility] health check result:', healthErr ? 'FAIL' : 'OK', healthErr || '');
   if (healthErr) { window.location.reload(); return; }
 
   // Short tab switches: health passed, nothing else to do
