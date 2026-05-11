@@ -1,24 +1,7 @@
 // ─── SUPABASE CONFIG ──────────────────────────────────────────────────────────
 // SUPABASE_URL and SUPABASE_ANON are injected by CI via config.js
 const { createClient } = supabase;
-let sb = createClient(SUPABASE_URL, SUPABASE_ANON);
-let _clientRecreating = false;
-
-async function recreateSupabaseClient() {
-  _clientRecreating = true;
-  try {
-    sb = createClient(SUPABASE_URL, SUPABASE_ANON);
-    sb.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_OUT') { showAuth(); return; }
-      if (event === 'TOKEN_REFRESHED' && session?.user) { currentUser = session.user; return; }
-      if (event === 'SIGNED_IN' && session?.user && !_clientRecreating) await onSignedIn(session.user);
-    });
-    const { data: { session } } = await sb.auth.getSession();
-    return session?.user || null;
-  } finally {
-    _clientRecreating = false;
-  }
-}
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────────
 let currentUser = null;

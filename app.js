@@ -1832,7 +1832,6 @@ function bgClickGroupsSheet(e) {
 }
 
 async function renderGroupsSheet(groupId) {
-  console.log('[Groups] renderGroupsSheet called, groupId:', groupId, 'currentUser:', !!currentUser);
   const body    = document.getElementById('groupsBody');
   const title   = document.getElementById('groupsTitle');
   const backBtn = document.getElementById('groupsBack');
@@ -1857,7 +1856,6 @@ async function renderGroupsSheet(groupId) {
   title.textContent = 'Groups';
   body.innerHTML = `<div class="social-loading">Loading…</div>`;
 
-  console.log('[Groups] about to fire queries');
   const [pendingRes, createdRes, membershipRes] = await Promise.all([
     sb.from('group_members').select('id, group_id, groups(name, type)')
       .or(`user_id.eq.${currentUser.id},invited_email.eq.${currentUser.email}`)
@@ -1866,7 +1864,6 @@ async function renderGroupsSheet(groupId) {
     sb.from('group_members').select('group_id').eq('user_id', currentUser.id).eq('status', 'accepted'),
   ]);
 
-  console.log('[Groups] queries resolved — pending:', pendingRes.error||'ok', 'created:', createdRes.error||'ok', 'membership:', membershipRes.error||'ok');
   const pendingInvites = pendingRes.data  || [];
   const createdGroups  = createdRes.data  || [];
   const memberGroupIds = (membershipRes.data || []).map(m => m.group_id);
@@ -5061,38 +5058,15 @@ async function confirmChoreApply() {
 
 // ─── VISIBILITY ───────────────────────────────────────────────────────────────
 let _resuming = false;
-let _hiddenAt = 0;
 document.addEventListener('visibilitychange', async () => {
-  if (document.hidden) { _hiddenAt = Date.now(); return; }
-  if (_resuming) return;
-  if (!currentUser) { window.location.reload(); return; }
-
-  const hiddenMs = _hiddenAt ? Date.now() - _hiddenAt : 0;
-
-  // Full reload for long absences
-  if (hiddenMs > 3 * 60 * 1000) { window.location.reload(); return; }
-
-  // Recreate the Supabase client on every wake — gives a fresh client with
-  // no stuck auth lock state. If recreation hangs or fails, reload instead.
-  try {
-    const user = await Promise.race([
-      recreateSupabaseClient(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)),
-    ]);
-    if (!user) { window.location.reload(); return; }
-    currentUser = user;
-  } catch {
-    window.location.reload();
-    return;
-  }
-
-  // Short tab switches — session refreshed, no UI update needed
-  if (hiddenMs < 45 * 1000) return;
-
-  // Medium absence: soft refresh UI too
+  if (document.hidden || !currentUser || _resuming) return;
   _resuming = true;
   showToast('Refreshing…', false, 1500);
   try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session?.user) { showAuth(); return; }
+    currentUser = session.user;
+    setupRealtime();
     await loadItems();
     render();
     if (groceryTaskId) { loadGroceryItems(); subscribeGrocery(groceryTaskId); }
