@@ -5057,22 +5057,10 @@ async function confirmChoreApply() {
 }
 
 // ─── VISIBILITY ───────────────────────────────────────────────────────────────
-let _resuming = false;
-document.addEventListener('visibilitychange', async () => {
-  if (document.hidden || !currentUser || _resuming) return;
-  _resuming = true;
-  showToast('Refreshing…', false, 1500);
-  try {
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session?.user) { showAuth(); return; }
-    currentUser = session.user;
-    setupRealtime();
-    await loadItems();
-    render();
-    if (groceryTaskId) { loadGroceryItems(); subscribeGrocery(groceryTaskId); }
-  } finally {
-    _resuming = false;
-  }
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden || !currentUser) return;
+  document.getElementById('mainApp').style.display = 'none';
+  window.location.reload();
 });
 
 // ─── BOOT ─────────────────────────────────────────────────────────────────────
