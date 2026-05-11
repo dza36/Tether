@@ -24,9 +24,7 @@ Features and fixes agreed upon, not yet built. Roughly prioritized within each s
 - **Add contacts by email** — "Add contact" flow: enter email → pending request sent → recipient sees pending invite → Accept / Decline / Block.
 - **Delete contact** — Remove a contact from your contacts list. Soft delete via status field.
 - **Resend contact request email** — If the notification email failed or wasn't received, allow resending without cancelling and re-creating the request.
-- **Group creation** — Create group UI with two types:
-  - **Shared group** — Creator invites members by email/contact. All members are notified, see the group, and see each other. Joining auto-adds all members as contacts. Use case: Extended Family, Closest Friends, Book Club.
-  - **Personal group** — Private label visible only to the creator. Organizes contacts for quick bulk inviting to events without notifying or connecting anyone. Use case: "People from work", "Neighbors".
+- **Group creation** — Create group UI. Invite members by email or from contacts. All members are notified, see the group, and see each other. Joining auto-adds all members as mutual contacts. Use case: Extended Family, Closest Friends, Book Club.
 - **Block system** — Asymmetric visibility. Blocked user can't see blocker anywhere. Full spec in `memory/project_social_graph.md`.
 
 ---
@@ -49,6 +47,7 @@ Features and fixes agreed upon, not yet built. Roughly prioritized within each s
 
 ## Pre-Beta Launch
 
+- **File splitting** — Split `app.js` (~4,000+ lines) into logical modules before open beta. Reduces session context cost and improves maintainability. Natural seams: `core.js` / `render.js` / `tasks.js` / `events.js` / `social.js` / `household.js` / `groups.js`. No build step — multiple `<script>` tags in order.
 - **Walkthrough video** — Record a full feature walkthrough covering tasks, events, household, contacts, and occasions.
 - **Voiceover** — Add narration to the walkthrough video.
 - **Host video** — Publish walkthrough online (YouTube unlisted or similar) to share with beta invitees.
