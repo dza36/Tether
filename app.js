@@ -5060,7 +5060,6 @@ async function confirmChoreApply() {
 let _resuming = false;
 let _hiddenAt = 0;
 document.addEventListener('visibilitychange', async () => {
-  console.log('[Visibility] change — hidden:', document.hidden, '_resuming:', _resuming, 'currentUser:', !!currentUser);
   if (document.hidden) { _hiddenAt = Date.now(); return; }
   if (_resuming) return;
   if (!currentUser) { window.location.reload(); return; }
@@ -5070,14 +5069,26 @@ document.addEventListener('visibilitychange', async () => {
   // Full reload for long absences
   if (hiddenMs > 3 * 60 * 1000) { window.location.reload(); return; }
 
-  // Health check on every wake — if Supabase client is broken, reload immediately
-  console.log('[Visibility] wake after', hiddenMs, 'ms — running health check');
+  // Very short switches — do nothing
+  if (hiddenMs < 500) return;
+
+  // Health check — reload if Supabase is truly broken
   const { error: healthErr } = await sb.from('users')
     .select('id').eq('id', currentUser.id).limit(1).maybeSingle();
-  console.log('[Visibility] health check result:', healthErr ? 'FAIL' : 'OK', healthErr || '');
   if (healthErr) { window.location.reload(); return; }
 
-  // Short tab switches: health passed, nothing else to do
+  // Reset any operation guards stuck by Chrome cancelling in-flight requests
+  grocerySubmitting = false;
+
+  // Re-render open sheets whose queries were cancelled mid-flight
+  if (document.getElementById('groupsBg').classList.contains('open'))
+    renderGroupsSheet(groupsDetailId);
+  if (document.getElementById('contactsBg').classList.contains('open'))
+    renderContactsSheet();
+  if (document.getElementById('householdBg').classList.contains('open'))
+    renderHouseholdContent();
+
+  // Short tab switches: done
   if (hiddenMs < 45 * 1000) return;
 
   // Medium absence: soft refresh
