@@ -5072,16 +5072,19 @@ document.addEventListener('visibilitychange', async () => {
   // Full reload for long absences
   if (hiddenMs > 3 * 60 * 1000) { window.location.reload(); return; }
 
-  // Short tab switches — do nothing
+  // Refresh session on every wake to clear any stuck auth lock state.
+  // No UI update for short switches — just unblock the Supabase HTTP client.
+  const { data: { session }, error: refreshErr } = await sb.auth.refreshSession();
+  if (refreshErr || !session?.user) { window.location.reload(); return; }
+  currentUser = session.user;
+
+  // Short tab switches — session refreshed, no UI update needed
   if (hiddenMs < 45 * 1000) return;
 
-  // Medium absence: soft refresh
+  // Medium absence: soft refresh UI too
   _resuming = true;
   showToast('Refreshing…', false, 1500);
   try {
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session?.user) { showAuth(); return; }
-    currentUser = session.user;
     await loadItems();
     render();
     if (groceryTaskId) { loadGroceryItems(); subscribeGrocery(groceryTaskId); }
