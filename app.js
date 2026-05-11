@@ -5062,23 +5062,24 @@ let _hiddenAt = 0;
 document.addEventListener('visibilitychange', async () => {
   if (document.hidden) { _hiddenAt = Date.now(); return; }
   if (_resuming) return;
-
-  // If tab was frozen for more than 3 minutes, reload rather than trying to
-  // soft-refresh a potentially broken Supabase client state.
-  if (_hiddenAt && Date.now() - _hiddenAt > 3 * 60 * 1000) {
-    window.location.reload();
-    return;
-  }
-
   if (!currentUser) { window.location.reload(); return; }
 
+  const hiddenMs = _hiddenAt ? Date.now() - _hiddenAt : 0;
+
+  // Full reload for long absences — Supabase client state likely broken
+  if (hiddenMs > 3 * 60 * 1000) { window.location.reload(); return; }
+
+  // Short tab switches — let Supabase reconnect naturally, don't interfere
+  if (hiddenMs < 15 * 1000) return;
+
+  // Medium absence: soft refresh — but don't call setupRealtime(), it causes
+  // an unnecessary CLOSED/SUBSCRIBED cycle that breaks in-flight operations
   _resuming = true;
   showToast('Refreshing…', false, 1500);
   try {
     const { data: { session } } = await sb.auth.getSession();
     if (!session?.user) { showAuth(); return; }
     currentUser = session.user;
-    setupRealtime();
     await loadItems();
     render();
     if (groceryTaskId) { loadGroceryItems(); subscribeGrocery(groceryTaskId); }
