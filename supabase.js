@@ -60,10 +60,17 @@ async function checkOnboarding() {
     .select('onboarded, display_name')
     .eq('id', currentUser.id).single();
   if (user?.onboarded) return null;
-  const { data: invites } = await sb.from('household_invites')
-    .select('id').eq('invited_user_id', currentUser.id)
-    .eq('status', 'pending').limit(1);
-  return { hasInvite: !!(invites && invites.length > 0), displayName: user?.display_name || '' };
+  const [invitesRes, groupInvitesRes] = await Promise.all([
+    sb.from('household_invites').select('id').eq('invited_user_id', currentUser.id).eq('status', 'pending').limit(1),
+    sb.from('group_members').select('id, group_id, groups(name, type)')
+      .or(`user_id.eq.${currentUser.id},invited_email.eq.${currentUser.email}`)
+      .eq('status', 'pending').limit(5),
+  ]);
+  return {
+    hasInvite: !!(invitesRes.data?.length),
+    displayName: user?.display_name || '',
+    pendingGroupInvites: groupInvitesRes.data || [],
+  };
 }
 
 function showAuth() {

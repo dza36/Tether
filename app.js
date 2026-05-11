@@ -1423,23 +1423,37 @@ async function openAttendeeSearch() {
   document.getElementById('attendeeSearchBody').innerHTML = '<div class="social-loading">Loading…</div>';
 
   if (!attendeeSearchCache) {
-    const [groupsRes, contactsRes] = await Promise.all([
+    const [createdRes, membershipRes, contactsRes] = await Promise.all([
       sb.from('groups').select('id, name').eq('created_by', currentUser.id).order('name'),
-      sb.from('contacts').select('recipient_id').eq('requester_id', currentUser.id).eq('status', 'accepted'),
+      sb.from('group_members').select('group_id').eq('user_id', currentUser.id).eq('status', 'accepted'),
+      sb.from('contacts').select('requester_id, recipient_id')
+        .or(`requester_id.eq.${currentUser.id},recipient_id.eq.${currentUser.id}`)
+        .eq('status', 'accepted'),
     ]);
-    const groups = groupsRes.data || [];
-    const contactIds = (contactsRes.data || []).map(r => r.recipient_id);
+    const createdGroups  = createdRes.data || [];
+    const createdIds     = new Set(createdGroups.map(g => g.id));
+    const otherGroupIds  = (membershipRes.data || []).map(m => m.group_id).filter(id => !createdIds.has(id));
+    let otherGroups = [];
+    if (otherGroupIds.length) {
+      const { data } = await sb.from('groups').select('id, name').in('id', otherGroupIds).order('name');
+      otherGroups = data || [];
+    }
+    const groups = [...createdGroups, ...otherGroups].sort((a, b) => a.name.localeCompare(b.name));
+
+    const contactIds = (contactsRes.data || []).map(r =>
+      r.requester_id === currentUser.id ? r.recipient_id : r.requester_id
+    );
     const [profilesRes, membersRes] = await Promise.all([
       contactIds.length ? sb.from('users').select('id, display_name, avatar_url, email').in('id', contactIds).order('display_name') : Promise.resolve({data:[]}),
-      groups.length ? sb.from('group_members').select('group_id, user_id').in('group_id', groups.map(g=>g.id)) : Promise.resolve({data:[]}),
+      groups.length ? sb.from('group_members').select('group_id, user_id').in('group_id', groups.map(g=>g.id)).eq('status', 'accepted') : Promise.resolve({data:[]}),
     ]);
-    const profiles = profilesRes.data || [];
-    const memberships = membersRes.data || [];
+    const profiles    = profilesRes.data || [];
+    const memberships = membersRes.data  || [];
 
-    // Build memberMap: groupId → [{userId, displayName, avatarUrl}]
     const memberMap = {};
     for (const g of groups) {
-      const memberIds = memberships.filter(m => m.group_id === g.id).map(m => m.user_id);
+      const memberIds = memberships.filter(m => m.group_id === g.id).map(m => m.user_id).filter(Boolean);
+      if (!memberIds.length) { memberMap[g.id] = []; continue; }
       const profilesInGroup = await sb.from('users').select('id, display_name, avatar_url, email').in('id', memberIds).order('display_name');
       memberMap[g.id] = (profilesInGroup.data || []).map(p => ({userId:p.id, displayName:p.display_name||p.email, avatarUrl:p.avatar_url}));
     }
@@ -1800,7 +1814,13 @@ function renderEventsList() {
 }
 
 // ─── GROUPS SHEET ────────────────────────────────────────────────────────────
+let groupsDetailId    = null;
+let groupsInviteOpen  = false;
+let groupsCreating    = false;
+let groupsSelectedType = 'shared';
+
 function openGroupsSheet() {
+  groupsDetailId = null; groupsCreating = false; groupsInviteOpen = false;
   document.getElementById('groupsBg').classList.add('open');
   renderGroupsSheet(null);
 }
@@ -1815,77 +1835,317 @@ async function renderGroupsSheet(groupId) {
   const body    = document.getElementById('groupsBody');
   const title   = document.getElementById('groupsTitle');
   const backBtn = document.getElementById('groupsBack');
+
+  if (groupId) {
+    groupsDetailId = groupId; groupsCreating = false;
+    await renderGroupDetail(groupId);
+    return;
+  }
+  groupsDetailId = null;
+
+  if (groupsCreating) {
+    backBtn.style.display = '';
+    backBtn.onclick = () => { groupsCreating = false; renderGroupsSheet(null); };
+    title.textContent = 'New Group';
+    renderGroupCreate();
+    return;
+  }
+
+  backBtn.style.display = 'none';
+  backBtn.onclick = () => renderGroupsSheet(null);
+  title.textContent = 'Groups';
   body.innerHTML = `<div class="social-loading">Loading…</div>`;
 
-  if (!groupId) {
-    // ── Group list view ──
-    title.textContent = 'Groups';
-    backBtn.style.display = 'none';
+  const [pendingRes, createdRes, membershipRes] = await Promise.all([
+    sb.from('group_members').select('id, group_id, groups(name, type)')
+      .or(`user_id.eq.${currentUser.id},invited_email.eq.${currentUser.email}`)
+      .eq('status', 'pending'),
+    sb.from('groups').select('id, name, type, created_by').eq('created_by', currentUser.id).order('name'),
+    sb.from('group_members').select('group_id').eq('user_id', currentUser.id).eq('status', 'accepted'),
+  ]);
 
-    const { data: groups, error } = await sb.from('groups')
-      .select('id, name')
-      .eq('created_by', currentUser.id)
-      .order('name');
+  const pendingInvites = pendingRes.data  || [];
+  const createdGroups  = createdRes.data  || [];
+  const memberGroupIds = (membershipRes.data || []).map(m => m.group_id);
+  const createdIds     = new Set(createdGroups.map(g => g.id));
+  const otherIds       = memberGroupIds.filter(id => !createdIds.has(id));
 
-    if (error || !groups?.length) {
-      body.innerHTML = `<div class="social-empty">No groups yet</div>`;
-      return;
-    }
+  let memberGroups = [];
+  if (otherIds.length) {
+    const { data } = await sb.from('groups').select('id, name, type, created_by').in('id', otherIds).order('name');
+    memberGroups = data || [];
+  }
+  const allGroups = [...createdGroups, ...memberGroups].sort((a, b) => a.name.localeCompare(b.name));
 
-    // Get member counts
-    const { data: counts } = await sb.from('group_members')
-      .select('group_id')
-      .in('group_id', groups.map(g => g.id));
-
-    const countMap = {};
+  let countMap = {};
+  if (allGroups.length) {
+    const { data: counts } = await sb.from('group_members').select('group_id').in('group_id', allGroups.map(g => g.id)).eq('status', 'accepted');
     (counts || []).forEach(r => { countMap[r.group_id] = (countMap[r.group_id] || 0) + 1; });
+  }
 
-    body.innerHTML = groups.map(g => {
-      const n = countMap[g.id] || 0;
-      return `<div class="social-row" onclick="renderGroupsSheet('${g.id}')">
+  let html = '';
+
+  if (pendingInvites.length) {
+    html += `<div class="social-section-label">Invites</div>`;
+    pendingInvites.forEach(inv => {
+      const gname = inv.groups?.name || 'a group';
+      const gtype = inv.groups?.type === 'personal' ? 'Personal' : 'Shared';
+      html += `<div class="social-row" style="cursor:default">
         <div class="social-avatar" style="background:var(--surface);font-size:18px">👥</div>
         <div class="social-row-info">
-          <div class="social-row-name">${g.name}</div>
+          <div class="social-row-name">${gname}</div>
+          <div class="social-row-meta">${gtype} group</div>
+        </div>
+        <div class="social-req-actions">
+          <button class="social-req-btn social-req-accept" data-id="${inv.id}" data-gid="${inv.group_id}" onclick="acceptGroupMembership(this.dataset.id,this.dataset.gid,true)">Join</button>
+          <button class="social-req-btn social-req-decline" data-id="${inv.id}" onclick="declineGroupMembership(this.dataset.id)">Decline</button>
+        </div>
+      </div>`;
+    });
+  }
+
+  if (allGroups.length) {
+    if (pendingInvites.length) html += `<div class="social-section-label">Your Groups</div>`;
+    allGroups.forEach(g => {
+      const n = countMap[g.id] || 0;
+      html += `<div class="social-row" onclick="renderGroupsSheet('${g.id}')">
+        <div class="social-avatar" style="background:var(--surface);font-size:18px">👥</div>
+        <div class="social-row-info">
+          <div class="social-row-name">${g.name} <span class="group-type-badge ${g.type}">${g.type === 'shared' ? 'Shared' : 'Personal'}</span></div>
           <div class="social-row-meta">${n} member${n === 1 ? '' : 's'}</div>
         </div>
         <div class="social-row-arrow">›</div>
       </div>`;
-    }).join('');
+    });
+  }
 
-  } else {
-    // ── Group detail view ──
-    backBtn.style.display = '';
+  if (!html) {
+    html = `<div class="social-empty">No groups yet<br><span style="font-size:13px;margin-top:6px;display:block">Tap + Create to make your first group</span></div>`;
+  }
+  body.innerHTML = html;
+}
 
-    const { data: group } = await sb.from('groups').select('name').eq('id', groupId).single();
-    title.textContent = group?.name || 'Group';
+function renderGroupCreate() {
+  const body = document.getElementById('groupsBody');
+  groupsSelectedType = 'shared';
+  body.innerHTML = `
+    <div style="padding:.25rem 0">
+      <input class="social-add-input" id="groupNameInput" type="text" placeholder="Group name" maxlength="50" style="margin-bottom:1rem;width:100%">
+      <div class="social-section-label" style="margin-top:0">Type</div>
+      <div class="group-type-row">
+        <button class="group-type-opt active" id="gtype-shared" onclick="selectGroupType('shared')">
+          <div class="group-type-opt-label">Shared</div>
+          <div class="group-type-opt-sub">All members see each other and connect</div>
+        </button>
+        <button class="group-type-opt" id="gtype-personal" onclick="selectGroupType('personal')">
+          <div class="group-type-opt-label">Personal</div>
+          <div class="group-type-opt-sub">Only visible to you</div>
+        </button>
+      </div>
+      <div class="social-add-actions" style="margin-top:1rem">
+        <button class="social-req-btn social-req-accept" style="flex:1;padding:12px;font-size:14px" onclick="createGroup()">Create Group</button>
+      </div>
+    </div>`;
+  setTimeout(() => document.getElementById('groupNameInput')?.focus(), 50);
+}
 
-    const { data: members, error } = await sb.from('group_members')
-      .select('user_id')
-      .eq('group_id', groupId);
+function selectGroupType(type) {
+  groupsSelectedType = type;
+  document.getElementById('gtype-shared')?.classList.toggle('active', type === 'shared');
+  document.getElementById('gtype-personal')?.classList.toggle('active', type === 'personal');
+}
 
-    if (error || !members?.length) {
-      body.innerHTML = `<div class="social-empty">No members</div>`;
-      return;
-    }
+async function createGroup() {
+  const name = document.getElementById('groupNameInput')?.value.trim();
+  if (!name) { showToast('Enter a group name'); return; }
+  const { data: group, error } = await sb.from('groups')
+    .insert({ name, type: groupsSelectedType, created_by: currentUser.id })
+    .select().single();
+  if (error) { showToast('Could not create group'); return; }
+  attendeeSearchCache = null;
+  groupsCreating = false;
+  showToast(`"${name}" created`);
+  renderGroupsSheet(group.id);
+}
 
-    const { data: profiles } = await sb.from('users')
-      .select('id, display_name, avatar_url, email')
-      .in('id', members.map(m => m.user_id))
-      .order('display_name');
+async function renderGroupDetail(groupId) {
+  const body    = document.getElementById('groupsBody');
+  const title   = document.getElementById('groupsTitle');
+  const backBtn = document.getElementById('groupsBack');
+  backBtn.style.display = '';
+  backBtn.onclick = () => { groupsDetailId = null; groupsInviteOpen = false; renderGroupsSheet(null); };
+  body.innerHTML = `<div class="social-loading">Loading…</div>`;
 
-    body.innerHTML = (profiles || []).map(u => {
-      const initials = getInitials(u.display_name || u.email);
-      const avatar   = u.avatar_url
-        ? `<img src="${u.avatar_url}" alt="${initials}"/>`
-        : initials;
-      return `<div class="social-row">
-        <div class="social-avatar">${avatar}</div>
-        <div class="social-row-info">
-          <div class="social-row-name">${u.display_name || u.email}</div>
+  const [groupRes, membersRes, pendingRes] = await Promise.all([
+    sb.from('groups').select('name, type, created_by').eq('id', groupId).single(),
+    sb.from('group_members').select('id, user_id').eq('group_id', groupId).eq('status', 'accepted'),
+    sb.from('group_members').select('id, invited_email').eq('group_id', groupId).eq('status', 'pending'),
+  ]);
+
+  const group   = groupRes.data;
+  const members = membersRes.data || [];
+  const pending = pendingRes.data || [];
+  if (!group) { body.innerHTML = `<div class="social-empty">Group not found</div>`; return; }
+
+  title.textContent = group.name;
+  const isCreator = group.created_by === currentUser.id;
+  const isShared  = group.type === 'shared';
+
+  const memberIds = members.map(m => m.user_id).filter(Boolean);
+  const { data: profiles } = memberIds.length
+    ? await sb.from('users').select('id, display_name, avatar_url, email').in('id', memberIds).order('display_name')
+    : { data: [] };
+
+  let html = `<span class="group-type-badge ${group.type}" style="margin-bottom:.75rem;display:inline-block">${isShared ? 'Shared' : 'Personal'}</span>`;
+
+  if (isCreator) {
+    if (groupsInviteOpen) {
+      html += `<div class="social-add-form">
+        <input class="social-add-input" id="groupInviteEmail" type="email" placeholder="Enter email address"
+          onkeydown="if(event.key==='Enter')sendGroupInvite('${groupId}','${group.type}')">
+        <div class="social-add-status" id="groupInviteStatus"></div>
+        <div class="social-add-actions">
+          <button class="social-req-btn social-req-accept" onclick="sendGroupInvite('${groupId}','${group.type}')">Send Invite</button>
+          <button class="social-req-btn social-req-decline" onclick="groupsInviteOpen=false;renderGroupDetail('${groupId}')">Cancel</button>
         </div>
       </div>`;
-    }).join('');
+    } else {
+      html += `<button class="social-add-btn" style="margin-bottom:.75rem" onclick="groupsInviteOpen=true;renderGroupDetail('${groupId}')">+ Invite</button>`;
+    }
   }
+
+  if (isCreator && pending.length) {
+    html += `<div class="social-section-label">Pending</div>`;
+    pending.forEach(p => {
+      html += `<div class="pending-invite-row">
+        <div class="pending-invite-email">${p.invited_email || 'Unknown'}</div>
+        <button class="hh-jr-btn hh-jr-decline" data-id="${p.id}" onclick="cancelGroupInvite(this)">Cancel</button>
+      </div>`;
+    });
+  }
+
+  if (profiles?.length) {
+    html += `<div class="social-section-label">Members (${profiles.length})</div>`;
+    (profiles || []).forEach(u => {
+      const initials = getInitials(u.display_name || u.email);
+      const avatar   = u.avatar_url ? `<img src="${u.avatar_url}" alt="${initials}"/>` : initials;
+      const memberRow = members.find(m => m.user_id === u.id);
+      const removeBtn = isCreator && u.id !== currentUser.id
+        ? `<button class="hh-jr-btn hh-jr-decline" data-id="${memberRow?.id}" onclick="removeGroupMember(this)">Remove</button>`
+        : '';
+      html += `<div class="social-row" style="cursor:default">
+        <div class="social-avatar">${avatar}</div>
+        <div class="social-row-info">
+          <div class="social-row-name">${u.display_name || u.email}${u.id === currentUser.id ? '<span class="member-you-tag">You</span>' : ''}</div>
+        </div>
+        ${removeBtn}
+      </div>`;
+    });
+  } else {
+    html += `<div class="social-empty">No members yet — tap + Invite to add people</div>`;
+  }
+
+  html += `<div style="margin-top:1.25rem;padding-top:1rem;border-top:0.5px solid #EEEDFE">`;
+  if (isCreator) {
+    html += `<button class="hh-leave-btn" onclick="deleteGroup('${groupId}')">Delete Group</button>`;
+  } else {
+    const myMember = members.find(m => m.user_id === currentUser.id);
+    if (myMember) {
+      html += `<button class="hh-leave-btn" data-id="${myMember.id}" onclick="leaveGroup(this,'${groupId}')">Leave Group</button>`;
+    }
+  }
+  html += `</div>`;
+
+  body.innerHTML = html;
+  if (groupsInviteOpen) setTimeout(() => document.getElementById('groupInviteEmail')?.focus(), 50);
+}
+
+async function sendGroupInvite(groupId, groupType) {
+  const input    = document.getElementById('groupInviteEmail');
+  const statusEl = document.getElementById('groupInviteStatus');
+  const email    = input?.value.trim().toLowerCase();
+  if (!email) { showToast('Enter an email address'); return; }
+  if (statusEl) statusEl.textContent = 'Looking up…';
+
+  const { data: existing } = await sb.from('group_members')
+    .select('status').eq('group_id', groupId).eq('invited_email', email).limit(1);
+  if (existing?.length) {
+    if (statusEl) statusEl.textContent = '';
+    showToast(existing[0].status === 'accepted' ? 'Already a member' : 'Invite already sent');
+    return;
+  }
+
+  const { data: found } = await sb.rpc('lookup_user_by_email', { target_email: email });
+  const userId = found?.[0]?.id || null;
+
+  const status = groupType === 'personal' ? 'accepted' : 'pending';
+  const { error } = await sb.from('group_members').insert({
+    group_id: groupId, user_id: userId, invited_email: email,
+    status, added_by: currentUser.id,
+  });
+  if (error) { if (statusEl) statusEl.textContent = ''; showToast('Could not send invite'); return; }
+
+  if (statusEl) statusEl.textContent = '';
+  groupsInviteOpen = false;
+  attendeeSearchCache = null;
+  showToast(groupType === 'personal' ? 'Member added' : `Invite sent to ${email}`);
+  renderGroupDetail(groupId);
+}
+
+async function acceptGroupMembership(memberId, groupId, rerender) {
+  await sb.from('group_members').update({ status: 'accepted', user_id: currentUser.id }).eq('id', memberId);
+  const { data: existingMembers } = await sb.from('group_members')
+    .select('user_id').eq('group_id', groupId).eq('status', 'accepted').neq('user_id', currentUser.id);
+  for (const m of existingMembers || []) {
+    if (!m.user_id) continue;
+    const { data: contact } = await sb.from('contacts').select('id')
+      .or(`and(requester_id.eq.${currentUser.id},recipient_id.eq.${m.user_id}),and(requester_id.eq.${m.user_id},recipient_id.eq.${currentUser.id})`)
+      .limit(1);
+    if (!contact?.length) {
+      await sb.from('contacts').insert({ requester_id: currentUser.id, recipient_id: m.user_id, status: 'accepted' });
+    }
+  }
+  attendeeSearchCache = null;
+  if (rerender) { showToast('Joined group!'); renderGroupsSheet(null); }
+}
+
+async function declineGroupMembership(memberId) {
+  await sb.from('group_members').update({ status: 'declined' }).eq('id', memberId);
+  showToast('Invite declined');
+  renderGroupsSheet(null);
+}
+
+async function cancelGroupInvite(el) {
+  const { error } = await sb.from('group_members').delete().eq('id', el.dataset.id);
+  if (error) { showToast('Could not cancel'); return; }
+  showToast('Invite cancelled');
+  renderGroupDetail(groupsDetailId);
+}
+
+async function removeGroupMember(el) {
+  const { error } = await sb.from('group_members').delete().eq('id', el.dataset.id);
+  if (error) { showToast('Could not remove member'); return; }
+  attendeeSearchCache = null;
+  showToast('Member removed');
+  renderGroupDetail(groupsDetailId);
+}
+
+async function leaveGroup(el, groupId) {
+  const { error } = await sb.from('group_members').delete().eq('id', el.dataset.id);
+  if (error) { showToast('Could not leave group'); return; }
+  attendeeSearchCache = null;
+  showToast('Left group');
+  groupsDetailId = null;
+  renderGroupsSheet(null);
+}
+
+async function deleteGroup(groupId) {
+  const { error } = await sb.from('groups').delete().eq('id', groupId);
+  if (error) { showToast('Could not delete group'); return; }
+  attendeeSearchCache = null;
+  showToast('Group deleted');
+  groupsDetailId = null;
+  renderGroupsSheet(null);
 }
 
 // ─── CONTACTS SHEET ───────────────────────────────────────────────────────────
@@ -3675,15 +3935,29 @@ let obHasInvite = false;
 let obAnniversaries = [];
 let obHouseholdId = null;
 let obDisplayName = '';
+let obPendingGroupInvites = [];
 
 function obGetParas() { return (_aboutData?.opening?.paragraphs) || []; }
-function obGetTotal() { return obGetParas().length + 5; } // about + household + name + birthday + anniversary + finish
 
-async function initOnboarding({ hasInvite, displayName }) {
+function obGetSteps() {
+  const steps = [];
+  obGetParas().forEach((_, i) => steps.push({ type: 'about', i }));
+  steps.push({ type: 'household' });
+  if (obPendingGroupInvites.length) steps.push({ type: 'groupinvites' });
+  steps.push({ type: 'name' });
+  steps.push({ type: 'birthday' });
+  steps.push({ type: 'anniversary' });
+  steps.push({ type: 'finish' });
+  return steps;
+}
+function obGetTotal() { return obGetSteps().length; }
+
+async function initOnboarding({ hasInvite, displayName, pendingGroupInvites }) {
   obStep = 0;
   obHasInvite = hasInvite;
   obAnniversaries = [];
   obHouseholdId = null;
+  obPendingGroupInvites = pendingGroupInvites || [];
   obDisplayName = displayName || currentUser?.user_metadata?.full_name || currentUser?.user_metadata?.name || '';
   document.getElementById('obOverlay').style.display = '';
   if (!_aboutData) {
@@ -3705,14 +3979,16 @@ function renderObSteps() {
 }
 
 function renderObScreen() {
-  const N = obGetParas().length;
   renderObSteps();
-  if (obStep < N)          renderObAbout(obStep);
-  else if (obStep === N)   renderObHousehold();
-  else if (obStep === N+1) renderObName();
-  else if (obStep === N+2) renderObBirthday();
-  else if (obStep === N+3) renderObAnniversary();
-  else                     renderObFinish();
+  const step = obGetSteps()[obStep];
+  if (!step) return;
+  if      (step.type === 'about')        renderObAbout(step.i);
+  else if (step.type === 'household')    renderObHousehold();
+  else if (step.type === 'groupinvites') renderObGroupInvites();
+  else if (step.type === 'name')         renderObName();
+  else if (step.type === 'birthday')     renderObBirthday();
+  else if (step.type === 'anniversary')  renderObAnniversary();
+  else                                   renderObFinish();
 }
 
 function obAdvance() { if (obStep < obGetTotal() - 1) { obStep++; renderObScreen(); } }
@@ -3748,6 +4024,46 @@ function renderObAbout(step) {
       </div>`;
   }
   document.getElementById('obCard').innerHTML = content;
+}
+
+function renderObGroupInvites() {
+  const listHtml = obPendingGroupInvites.map(inv => `
+    <div class="ob-group-invite-row" id="obgi-${inv.id}">
+      <div class="ob-group-invite-name">${inv.groups?.name || 'a group'}</div>
+      <div class="ob-group-invite-meta">${inv.groups?.type === 'personal' ? 'Personal group' : 'Shared group'}</div>
+      <div class="social-req-actions" style="margin-top:8px">
+        <button class="social-req-btn social-req-accept" data-id="${inv.id}" data-gid="${inv.group_id}" onclick="obAcceptGroupInvite(this)">Join</button>
+        <button class="social-req-btn social-req-decline" data-id="${inv.id}" onclick="obDeclineGroupInvite(this)">Decline</button>
+      </div>
+    </div>`).join('');
+  document.getElementById('obCard').innerHTML = `
+    <div class="ob-title">Group invites</div>
+    <div class="ob-body">You've been invited to join ${obPendingGroupInvites.length > 1 ? 'these groups' : 'this group'}.</div>
+    <div class="ob-group-invite-list">${listHtml}</div>
+    <div class="ob-actions">
+      <button class="ob-btn-primary" onclick="obAdvance()">Continue</button>
+      <div class="ob-pills"><button class="ob-pill" onclick="obBack()">← Back</button></div>
+    </div>
+  `;
+}
+
+async function obAcceptGroupInvite(el) {
+  const id = el.dataset.id;
+  const gid = el.dataset.gid;
+  el.disabled = true;
+  el.nextElementSibling.disabled = true;
+  await acceptGroupMembership(id, gid, false);
+  const row = document.getElementById('obgi-' + id);
+  if (row) { row.style.opacity = '.5'; row.querySelector('.social-req-accept').textContent = 'Joined!'; }
+}
+
+async function obDeclineGroupInvite(el) {
+  const id = el.dataset.id;
+  el.disabled = true;
+  el.previousElementSibling.disabled = true;
+  await sb.from('group_members').update({ status: 'declined' }).eq('id', id);
+  const row = document.getElementById('obgi-' + id);
+  if (row) { row.style.opacity = '.5'; row.querySelector('.social-req-decline').textContent = 'Declined'; }
 }
 
 function renderObName() {
