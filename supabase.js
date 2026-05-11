@@ -47,10 +47,10 @@ async function onSignedIn(user) {
   document.getElementById('mainApp').style.display = '';
   const isDevBuild = typeof APP_VERSION !== 'undefined' && APP_VERSION.includes('-dev');
   if (obResult || (window.location.pathname === '/onboarding' && isDevBuild)) {
-    initOnboarding(obResult || { hasInvite: false, displayName: '' });
+    initOnboarding(obResult || { hasInvite: false });
     return;
   }
-  await Promise.all([checkPendingInvites(), checkPendingContactRequests()]);
+  await checkPendingInvites();
   render();
   setupRealtime();
 }
