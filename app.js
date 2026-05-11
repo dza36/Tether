@@ -5056,9 +5056,38 @@ async function confirmChoreApply() {
   if (expandedId == choreTaskId) loadAndRenderChorePanel(choreTaskId);
 }
 
+// ─── STATE RESTORE ────────────────────────────────────────────────────────────
+function restoreLastState() {
+  const saved = sessionStorage.getItem('tether_restore');
+  if (!saved) return;
+  sessionStorage.removeItem('tether_restore');
+  try {
+    const state = JSON.parse(saved);
+    if (state.type === 'grocery' && state.id) {
+      setTimeout(() => openGroceryPanel(state.id), 150);
+    } else if (state.type === 'chore' && state.id) {
+      const item = items.find(i => i.id === state.id);
+      if (item) {
+        expandedId = state.id;
+        render();
+        setTimeout(() => loadAndRenderChorePanel(state.id), 150);
+      }
+    }
+  } catch(e) {}
+}
+
 // ─── VISIBILITY ───────────────────────────────────────────────────────────────
 document.addEventListener('visibilitychange', () => {
   if (document.hidden || !currentUser) return;
+  // Save active panel state so we can restore after reload
+  if (groceryTaskId) {
+    sessionStorage.setItem('tether_restore', JSON.stringify({ type: 'grocery', id: groceryTaskId }));
+  } else if (expandedId) {
+    const item = items.find(i => i.id === expandedId);
+    if (item?.type === 'chore') {
+      sessionStorage.setItem('tether_restore', JSON.stringify({ type: 'chore', id: expandedId }));
+    }
+  }
   document.getElementById('mainApp').style.display = 'none';
   window.location.reload();
 });
