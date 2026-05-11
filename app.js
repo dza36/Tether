@@ -5070,7 +5070,7 @@ document.addEventListener('visibilitychange', async () => {
   if (hiddenMs > 3 * 60 * 1000) { window.location.reload(); return; }
 
   // Short tab switches — let Supabase reconnect naturally, don't interfere
-  if (hiddenMs < 15 * 1000) return;
+  if (hiddenMs < 45 * 1000) return;
 
   // Medium absence: soft refresh — but don't call setupRealtime(), it causes
   // an unnecessary CLOSED/SUBSCRIBED cycle that breaks in-flight operations
