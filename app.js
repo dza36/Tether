@@ -1962,6 +1962,10 @@ async function createGroup() {
     .insert({ name, type: groupsSelectedType, created_by: currentUser.id })
     .select().single();
   if (error) { showToast('Could not create group'); return; }
+  await sb.from('group_members').insert({
+    group_id: group.id, user_id: currentUser.id, invited_email: currentUser.email,
+    status: 'accepted', added_by: currentUser.id,
+  });
   attendeeSearchCache = null;
   groupsCreating = false;
   showToast(`"${name}" created`);
