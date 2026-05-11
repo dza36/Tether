@@ -5073,10 +5073,19 @@ document.addEventListener('visibilitychange', async () => {
   if (hiddenMs > 3 * 60 * 1000) { window.location.reload(); return; }
 
   // Refresh session on every wake to clear any stuck auth lock state.
-  // No UI update for short switches — just unblock the Supabase HTTP client.
-  const { data: { session }, error: refreshErr } = await sb.auth.refreshSession();
-  if (refreshErr || !session?.user) { window.location.reload(); return; }
-  currentUser = session.user;
+  // If the lock is already stuck, refreshSession() itself will hang —
+  // use a 3-second timeout and reload if it doesn't resolve in time.
+  try {
+    const refreshResult = await Promise.race([
+      sb.auth.refreshSession(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)),
+    ]);
+    if (!refreshResult.data?.session?.user) { window.location.reload(); return; }
+    currentUser = refreshResult.data.session.user;
+  } catch {
+    window.location.reload();
+    return;
+  }
 
   // Short tab switches — session refreshed, no UI update needed
   if (hiddenMs < 45 * 1000) return;
