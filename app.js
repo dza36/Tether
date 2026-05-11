@@ -5066,14 +5066,19 @@ document.addEventListener('visibilitychange', async () => {
 
   const hiddenMs = _hiddenAt ? Date.now() - _hiddenAt : 0;
 
-  // Full reload for long absences — Supabase client state likely broken
+  // Full reload for long absences
   if (hiddenMs > 3 * 60 * 1000) { window.location.reload(); return; }
 
-  // Short tab switches — let Supabase reconnect naturally, don't interfere
+  // Health check on every wake — if Supabase client is broken, reload immediately
+  // rather than letting the user hit a broken app
+  const { error: healthErr } = await sb.from('users')
+    .select('id').eq('id', currentUser.id).limit(1).maybeSingle();
+  if (healthErr) { window.location.reload(); return; }
+
+  // Short tab switches: health passed, nothing else to do
   if (hiddenMs < 45 * 1000) return;
 
-  // Medium absence: soft refresh — but don't call setupRealtime(), it causes
-  // an unnecessary CLOSED/SUBSCRIBED cycle that breaks in-flight operations
+  // Medium absence: soft refresh
   _resuming = true;
   showToast('Refreshing…', false, 1500);
   try {
