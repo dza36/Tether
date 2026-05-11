@@ -5058,8 +5058,20 @@ async function confirmChoreApply() {
 
 // ─── VISIBILITY ───────────────────────────────────────────────────────────────
 let _resuming = false;
+let _hiddenAt = 0;
 document.addEventListener('visibilitychange', async () => {
-  if (document.hidden || !currentUser || _resuming) return;
+  if (document.hidden) { _hiddenAt = Date.now(); return; }
+  if (_resuming) return;
+
+  // If tab was frozen for more than 3 minutes, reload rather than trying to
+  // soft-refresh a potentially broken Supabase client state.
+  if (_hiddenAt && Date.now() - _hiddenAt > 3 * 60 * 1000) {
+    window.location.reload();
+    return;
+  }
+
+  if (!currentUser) { window.location.reload(); return; }
+
   _resuming = true;
   showToast('Refreshing…', false, 1500);
   try {
