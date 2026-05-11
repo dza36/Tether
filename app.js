@@ -5058,33 +5058,15 @@ async function confirmChoreApply() {
 
 // ─── VISIBILITY ───────────────────────────────────────────────────────────────
 let _resuming = false;
-let _hiddenAt = 0;
 document.addEventListener('visibilitychange', async () => {
-  if (document.hidden) { _hiddenAt = Date.now(); return; }
-  if (_resuming) return;
-  if (!currentUser) { window.location.reload(); return; }
-
-  const hiddenMs = _hiddenAt ? Date.now() - _hiddenAt : 0;
-
-  // Full reload for long absences
-  if (hiddenMs > 3 * 60 * 1000) { window.location.reload(); return; }
-
-  // Health check on every wake — if Supabase client is broken, reload immediately
-  // rather than letting the user hit a broken app
-  const { error: healthErr } = await sb.from('users')
-    .select('id').eq('id', currentUser.id).limit(1).maybeSingle();
-  if (healthErr) { window.location.reload(); return; }
-
-  // Short tab switches: health passed, nothing else to do
-  if (hiddenMs < 45 * 1000) return;
-
-  // Medium absence: soft refresh
+  if (document.hidden || !currentUser || _resuming) return;
   _resuming = true;
   showToast('Refreshing…', false, 1500);
   try {
     const { data: { session } } = await sb.auth.getSession();
     if (!session?.user) { showAuth(); return; }
     currentUser = session.user;
+    setupRealtime();
     await loadItems();
     render();
     if (groceryTaskId) { loadGroceryItems(); subscribeGrocery(groceryTaskId); }
