@@ -5072,16 +5072,15 @@ document.addEventListener('visibilitychange', async () => {
   // Full reload for long absences
   if (hiddenMs > 3 * 60 * 1000) { window.location.reload(); return; }
 
-  // Refresh session on every wake to clear any stuck auth lock state.
-  // If the lock is already stuck, refreshSession() itself will hang —
-  // use a 3-second timeout and reload if it doesn't resolve in time.
+  // Recreate the Supabase client on every wake — gives a fresh client with
+  // no stuck auth lock state. If recreation hangs or fails, reload instead.
   try {
-    const refreshResult = await Promise.race([
-      sb.auth.refreshSession(),
+    const user = await Promise.race([
+      recreateSupabaseClient(),
       new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)),
     ]);
-    if (!refreshResult.data?.session?.user) { window.location.reload(); return; }
-    currentUser = refreshResult.data.session.user;
+    if (!user) { window.location.reload(); return; }
+    currentUser = user;
   } catch {
     window.location.reload();
     return;
