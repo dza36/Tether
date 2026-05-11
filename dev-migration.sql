@@ -186,15 +186,19 @@ CREATE TABLE grocery_items (
 CREATE TABLE groups (
   id         uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   name       text NOT NULL,
+  type       text DEFAULT 'shared',
   created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   created_at timestamptz DEFAULT now()
 );
 
 CREATE TABLE group_members (
-  id         uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-  group_id   uuid NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
-  user_id    uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  added_at   timestamptz DEFAULT now(),
+  id            uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  group_id      uuid NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+  user_id       uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+  invited_email text,
+  status        text DEFAULT 'accepted',
+  added_by      uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  added_at      timestamptz DEFAULT now(),
   UNIQUE(group_id, user_id)
 );
 
@@ -446,6 +450,8 @@ CREATE POLICY "groups: read for members"
   ON groups FOR SELECT USING (
     id IN (SELECT group_id FROM group_members WHERE user_id = auth.uid())
   );
+CREATE POLICY "groups: read all"
+  ON groups FOR SELECT USING (true);
 
 -- group_members
 CREATE POLICY "group_members: all for group creator"
@@ -454,6 +460,15 @@ CREATE POLICY "group_members: all for group creator"
   );
 CREATE POLICY "group_members: read own"
   ON group_members FOR SELECT USING (user_id = auth.uid());
+CREATE POLICY "group_members: read all"
+  ON group_members FOR SELECT USING (true);
+CREATE POLICY "group_members: update own"
+  ON group_members FOR UPDATE USING (
+    user_id = auth.uid()
+    OR invited_email = (SELECT email FROM auth.users WHERE id = auth.uid())
+  );
+CREATE POLICY "group_members: delete own"
+  ON group_members FOR DELETE USING (user_id = auth.uid());
 
 -- contacts
 CREATE POLICY "contacts: all own"
