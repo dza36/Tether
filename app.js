@@ -5060,6 +5060,7 @@ async function confirmChoreApply() {
 let _resuming = false;
 let _hiddenAt = 0;
 document.addEventListener('visibilitychange', async () => {
+  console.log('[Visibility] change — hidden:', document.hidden, '_resuming:', _resuming, 'currentUser:', !!currentUser);
   if (document.hidden) { _hiddenAt = Date.now(); return; }
   if (_resuming) return;
   if (!currentUser) { window.location.reload(); return; }
