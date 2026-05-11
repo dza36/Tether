@@ -5069,26 +5069,7 @@ document.addEventListener('visibilitychange', async () => {
   // Full reload for long absences
   if (hiddenMs > 3 * 60 * 1000) { window.location.reload(); return; }
 
-  // Very short switches — do nothing
-  if (hiddenMs < 500) return;
-
-  // Health check — reload if Supabase is truly broken
-  const { error: healthErr } = await sb.from('users')
-    .select('id').eq('id', currentUser.id).limit(1).maybeSingle();
-  if (healthErr) { window.location.reload(); return; }
-
-  // Reset any operation guards stuck by Chrome cancelling in-flight requests
-  grocerySubmitting = false;
-
-  // Re-render open sheets whose queries were cancelled mid-flight
-  if (document.getElementById('groupsBg').classList.contains('open'))
-    renderGroupsSheet(groupsDetailId);
-  if (document.getElementById('contactsBg').classList.contains('open'))
-    renderContactsSheet();
-  if (document.getElementById('householdBg').classList.contains('open'))
-    renderHouseholdContent();
-
-  // Short tab switches: done
+  // Short tab switches — do nothing
   if (hiddenMs < 45 * 1000) return;
 
   // Medium absence: soft refresh
