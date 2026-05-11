@@ -1,7 +1,11 @@
 // ─── SUPABASE CONFIG ──────────────────────────────────────────────────────────
 // SUPABASE_URL and SUPABASE_ANON are injected by CI via config.js
 const { createClient } = supabase;
-const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON, {
+  auth: {
+    lock: async (name, acquireTimeout, fn) => fn(),
+  },
+});
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────────
 let currentUser = null;
