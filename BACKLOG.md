@@ -29,6 +29,12 @@ Features and fixes agreed upon, not yet built. Roughly prioritized within each s
 
 ---
 
+## Occasions
+
+- **Duplicate occasion prevention** — When adding a new occasion, check for existing household-visible occasions with the same type and approximate date. Prompt "This looks like Cole's birthday — link it instead?" Merge logic: set `merged_into` on the manually created record and status to `merged`. Safety net for cases where a household member's self-owned occasion is already visible.
+
+---
+
 ## Household
 
 - **Onboarding** — First-run experience for new users. Explain swipe gestures, prompt first item. Light — not a 5-screen tutorial.

@@ -3212,6 +3212,7 @@ async function submitFeedback() {
 
 // ─── OCCASIONS ────────────────────────────────────────────────────────────────
 let occasionsList = [];
+let occasionOwners = {};
 let editingOccasionId = null;
 
 const OCCASION_TYPES = [
@@ -3237,6 +3238,12 @@ async function loadOccasions() {
     .order('month').order('day');
   if (error) { showToast('Load error: ' + error.message); return; }
   occasionsList = data || [];
+  const otherIds = [...new Set(occasionsList.filter(o => o.user_id !== currentUser.id).map(o => o.user_id))];
+  occasionOwners = {};
+  if (otherIds.length) {
+    const { data: profiles } = await sb.from('users').select('id, display_name, avatar_url, email').in('id', otherIds);
+    (profiles || []).forEach(p => { occasionOwners[p.id] = p; });
+  }
 }
 
 function daysUntilOccasion(month, day) {
@@ -3264,11 +3271,15 @@ function renderOccasionsSheet() {
         const d = daysUntilOccasion(o.month, o.day);
         const dateStr = `${MONTH_SHORT[o.month - 1]} ${o.day}${o.year ? ', ' + o.year : ''}`;
         const dueStr = d === 0 ? 'Today! 🎉' : d === 1 ? 'Tomorrow' : `in ${d} days`;
+        const isOwn = o.user_id === currentUser.id;
         const visIcon = o.visibility === 'private' ? '🔒' : o.visibility === 'household' ? '🏠' : '👥';
+        const ownerTag = isOwn
+          ? `<span style="font-size:11px;color:var(--accent-soft)">${visIcon}</span>`
+          : memberAvatarHTML(occasionOwners[o.user_id] || { display_name: '?' }, 20);
         html += `<div class="annual-row" onclick="openOccasionDetail('${o.id}')">
           <div class="annual-row-icon">${type.emoji}</div>
           <div class="annual-row-info">
-            <div class="annual-row-name">${o.name} <span style="font-size:11px;color:var(--accent-soft)">${visIcon}</span></div>
+            <div class="annual-row-name">${o.name} <span style="vertical-align:middle;display:inline-flex;align-items:center">${ownerTag}</span></div>
             <div class="annual-row-sub">${dateStr} · ${dueStr}</div>
           </div>
         </div>`;
