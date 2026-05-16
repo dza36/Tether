@@ -3272,14 +3272,20 @@ function renderOccasionsSheet() {
         const dateStr = `${MONTH_SHORT[o.month - 1]} ${o.day}${o.year ? ', ' + o.year : ''}`;
         const dueStr = d === 0 ? 'Today! 🎉' : d === 1 ? 'Tomorrow' : `in ${d} days`;
         const isOwn = o.user_id === currentUser.id;
+        const owner = occasionOwners[o.user_id];
+        const ownerFirst = owner ? (owner.display_name || owner.email || '').split(' ')[0] : null;
+        const MY_RE = /^my\s+/i;
+        const displayName = (!isOwn && ownerFirst && MY_RE.test(o.name))
+          ? o.name.replace(MY_RE, `${ownerFirst}'s `)
+          : o.name;
         const visIcon = o.visibility === 'private' ? '🔒' : o.visibility === 'household' ? '🏠' : '👥';
         const ownerTag = isOwn
           ? `<span style="font-size:11px;color:var(--accent-soft)">${visIcon}</span>`
-          : memberAvatarHTML(occasionOwners[o.user_id] || { display_name: '?' }, 20);
+          : memberAvatarHTML(owner || { display_name: '?' }, 20);
         html += `<div class="annual-row" onclick="openOccasionDetail('${o.id}')">
           <div class="annual-row-icon">${type.emoji}</div>
           <div class="annual-row-info">
-            <div class="annual-row-name">${o.name} <span style="vertical-align:middle;display:inline-flex;align-items:center">${ownerTag}</span></div>
+            <div class="annual-row-name">${displayName} <span style="vertical-align:middle;display:inline-flex;align-items:center">${ownerTag}</span></div>
             <div class="annual-row-sub">${dateStr} · ${dueStr}</div>
           </div>
         </div>`;
